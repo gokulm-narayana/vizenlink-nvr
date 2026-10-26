@@ -123,6 +123,28 @@ The user asked Claude to choose, with the VizenLink mobile app and `camera_api` 
   - `recordDeleteAfter: 0s` as the global default, ahead of Phase 2.
   - Phase 1 only has to prove that the config is generated and that anonymous publish, read and playback are rejected. The auth-method choice (jwt vs http) is a Phase 3 spike.
 
+### Post-research resolutions (2026-10-26, after 01-RESEARCH.md)
+- **D-23: Stream-URI fallback approved by the user.** The NVR uses NuraEye `live-stream-uri` first. Only if it returns `webrtc` (dev firmware builds) does it fall back to ONVIF `GetStreamUri`.
+  - The simulator covers both paths.
+  - `camera_api` itself is not changed. This is an NVR-side addition, recorded as a known divergence in `contracts/`.
+  - `Profile_3` (`/mobile`) is excluded from main/sub selection.
+- **D-24: Factory-reset hardware test approved by the user, opt-in only.** It does a Soft reset, which erases name, location and extra accounts and keeps Wi-Fi. It runs only behind an explicit env flag or marker and prints a warning before resetting.
+- **D-25: TLS pin semantics.** All cameras currently share one sample certificate (SR-11), and it may be expired.
+  - Pin by **fingerprint only**, never by chain or expiry.
+  - Record the fingerprint and enforce it as "certificate unchanged" (`tls_changed` on mismatch). Never describe it as camera authentication or MITM protection.
+  - The camera-only TLS context may use `SECLEVEL=0` (mbedTLS 2.28).
+- **D-26: Corrected numbers from research (these supersede earlier docs).**
+  - The REST session table is 10, not 6.
+  - RTSPS allows 2 clients per stream, not 3. The hardware test asserts the 3rd client is rejected.
+  - `scanUnicast` uses the code defaults: 30 s cap, 10 s straggler wait, 50 ms pacing. These replace the 15 s quoted in D-01 / Discretion.
+- **D-27: Scan retry.** Make one retry only for candidates that answered WS-Discovery. The unicast sweep range is `max(real_prefix, 24)`.
+- **D-28: Contracts vendoring.** Vendor the Dart test files verbatim. Copy the 4 mobile-app flow files into `contracts/mobile_app/`; all are sha256-locked. Hand-curate JSON fixtures and `behaviors.yaml` from the Dart tests, because upstream has no JSON golden fixtures.
+- **D-29: Key custody.** The vault records key source, key id and a canary.
+  - The CLI and the service must resolve the same key. Support the key-file source as the documented default for service installs, so the CLI and service work across OS users.
+  - The OS keystore is preferred when the CLI and service run as the same user.
+- **D-30: CI matrix.** Python 3.13 on Linux, macOS and Windows, plus one Linux Python 3.11 leg (the stated floor).
+- **Noted for Phase 3:** the camera's default codec is H.265, including the sub stream. The browser-codec decision belongs to Phase 3, not here.
+
 ### Claude's Discretion
 - Repo layout: a monorepo with backend and later `web/`, and package and module names.
 - CLI framework (for example Typer), table rendering, and how the CLI reaches the service layer. It must be the same service/code path the Phase 3 API will reuse, with no logic only the CLI has.

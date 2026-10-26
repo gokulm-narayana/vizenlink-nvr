@@ -26,11 +26,11 @@ A rebuild of the existing VizenLink/NuraEye VMS (`nuraeye-rt/vms`) as a network 
 - [ ] Discover VizenLink/NuraEye cameras on the LAN (WS-Discovery) and add them with credentials
 - [ ] Live view of a single camera and a multiview grid (via MediaMTX relay)
 - [ ] 24/7 continuous recording per camera, with retention policy and disk-full handling
-- [ ] Event recording triggered by NuraEye camera AI alerts (LAN alerts API), with ONVIF events as fallback
+- [ ] Event recording triggered by camera events — v1 source is ONVIF PullPoint behind a pluggable event-source interface; a NuraEye LAN alert feed is added if the firmware owner confirms one exists
 - [ ] Timeline playback by camera and time, with clip export
 - [ ] Alerts/events list linked to the matching recording
 - [ ] Camera settings (imaging, encoder, OSD, privacy, etc.) following `camera_api` semantics and capability flags
-- [ ] Users and login: local NVR accounts plus optional link to the VizenLink Cognito account
+- [ ] Users and login: local NVR accounts; Cognito identity stored in the data model (linking UI in v1.x)
 - [ ] Roles: Owner/Admin, Operator, Viewer
 - [ ] Simple/Advanced view toggle (Simple default for home users)
 - [ ] Health and storage status: camera online state, disk usage, recorder health
@@ -72,8 +72,10 @@ A rebuild of the existing VizenLink/NuraEye VMS (`nuraeye-rt/vms`) as a network 
 | Fresh repo in Vizenlink_Vms, port useful logic from old VMS | Clean architecture while reusing MediaMTX client, discovery, ONVIF where they match camera_api | — Pending |
 | `camera_api` contracts are source of truth for camera behaviour | NVR and mobile app must behave identically; removes drift | — Pending |
 | React + TypeScript (Vite) web UI | AngularJS is EOL; strongest video/timeline ecosystem | — Pending |
-| Event recording: NuraEye alerts + ONVIF events fallback | Use camera's own AI; ONVIF as safety net | — Pending |
-| Auth: local accounts + optional Cognito link | Works fully offline; one VizenLink identity when online | — Pending |
+| Event source: ONVIF PullPoint in v1, NuraEye LAN feed slot reserved | Research found no documented NuraEye LAN alert feed (alerts go via AWS IoT MQTT); confirm with firmware owner before events phase | — Pending |
+| Event recording = continuous recording + protected event ranges | MediaMTX has no pre-roll; toggling record on alert loses the event start | — Pending |
+| Recording format fMP4 (MediaMTX v1.21.3), NVR is the sole deleter | MediaMTX playback server doesn't support mpegts; old config deleted footage after 1 day | — Pending |
+| Auth: local accounts in v1; Cognito link UI in v1.x (data model in v1) | Works fully offline; link never on recording path | — Pending |
 | Tiers = roles + Simple/Advanced toggle, no enforced limits in v1 | One product for home and business without licensing complexity | — Pending |
 | Mobile integration over LAN in v1 (recordings, live, health, manage) | Gives mobile long recording history; remote access deferred | — Pending |
 
@@ -95,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-26 after initialization*
+*Last updated: 2026-10-26 after research and requirements*

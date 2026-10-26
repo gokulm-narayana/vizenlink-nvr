@@ -289,6 +289,14 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 <!-- GSD:profile-end -->
 
+## Session Handoff (multiple Claude accounts)
+
+This project is worked on from several Claude accounts and sessions, which share no chat history. The repo is the only memory.
+
+- **At the start of every session**, before doing anything else, read `.planning/handoff/LATEST.md`, then `.planning/STATE.md`. If a `.continue-here.md` exists under `.planning/`, use `/gsd-resume-work`.
+- **When the user says "write handoff"** (or is about to switch accounts or stop), write `.planning/handoff/log/<YYYY-MM-DD-HHMM>-<slug>.md` using the template in `.planning/handoff/README.md`, copy it over `LATEST.md`, and commit it as `docs(handoff): <slug>`.
+- Record the *why* behind decisions in the handoff, not just the *what*. The next session can't ask you.
+
 ## Related Codebases (read-only reference)
 
 - **Old VMS** — `/Users/gokul/Desktop/vizenlinkvms/nuraeye-rt/vms`: Flask + AngularJS + MediaMTX. Port logic from it only where it matches `camera_api`; do not carry over its known defects (see `.planning/research/PITFALLS.md`): IP-keyed cameras, `segments.json` index, `atexit` path deletion, `recordDeleteAfter: 1d`, anonymous MediaMTX, `debug=True`, static serving of the project dir.

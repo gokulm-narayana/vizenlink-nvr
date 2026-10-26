@@ -41,21 +41,21 @@ created: "2026-10-26"
 
 Plan and task IDs are filled in by the planner. The requirement-to-test mapping below is binding.
 
-| Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
-|-------------|----------|-----------|-------------------|-------------|--------|
-| FND-03 | UTC storage; site-zone rendering across both DST transitions | unit/integration | `uv run pytest tests/integration/test_time_model.py -x` | ❌ W0 | ⬜ pending |
-| FND-04 | Default-deny config; live proof against the pinned binary | unit + mediamtx | `uv run pytest tests/unit/test_mediamtx_config.py && uv run pytest -m mediamtx` | ❌ W0 | ⬜ pending |
-| FND-05 | Mirror, fixtures, lock, header case, SOAP faults, 421 | contract | `uv run pytest tests/contract -x` | ❌ W0 | ⬜ pending |
-| CAM-01 | Scan lists cameras; no credentials sent while scanning | integration | `uv run pytest tests/integration/test_scan.py` | ❌ W0 | ⬜ pending |
-| CAM-02 | Manual add by host | integration | `uv run pytest tests/integration/test_add_manual.py` | ❌ W0 | ⬜ pending |
-| CAM-03 | Failure reasons: unreachable, wrong credentials, unsupported, blocked | integration | `uv run pytest tests/integration/test_add_error_taxonomy.py` | ❌ W0 | ⬜ pending |
-| CAM-04 | Forced password change; exactly one factory probe | integration | `uv run pytest tests/integration/test_factory_flow.py` | ❌ W0 | ⬜ pending |
-| CAM-05 | Capabilities probed, cached, re-probed | integration | `uv run pytest tests/integration/test_capabilities_probe.py tests/integration/test_reprobe.py` | ❌ W0 | ⬜ pending |
-| CAM-06 | Atomic add | integration | `uv run pytest tests/integration/test_atomic_add.py` | ❌ W0 | ⬜ pending |
-| CAM-07 | Main/sub selection; Profile_3 never chosen; WebRTC → ONVIF fallback (D-23) | unit + integration | `uv run pytest tests/unit/test_stream_selection.py tests/integration/test_streams_persisted.py` | ❌ W0 | ⬜ pending |
-| CAM-08 | Name and location written to the camera; group stays NVR-only | integration | `uv run pytest tests/integration/test_rename.py` | ❌ W0 | ⬜ pending |
-| CAM-10 | Serial identity; re-IP heal without duplicates | integration | `uv run pytest tests/integration/test_reip.py` | ❌ W0 | ⬜ pending |
-| cross-cutting | No secret leakage; credentials at rest; architecture import rules | unit | `uv run pytest tests/unit/test_no_secrets_leak.py tests/unit/test_credentials_at_rest.py tests/unit/test_architecture_rules.py` | ❌ W0 | ⬜ pending |
+| Requirement | Plan / Task | Behavior | Test Type | Automated Command | File Exists | Status |
+|-------------|-------------|----------|-----------|-------------------|-------------|--------|
+| FND-03 | 01-01 T2-T3; 01-09 T3 | UTC storage; site-zone rendering across both DST transitions | unit/integration | `uv run pytest tests/integration/test_time_model.py -x` | ❌ W0 | ⬜ pending |
+| FND-04 | 01-04 T1-T2; 01-14 T1 | Default-deny config; live proof against the pinned binary | unit + mediamtx | `uv run pytest tests/unit/test_mediamtx_config.py && uv run pytest -m mediamtx` | ❌ W0 | ⬜ pending |
+| FND-05 | 01-02 T1-T3; 01-05 T1-T2; 01-06 T1-T3; 01-07 T1-T3; 01-14 T3 | Mirror, fixtures, lock, header case, SOAP faults, 421 | contract | `uv run pytest tests/contract -x` | ❌ W0 | ⬜ pending |
+| CAM-01 | 01-08 T1-T2 | Scan lists cameras; no credentials sent while scanning | integration | `uv run pytest tests/integration/test_scan.py` | ❌ W0 | ⬜ pending |
+| CAM-02 | 01-09 T2 | Manual add by host | integration | `uv run pytest tests/integration/test_add_manual.py` | ❌ W0 | ⬜ pending |
+| CAM-03 | 01-10 T2 | Failure reasons: unreachable, wrong credentials, unsupported, blocked | integration | `uv run pytest tests/integration/test_add_error_taxonomy.py` | ❌ W0 | ⬜ pending |
+| CAM-04 | 01-10 T1 | Forced password change; exactly one factory probe | integration | `uv run pytest tests/integration/test_factory_flow.py` | ❌ W0 | ⬜ pending |
+| CAM-05 | 01-09 T3; 01-12 T2 | Capabilities probed, cached, re-probed | integration | `uv run pytest tests/integration/test_capabilities_probe.py tests/integration/test_reprobe.py` | ❌ W0 | ⬜ pending |
+| CAM-06 | 01-10 T3 | Atomic add | integration | `uv run pytest tests/integration/test_atomic_add.py` | ❌ W0 | ⬜ pending |
+| CAM-07 | 01-09 T3 | Main/sub selection; Profile_3 never chosen; WebRTC → ONVIF fallback (D-23) | unit + integration | `uv run pytest tests/unit/test_stream_selection.py tests/integration/test_streams_persisted.py` | ❌ W0 | ⬜ pending |
+| CAM-08 | 01-12 T1 | Name and location written to the camera; group stays NVR-only | integration | `uv run pytest tests/integration/test_rename.py` | ❌ W0 | ⬜ pending |
+| CAM-10 | 01-11 T1-T2 | Serial identity; re-IP heal without duplicates | integration | `uv run pytest tests/integration/test_reip.py` | ❌ W0 | ⬜ pending |
+| cross-cutting | 01-14 T2; 01-03 T1-T2; 01-02 T3 | No secret leakage; credentials at rest; architecture import rules | unit | `uv run pytest tests/unit/test_no_secrets_leak.py tests/unit/test_credentials_at_rest.py tests/unit/test_architecture_rules.py` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

@@ -33,7 +33,23 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Each added camera is registered by serial with its name, location label, cached capabilities (re-probed on demand) and an auto-selected main stream for recording and sub stream for grids; after a DHCP IP change the NVR re-finds the camera under the same identity instead of creating a duplicate
   4. MediaMTX runs from an NVR-generated default-deny config: anonymous publish, read and playback attempts are rejected, its control API answers only on loopback, and RTMP, SRT and MoQ are disabled
   5. CI on Linux, macOS and Windows passes contract tests and golden fixtures showing the Python camera layer returns the same typed Success/Failure/Timeout results, capability flags, camera-ID check outcomes and SOAP-fault handling as `camera_api`; timestamps are stored as UTC and render correctly in the site time zone on both sides of a DST change
-**Plans**: TBD
+**Plans**: 14 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Bootstrap + supply-chain gate, `nvr status`, SQLite/Alembic, UTC time model (FND-03)
+- [ ] 01-02-PLAN.md — Camera HTTP choke point, typed results, WSSE, identity probe, fake-camera simulator core
+- [ ] 01-03-PLAN.md — Credential vault: AES-GCM, keyring/key file, canary in `nvr status` (D-14, D-29)
+- [ ] 01-04-PLAN.md — MediaMTX default-deny config, pinned binary, live probes with negative control (FND-04)
+- [ ] 01-05-PLAN.md — Vendored camera_api contracts, sha256 lock, drift check, behaviour catalogue
+- [ ] 01-06-PLAN.md — NuraEye REST client: sessions, capabilities, live-stream-uri
+- [ ] 01-07-PLAN.md — ONVIF SOAP client: fault-first handling, device ops, Media2 profiles, GetStreamUri
+- [ ] 01-08-PLAN.md — `nvr cameras scan`: WS-Discovery multicast + unicast sweep, blank-credential naming (CAM-01)
+- [ ] 01-09-PLAN.md — `nvr cameras add` happy path, registry keyed by serial (D-11 gate), stream selection + D-23 fallback
+- [ ] 01-10-PLAN.md — Factory-password flow, add failure taxonomy, atomic retry-safe add (CAM-03/04/06)
+- [ ] 01-11-PLAN.md — Re-IP healing by serial via `nvr cameras reprobe` (CAM-10)
+- [ ] 01-12-PLAN.md — Rename/location/group, reprobe refresh, tls_changed, auth_failed + set-password (CAM-05/08)
+- [ ] 01-13-PLAN.md — Real-camera smoke suite HW-01..HW-14 (opt-in)
+- [ ] 01-14-PLAN.md — Phase gates: three-OS CI, secret-leak sweep, behaviour coverage, mirror headers
 **Research**: Needed for the camera layer on real hardware: case-preserving HTTP client, WSSE clock-skew tolerance, non-admin streaming account, RTSPS concurrency (3 clients per stream), RTSP behaviour with WEBRTC_STREAMING enabled. Foundations work is a standard pattern.
 
 ### Phase 2: Headless Recording Core
@@ -137,7 +153,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Ph
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundations & Camera Onboarding | 0/TBD | Not started | - |
+| 1. Foundations & Camera Onboarding | 0/14 | Planned | - |
 | 2. Headless Recording Core | 0/TBD | Not started | - |
 | 3. Secure API, Auth & Live View | 0/TBD | Not started | - |
 | 4. Events & Event Recording | 0/TBD | Not started | - |

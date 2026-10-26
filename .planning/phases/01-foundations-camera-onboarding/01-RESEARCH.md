@@ -1069,20 +1069,29 @@ assert httpx.get("http://127.0.0.1:9997/v3/paths/list", auth=("nvr-control", CON
 | A14 | Restricting manual add to private/link-local addresses by default is acceptable | Pitfall 10 | A user with an unusual routed subnet needs `--allow-public` |
 | A15 | Using the datagram source address (not `XAddrs` host) for discovered candidates never breaks a real camera (single-homed) | Pitfall 10 | A multi-homed camera could be reached at the other address; the identity probe still validates |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **ONVIF `GetStreamUri` fallback when `live-stream-uri` returns `webrtc`.**
    - What we know: current firmware always returns `rtsp` (F5); `camera_api` has no `GetStreamUri` client; the published ONVIF doc defines it (`camera-onvif-api.md` section 1.2 and Media2).
    - What's unclear: whether the owner accepts adding an operation that `camera_api` does not cover (project rule: stop and ask).
    - Recommendation: implement it as a small, simulator-covered fallback behind `transport != "rtsp"`, labelled "ONVIF standard operation", and ask for confirmation at plan approval. Without approval the add fails with `STREAMS_UNAVAILABLE` on a WebRTC-enabled dev build.
+   - **RESOLVED → D-23 (user approved the ONVIF GetStreamUri fallback, 2026-10-26).**
 2. **Copy the four mobile-app files into `contracts/mobile_app/` or track hashes only?** Recommendation: copy (reference-only), because D-01..D-07 and D-12 are defined there.
+   - **RESOLVED → D-28 (copy into contracts/mobile_app/, sha256-locked).**
 3. **Key custody for services.** Confirm that Phase 8 may default services to the key file, and whether the CLI must work when run by a different OS user than the service (then both need read access to the same key file).
+   - **RESOLVED → D-29 (key file is the documented default for service installs; CLI and service must resolve the same key).**
 4. **Pin semantics wording.** Given F3, confirm that recording and enforcing a fingerprint, described only as "certificate unchanged", is wanted now, or defer pinning until the firmware issues per-camera certificates (SR-11).
+   - **RESOLVED → D-25 (fingerprint pin recorded and enforced as "certificate unchanged"; never called authentication).**
 5. **Scan retries (D-01 vs `camera_scan.dart`).** The mobile scan uses a single 3 s identity attempt per candidate; D-01 says "retries on first contact". Recommendation: single attempt for sweep results, plus one retry for candidates that answered WS-Discovery but failed the identity probe. Confirm.
+   - **RESOLVED → D-27 (one retry only for WS-Discovery responders).**
 6. **Unicast sweep range.** Dart assumes /24. Recommendation: `max(real_prefix, 24)` (never wider than /24). Confirm.
+   - **RESOLVED → D-27 (sweep range max(real_prefix, 24)).**
 7. **Sub stream codec for Phase 3.** The sub stream (`Profile_2`, 720p) is H.265 by default (F5); browsers often cannot play H.265. Needs a Phase 3 decision (reconfigure the camera encoder to H.264 through Phase 6 settings, transcode, or Safari-only H.265). Phase 1 only records the codec.
+   - **DEFERRED → Phase 3 (browser codec decision; noted in 01-CONTEXT.md "Noted for Phase 3").**
 8. **Reset test consent.** Confirm that a Soft reset (erases name, location, extra accounts; keeps Wi-Fi) is acceptable on the user's only camera, and who restores name/location afterwards.
+   - **RESOLVED → D-24 (user approved Soft reset, opt-in only; owner restores name/location afterwards).**
 9. **Python 3.11 CI leg.** STACK.md sets 3.11 as the support floor; adding one Linux leg is cheap. Confirm.
+   - **RESOLVED → D-30 (one Linux Python 3.11 leg).**
 
 ## Environment Availability
 

@@ -180,12 +180,97 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| FND-01 | Phase 2 | Pending |
+| FND-02 | Phase 2 | Pending |
+| FND-03 | Phase 1 | Pending |
+| FND-04 | Phase 1 | Pending |
+| FND-05 | Phase 1 | Pending |
+| FND-06 | Phase 8 | Pending |
+| CAM-01 | Phase 1 | Pending |
+| CAM-02 | Phase 1 | Pending |
+| CAM-03 | Phase 1 | Pending |
+| CAM-04 | Phase 1 | Pending |
+| CAM-05 | Phase 1 | Pending |
+| CAM-06 | Phase 1 | Pending |
+| CAM-07 | Phase 1 | Pending |
+| CAM-08 | Phase 1 | Pending |
+| CAM-09 | Phase 2 | Pending |
+| CAM-10 | Phase 1 | Pending |
+| LIVE-01 | Phase 3 | Pending |
+| LIVE-02 | Phase 3 | Pending |
+| LIVE-03 | Phase 3 | Pending |
+| LIVE-04 | Phase 3 | Pending |
+| LIVE-05 | Phase 3 | Pending |
+| LIVE-06 | Phase 3 | Pending |
+| LIVE-07 | Phase 5 | Pending |
+| REC-01 | Phase 2 | Pending |
+| REC-02 | Phase 2 | Pending |
+| REC-03 | Phase 2 | Pending |
+| REC-04 | Phase 4 | Pending |
+| REC-05 | Phase 2 | Pending |
+| REC-06 | Phase 2 | Pending |
+| REC-07 | Phase 2 | Pending |
+| REC-08 | Phase 2 | Pending |
+| REC-09 | Phase 2 | Pending |
+| REC-10 | Phase 2 | Pending |
+| REC-11 | Phase 2 | Pending |
+| REC-12 | Phase 5 | Pending |
+| PLAY-01 | Phase 5 | Pending |
+| PLAY-02 | Phase 5 | Pending |
+| PLAY-03 | Phase 5 | Pending |
+| PLAY-04 | Phase 5 | Pending |
+| PLAY-05 | Phase 5 | Pending |
+| PLAY-06 | Phase 5 | Pending |
+| PLAY-07 | Phase 5 | Pending |
+| PLAY-08 | Phase 5 | Pending |
+| EVT-01 | Phase 4 | Pending |
+| EVT-02 | Phase 4 | Pending |
+| EVT-03 | Phase 4 | Pending |
+| EVT-04 | Phase 4 | Pending |
+| EVT-05 | Phase 4 | Pending |
+| EVT-06 | Phase 4 | Pending |
+| EVT-07 | Phase 4 | Pending |
+| SET-01 | Phase 6 | Pending |
+| SET-02 | Phase 6 | Pending |
+| SET-03 | Phase 6 | Pending |
+| SET-04 | Phase 6 | Pending |
+| SET-05 | Phase 6 | Pending |
+| SET-06 | Phase 6 | Pending |
+| SET-07 | Phase 6 | Pending |
+| SET-08 | Phase 6 | Pending |
+| AUTH-01 | Phase 3 | Pending |
+| AUTH-02 | Phase 3 | Pending |
+| AUTH-03 | Phase 3 | Pending |
+| AUTH-04 | Phase 3 | Pending |
+| AUTH-05 | Phase 3 | Pending |
+| AUTH-06 | Phase 3 | Pending |
+| AUTH-07 | Phase 3 | Pending |
+| AUTH-08 | Phase 3 | Pending |
+| HLTH-01 | Phase 2 | Pending |
+| HLTH-02 | Phase 3 | Pending |
+| HLTH-03 | Phase 2 | Pending |
+| HLTH-04 | Phase 2 | Pending |
+| HLTH-05 | Phase 2 | Pending |
+| HLTH-06 | Phase 2 | Pending |
+| HLTH-07 | Phase 3 | Pending |
+| HLTH-08 | Phase 3 | Pending |
+| HLTH-09 | Phase 4 | Pending |
+| GAL-01 | Phase 5 | Pending |
+| GAL-02 | Phase 5 | Pending |
+| GAL-03 | Phase 5 | Pending |
+| MOB-01 | Phase 3 | Pending |
+| MOB-02 | Phase 7 | Pending |
+| MOB-03 | Phase 7 | Pending |
+| MOB-04 | Phase 7 | Pending |
+| MOB-05 | Phase 7 | Pending |
+| MOB-06 | Phase 7 | Pending |
+| MOB-07 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 85 total
-- Mapped to phases: 0
-- Unmapped: 85 ⚠️
+- Mapped to phases: 85
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-10-26*
-*Last updated: 2026-10-26 after initial definition*
+*Last updated: 2026-10-26 after roadmap creation (traceability mapped)*

@@ -37,6 +37,11 @@
   - a **ready-to-paste execution prompt** for a separate build agent (run `/gsd-execute-phase 1` or follow the PLAN files wave by wave, obey `.claude/CLAUDE.md`, never touch the camera_api, nuraeye-rt or mobilecctvapp repos, commit per task, write a handoff at the end).
 - Then the user comes back for verification (`/gsd-verify-work 1`).
 
+## Working arrangement (user decision, 2026-10-26)
+- **From Phase 2 on,** the user runs research, planning and execution in a separate, larger agent session.
+- **This project's verifying session** checks the plans after planning and verifies the build after execution (`/gsd-verify-work N`).
+- Whichever agent plans a phase must commit its plans and write a handoff here, so the verifier can find them.
+
 ## Decisions made (and why)
 - None new. See `01-CONTEXT.md` D-01 to D-30.
 

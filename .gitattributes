@@ -1,0 +1,2 @@
+# Keep contract files byte-identical across platforms (no CRLF conversion)
+contracts/** -text

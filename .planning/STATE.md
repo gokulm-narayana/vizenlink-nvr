@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
 status: executing
-stopped_at: Plan 01-16 complete; ready for Plan 01-17
-last_updated: "2026-10-27T18:32:00.000Z"
+stopped_at: Plan 01-17 complete; ready for Plan 01-18
+last_updated: "2026-10-27T18:44:00.000Z"
 last_activity: 2026-10-27
-last_activity_desc: Plan 01-16 complete (vendor immutable contract batch 5 of 5); ready for Plan 01-17
-state_head: b55547b
+last_activity_desc: Plan 01-17 complete (finalize full contract lock, behaviors catalogue, fixture provenance); ready for Plan 01-18
+state_head: 0bc5b34
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 31
-  completed_plans: 16
-  percent: 51
+  completed_plans: 17
+  percent: 54
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
-Plan: 16 of 31 complete (ready for 17 of 31)
-Status: Completed 01-16
-Last activity: 2026-10-27 — Plan 01-16 completed (all 5 contract batches vendored and verified)
+Plan: 17 of 31 complete (ready for 18 of 31)
+Status: Completed 01-17
+Last activity: 2026-10-27 — Plan 01-17 completed (contract lock, behaviors catalogue, fixture provenance)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░] 51%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░] 54%
 
 ## Performance Metrics
 

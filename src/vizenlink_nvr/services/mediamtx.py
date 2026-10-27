@@ -9,25 +9,18 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 from vizenlink_nvr.media.binary import binary_version, resolve_binary, validate_config
+from vizenlink_nvr.media.check import ProbeResult, listener_lines_ok, run_probes
 from vizenlink_nvr.media.config import (
     MediaMtxPorts,
     build_config,
     hash_control_password,
     write_config,
 )
+from vizenlink_nvr.media.process import MediaMtxProcess
 from vizenlink_nvr.paths import mediamtx_dir
 
 if TYPE_CHECKING:
     from vizenlink_nvr.services.runtime import Runtime
-
-
-class ProbeResult(BaseModel):
-    """Result of an individual protocol or endpoint probe."""
-
-    name: str
-    expected: str
-    actual: str
-    ok: bool
 
 
 class MediaMtxCheckReport(BaseModel):
@@ -49,7 +42,16 @@ async def run_check(
     ports: MediaMtxPorts | None = None,
 ) -> MediaMtxCheckReport:
     """Generate configuration, validate against binary, and optionally run network probes."""
-    used_ports = ports or MediaMtxPorts()
+    import os
+
+    if ports is not None:
+        used_ports = ports
+    elif os.environ.get("NVR_MEDIAMTX_TEST_PORTS"):
+        parts = [int(p) for p in os.environ["NVR_MEDIAMTX_TEST_PORTS"].split(",")]
+        used_ports = MediaMtxPorts(*parts)
+    else:
+        used_ports = MediaMtxPorts()
+
     random_pw = secrets.token_urlsafe(24)
     pw_hash = hash_control_password(random_pw)
     cfg = build_config(used_ports, pw_hash)
@@ -67,12 +69,10 @@ async def run_check(
     all_ok = validate_ok
 
     if probe:
-        # Deferred import so 01-09 works without 01-10 modules present
-        from vizenlink_nvr.media.check import run_probes  # type: ignore[import-untyped]
-        from vizenlink_nvr.media.process import MediaMtxProcess  # type: ignore[import-untyped]
-
-        async with MediaMtxProcess(binary, cfg_path):
+        async with MediaMtxProcess(binary, cfg_path) as proc:
             probes_list = await run_probes(used_ports, random_pw)
+            listener_probe = listener_lines_ok(proc.log_lines)
+            probes_list.append(listener_probe)
             if any(not p.ok for p in probes_list):
                 all_ok = False
 

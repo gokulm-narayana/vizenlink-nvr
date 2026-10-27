@@ -44,3 +44,22 @@ def fake_clock() -> FakeClock:
 def cli() -> CliRunner:
     """Return isolated Typer CLI runner."""
     return CliRunner()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def clean_mediamtx_processes():
+    """Ensure no MediaMTX processes survive test execution."""
+    yield
+    try:
+        from vizenlink_nvr.media.process import live_processes
+
+        survivors = live_processes()
+        for p in survivors:
+            p.terminate()
+            try:
+                p.wait(timeout=2.0)
+            except Exception:
+                p.kill()
+        assert len(survivors) == 0, f"Leaked MediaMTX processes survived session: {survivors}"
+    except ImportError:
+        pass

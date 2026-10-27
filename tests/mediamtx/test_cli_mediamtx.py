@@ -54,3 +54,26 @@ def test_strict_validation_detects_typo(tmp_path: Path) -> None:
     bad_ok, bad_out = validate_config(binary, bad_file)
     assert bad_ok is False
     assert "unknown field" in bad_out.lower() or "ERR" in bad_out
+
+
+def test_cli_mediamtx_check_probe_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """nvr mediamtx check --probe --json runs live probes and exits 0."""
+    import socket
+
+    def _free_port() -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            return int(s.getsockname()[1])
+
+    test_ports = f"{_free_port()},{_free_port()},{_free_port()},{_free_port()},{_free_port()},{_free_port()}"
+    monkeypatch.setenv("NVR_MEDIAMTX_TEST_PORTS", test_ports)
+
+    res = runner.invoke(app, ["mediamtx", "check", "--probe", "--json", "--data-dir", str(tmp_path)])
+    assert res.exit_code == 0, res.stdout
+
+    data = json.loads(res.stdout)
+    assert data["validate_ok"] is True
+    assert data["ok"] is True
+    assert data["probes"] is not None
+    assert len(data["probes"]) > 0
+    assert all(p["ok"] for p in data["probes"])

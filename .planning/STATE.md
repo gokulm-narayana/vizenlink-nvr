@@ -1,17 +1,17 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 1
+current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-10-26T07:58:48.805Z"
-last_activity: 2026-10-26
-last_activity_desc: Roadmap created (8 phases, 85/85 v1 requirements mapped)
-state_head: db603601e323f292e89142d110756a2bf0b28db0
+status: executing
+stopped_at: 01-01 Task 1 — awaiting owner dependency-list review
+last_updated: "2026-10-27T08:05:05.529Z"
+last_activity: 2026-10-27
+last_activity_desc: Plans checked and committed; execution waiting at dependency review
+state_head: 1d0589c971ecb59451378dc338c7c19815e06d13
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 31
   completed_plans: 0
   percent: 0
 ---
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-26)
 
 **Core value:** Never miss footage: every added camera records reliably 24/7 (plus events), and that footage is always findable on a timeline from both the web UI and the mobile app.
-**Current focus:** Phase 1: Foundations & Camera Onboarding
+**Current focus:** Phase 01 — Foundations & Camera Onboarding
 
 ## Current Position
 
-Phase: 1 of 8 (Foundations & Camera Onboarding)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-10-26 — Roadmap created (8 phases, 85/85 v1 requirements mapped)
+Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
+Plan: 1 of 31
+Status: Awaiting owner approval — 01-01 Task 1 dependency review
+Last activity: 2026-10-27 — Plan checker VERIFICATION PASSED; plans committed 1d0589c; dependency review pending
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -67,7 +67,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- Await actual owner approval of the exact dependency list in 01-01 Task 1 before any fetch/install.
+- Later blocking gates: D-11 in 01-24; real-camera execution in 01-30.
 
 ### Blockers/Concerns
 
@@ -88,6 +89,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T07:58:48.795Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-foundations-camera-onboarding/01-CONTEXT.md
+Last session: 2026-10-27
+Stopped at: 01-01 Task 1 dependency review; no implementation tasks started
+Resume file: .planning/phases/01-foundations-camera-onboarding/01-01-PLAN.md

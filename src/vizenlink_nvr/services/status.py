@@ -1,16 +1,14 @@
 """System status report service."""
 
-import json
 import logging
 
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 from vizenlink_nvr.db.engine import current_revision, head_revision
-from vizenlink_nvr.db.models import AppSetting
 from vizenlink_nvr.paths import db_path
 from vizenlink_nvr.services.runtime import Runtime
-from vizenlink_nvr.timeutil import default_site_zone_name
+from vizenlink_nvr.services.settings import get_site_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +30,14 @@ async def get_status(rt: Runtime) -> StatusReport:
         async with rt.sessions() as session:
             result = await session.execute(text("SELECT 1"))
             db_ok = result.scalar() == 1
-    except Exception:
+    except Exception as exc:
+        logger.debug("Database probe failed: %s", exc)
         db_ok = False
 
     database_file = db_path(rt.settings)
     cur_rev = current_revision(database_file)
     head_rev = head_revision()
-
-    site_tz = default_site_zone_name()
-    try:
-        async with rt.sessions() as session:
-            stmt = select(AppSetting).where(AppSetting.key == "site_timezone")
-            row = await session.execute(stmt)
-            setting = row.scalar_one_or_none()
-            if setting and setting.value:
-                try:
-                    val = json.loads(setting.value)
-                    if isinstance(val, str):
-                        site_tz = val
-                    else:
-                        site_tz = setting.value
-                except Exception:
-                    site_tz = setting.value
-    except Exception as exc:
-        logger.debug("Failed reading site_timezone setting: %s", exc)
+    site_tz = await get_site_timezone(rt)
 
     return StatusReport(
         data_dir=str(rt.settings.data_dir),

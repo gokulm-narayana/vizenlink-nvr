@@ -14,6 +14,7 @@ from vizenlink_nvr.cli import (  # noqa: F401
 from vizenlink_nvr.cli.cameras import cameras_app
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.output import emit
+from vizenlink_nvr.cli.settings_cmd import settings_app
 from vizenlink_nvr.config import load_settings
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.status import StatusReport, get_status
@@ -25,6 +26,7 @@ app = typer.Typer(
 )
 
 app.add_typer(cameras_app, name="cameras")
+app.add_typer(settings_app, name="settings")
 
 
 def _render_status_human(report: StatusReport) -> None:

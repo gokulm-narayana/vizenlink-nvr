@@ -1,7 +1,7 @@
 """Time and timezone utilities for VizenLink NVR."""
 
 import logging
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
@@ -128,7 +128,14 @@ def format_local(dt: datetime, zone: ZoneInfo) -> str:
 
 def local_day_bounds_utc(day: date, zone: ZoneInfo) -> tuple[datetime, datetime]:
     """Calculate the UTC start and end bounds of a local calendar day."""
-    start_local = datetime(day.year, day.month, day.day, 0, 0, 0, tzinfo=zone)
-    next_day = day + timedelta(days=1)
-    end_local = datetime(next_day.year, next_day.month, next_day.day, 0, 0, 0, tzinfo=zone)
-    return (start_local.astimezone(UTC), end_local.astimezone(UTC))
+
+    def _resolve_midnight(d: date) -> datetime:
+        dt = datetime.combine(d, time(0, 0, 0), tzinfo=zone)
+        dt_utc = dt.astimezone(UTC)
+        while dt_utc.astimezone(zone).date() < d:
+            dt_utc += timedelta(minutes=1)
+        return dt_utc
+
+    start_utc = _resolve_midnight(day)
+    end_utc = _resolve_midnight(day + timedelta(days=1))
+    return (start_utc, end_utc)

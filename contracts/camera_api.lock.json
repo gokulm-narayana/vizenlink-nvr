@@ -1,0 +1,546 @@
+{
+  "schema": 1,
+  "upstream": {
+    "nuraeye-rt": {
+      "repo": "onchiptech/nuraeye-rt",
+      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "dirty_files": [],
+      "reviewed_on": "2026-10-26"
+    },
+    "mobilecctvapp": {
+      "repo": "onchiptech/mobilecctvapp",
+      "commit": "abe32d7d2f8b909fd3ad44193bf8ebefe1b13a20",
+      "dirty_files": [],
+      "reviewed_on": "2026-10-26"
+    }
+  },
+  "files": [
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/app_state/camera_address_recovery.dart",
+      "sha256": "e222376b0b38935349ffd25a8a011f75aef0da5bc8daebe88b3570cd7e261198",
+      "vendored_as": "contracts/mobile_app/lib/app_state/camera_address_recovery.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/app_state/camera_onboarding.dart",
+      "sha256": "479ce0bf01a8ec90e1ec96ba6309009ea926f2316a2f326c47de452af6d17f99",
+      "vendored_as": "contracts/mobile_app/lib/app_state/camera_onboarding.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/app_state/camera_scan.dart",
+      "sha256": "03b02401d5f49141c03f268485dae64aef30c25158885414872036bef9afa788",
+      "vendored_as": "contracts/mobile_app/lib/app_state/camera_scan.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/utils/camera_account_rules.dart",
+      "sha256": "fb46706cd3f50e605a83320546367f133704d58e72aed537af8e9b2452372bb6",
+      "vendored_as": "contracts/mobile_app/lib/utils/camera_account_rules.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "design/Camera-REST-API.openapi.yaml",
+      "sha256": "5eefa2a7f936381e67f899fdf8a9a2d798ef44e6ee4f4a559abd70ef08e5c1b1",
+      "vendored_as": "contracts/camera_api/design/Camera-REST-API.openapi.yaml",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/CHANGELOG.md",
+      "sha256": "b3f539f865d738211bcb621fbd548523cc3df012205cd43bf97f9734893385a1",
+      "vendored_as": "contracts/camera_api/docs/external-api/CHANGELOG.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/README.md",
+      "sha256": "0802a7fe5dcca5e8a84537332eb592cf3a6a91304e7d446d3072704a37dd8426",
+      "vendored_as": "contracts/camera_api/docs/external-api/README.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/camera-onvif-api.md",
+      "sha256": "9dba44a27aaffa1c65625a703d28806c34b07e18f2dfb73ac808fd6221d99003",
+      "vendored_as": "contracts/camera_api/docs/external-api/camera-onvif-api.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/camera-rest-api.md",
+      "sha256": "6f7ee1cde7e67114515baa01a348cf58d9b2cae074659f70eaac62ed53f9f575",
+      "vendored_as": "contracts/camera_api/docs/external-api/camera-rest-api.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/camera-rest-api.openapi.yaml",
+      "sha256": "0e71b0658cdf5ddc05d7bdc7214e5e5a498b911dbcc7a7546d7a773c928c395c",
+      "vendored_as": "contracts/camera_api/docs/external-api/camera-rest-api.openapi.yaml",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/quick-start.md",
+      "sha256": "6084df947670c38738996d9041b5e97e75d82fe521a17de3be0be8c60ef443ec",
+      "vendored_as": "contracts/camera_api/docs/external-api/quick-start.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/API_REFERENCE.md",
+      "sha256": "dd54015ee202106d59b1ff7331665eceb1280221648b18099a5c03d25bf84226",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/API_REFERENCE.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/SETTINGS_API_GUIDE.md",
+      "sha256": "0d79acaa0b4733ee14f781246bec12fdf6637d31166dfb5ea2ff2fdd963c1da7",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/SETTINGS_API_GUIDE.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/STREAMING_GUIDE.md",
+      "sha256": "0a5ef0aa057592659bf4f9357c13e0fe075b0f39c5ff948c8b41acd56d2fd33d",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/STREAMING_GUIDE.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/camera_connection.dart",
+      "sha256": "4e3f9ec35f61b9173416a32bb82d3fd0eb0b588979c5756c7e6567ddb31d174b",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_connection.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/connection.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/camera_result.dart",
+      "sha256": "eaa81aa28a68cf5fc9aebb17ddced1efc35d0b772f3b69f49b871363ad85dd30",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_result.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/result.py"
+      ],
+      "behaviors": [
+        "RES-01",
+        "RES-02",
+        "RES-03"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/camera_role.dart",
+      "sha256": "403a2de6c777bc35f26f4c7639278d74cf1adceddf5078031e0366091140910d",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_role.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/roles.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/device_reset_types.dart",
+      "sha256": "093227387abeebdd4ef7adfc709371c0ad1b79604feb7579e927d4d011cc7ef0",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/device_reset_types.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/onvif/device.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/camera_id_mismatch.dart",
+      "sha256": "1e0f913e3a375a0c499fed5bfa51f4252940cb139bf3c42845d4ac99db1793de",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/camera_id_mismatch.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/events.py",
+        "src/vizenlink_nvr/camera/http.py"
+      ],
+      "behaviors": [
+        "HTTP-03",
+        "HTTP-04"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart",
+      "sha256": "cf09c72d1da65317d4dbebce0c1f295f3b76dbea2c8823a700a355342bf57ccd",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/discovery/ws_discovery.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/insecure_camera_http_client.dart",
+      "sha256": "ba12f28f98487ed6d1591b4d600daf7db07047225a34dbc15cdac7e3057b3361",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/insecure_camera_http_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/http.py"
+      ],
+      "behaviors": [
+        "HTTP-05",
+        "HTTP-06"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart",
+      "sha256": "109c790ed5ae26aa74f6209d54006166eccc081b73111b67343a166a982ab4ec",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/capabilities.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/live_stream_uri_client.dart",
+      "sha256": "4fc87450a10b5f93cdd7df3279127c85a51addf80674f9ba86c9c97536fa1746",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/live_stream_uri_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/live_stream_uri.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
+      "sha256": "2e06d2ad3a40ca56d9754e5b2b5de49d738f1de8edfe01983ad1197fa50e830d",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/client.py"
+      ],
+      "behaviors": [
+        "RES-04",
+        "IDN-01",
+        "IDN-02",
+        "IDN-03",
+        "SES-01",
+        "SES-02",
+        "SES-03",
+        "SES-04",
+        "SES-06",
+        "SES-07"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_rest_client.dart",
+      "sha256": "c6af6ee3efb7b0bea03dd26e795168f6e88d79807ef5631488fbaf57e967b5dc",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_rest_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/rest.py"
+      ],
+      "behaviors": [
+        "RES-06",
+        "RES-07",
+        "HTTP-08"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/rest_identity_discovery_client.dart",
+      "sha256": "49ec7db1d1495b632b3bc8b1198993acab6319137003a3f201cc35ff520f2d22",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/rest_identity_discovery_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/models.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/rest_result.dart",
+      "sha256": "5f873ea471c1e530b7508d2b3777e37150d2fa103d1f41f8be099f7fbfdba398",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/rest_result.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/rest.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart",
+      "sha256": "bd2e63476c9c2941ea6552d3c24cdcf500ef652d3936b88d9edb7a210cac159f",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/onvif/device.py"
+      ],
+      "behaviors": [
+        "DEV-01",
+        "DEV-02",
+        "DEV-03",
+        "DEV-04",
+        "DEV-05",
+        "DEV-06",
+        "DEV-07",
+        "WSSE-03",
+        "SOAP-02",
+        "SOAP-06"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_video_encoder_client.dart",
+      "sha256": "af62024e35e105cfd9c27e169255ef138047f9e40eb58451596cc22b4bb710dd",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_video_encoder_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/onvif/media2.py"
+      ],
+      "behaviors": [
+        "PRF-01",
+        "PRF-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/onvif/soap_fault.dart",
+      "sha256": "ffb2a21c3a549ec0db686f8f4e7e821dfce45635171cbcd0a46f26b774e00c06",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/soap_fault.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/onvif/soap.py"
+      ],
+      "behaviors": [
+        "SOAP-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/wsse_digest.dart",
+      "sha256": "103b118108cce6bc0b08bff99c472323f3499a6e19362be721059a37b5100649",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/wsse_digest.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/wsse.py"
+      ],
+      "behaviors": [
+        "WSSE-01",
+        "WSSE-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/recording_mode_types.dart",
+      "sha256": "871a4cd15860091dc40e511939b4be393a16b31dc054d529c3d57554e0484740",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/recording_mode_types.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/capabilities.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/camera_connection_test.dart",
+      "sha256": "e44e71d2da4d15f4bb314b84922dbaa226dc44477e9ae27c0d16e6d59154e288",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/camera_connection_test.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/camera_id_header_test.dart",
+      "sha256": "88d965374c076c80a91146679ca37968e01c4e1dd8b158a02534230da8eb9df6",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/camera_id_header_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "HTTP-01",
+        "HTTP-03",
+        "HTTP-04"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/camera_unreachable_event_test.dart",
+      "sha256": "599de6494d8abddc49dc0f34a20599dad748be799ba84287dd10f18cffb794eb",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/camera_unreachable_event_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "HTTP-05"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/capabilities_client_test.dart",
+      "sha256": "bd3a1537bb10c13c6e16f3db677083e254272963d07b791addc31913cc3eac16",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/capabilities_client_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "CAP-01",
+        "CAP-02",
+        "CAP-03"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/case_preserving_http_client_test.dart",
+      "sha256": "6ffa5701c377c9dff7bdab9df34c2262afe5cfca12491541cfd545d5094e96bf",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/case_preserving_http_client_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "HTTP-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/live_stream_uri_client_test.dart",
+      "sha256": "ae443fa52a383134af5576ce0166c0a647e73779235632671d6986717c41c385",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/live_stream_uri_client_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "LST-01",
+        "LST-02",
+        "LST-03"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/multi_user_accounts_test.dart",
+      "sha256": "658923c1c16369dba0208d1802a06876e53a11c51d27db8e71c59575b96d30ed",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "SOAP-03",
+        "SOAP-04",
+        "SOAP-05",
+        "DEV-06"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/nuraeye_are_you_nuraeye_device_test.dart",
+      "sha256": "35d288f9a9f391de45df6254d8bcc25651d8e61cda82ae1ef7072731a450a913",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_are_you_nuraeye_device_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "IDN-01",
+        "IDN-02",
+        "IDN-03"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/nuraeye_client_concurrency_test.dart",
+      "sha256": "c9ee54256923b7b9c8279d934e74d4efa19c32bec41b2e082d1e6666cee52737",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_concurrency_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "SES-05"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/nuraeye_client_failure_reason_test.dart",
+      "sha256": "fe0a11909b483dea17084fb040a5f802d0a17f369d4bf5bd1ec523e2a291de42",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_failure_reason_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "RES-05"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/nuraeye_client_session_expiry_test.dart",
+      "sha256": "6ffd8cd2f3908d7686472b4a3f5ac2912140b43f29851ee10436d525d6774647",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_session_expiry_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "SES-01",
+        "SES-02",
+        "SES-03",
+        "SES-04"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/nuraeye_digest_test.dart",
+      "sha256": "ad66302fa821d762055a4b791cde37402616c8df737d1923ddcc086738844662",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_digest_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "WSSE-01"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/onvif_device_client_test.dart",
+      "sha256": "22b2a080b692257f6836e293b4e6d943d24c21dc0dc3a8688314569e9630a3cf",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "DEV-01",
+        "DEV-02",
+        "DEV-03",
+        "DEV-04",
+        "DEV-05",
+        "DEV-06",
+        "DEV-07",
+        "SOAP-01"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/onvif_video_encoder_client_test.dart",
+      "sha256": "11bc9184b22ba10a18a03559c6827a6d60c669752712ccaabdf1d3bbbdd4fe48",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/onvif_video_encoder_client_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "PRF-01",
+        "PRF-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/rest_mock_helpers.dart",
+      "sha256": "d8a33f926baa2d8ece15ca12d141b4ac3bc583c419d08111bb1a6fa720a81303",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/rest_mock_helpers.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/ws_discovery_wire_format_test.dart",
+      "sha256": "22fbb2a08e8f30e4f07ffad9be80fc6c7bdb09de395908a1490dc54cd719be60",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/ws_discovery_wire_format_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "DSC-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "testing_utilities/camera_id_check_test.py",
+      "sha256": "40d9b54ac1304f7a7360d7a5139d77dedeb549fe575b4552c88ae0b4b6a413a5",
+      "vendored_as": "contracts/camera_api/testing_utilities/camera_id_check_test.py",
+      "mirrored_by": [
+        "sim/fake_camera/server.py"
+      ],
+      "behaviors": [
+        "HTTP-07"
+      ]
+    }
+  ]
+}

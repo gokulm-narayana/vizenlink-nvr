@@ -1,0 +1,12 @@
+{
+  "source": {
+    "path": "contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_digest_test.dart",
+    "lines": "24-33"
+  },
+  "data": {
+    "nonce": "AAAAAAAAAAAAAAAAAAAAAA==",
+    "created": "2026-01-01T00:00:00.000Z",
+    "password": "test-password",
+    "digest": "F3ldVt6HHuN3/vvi4vYtwEH8+w8="
+  }
+}

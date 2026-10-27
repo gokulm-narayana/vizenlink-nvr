@@ -1,0 +1,14 @@
+{
+  "source": {
+    "path": "contracts/camera_api/mobile_app/packages/camera_api/test/rest_mock_helpers.dart",
+    "lines": "21-28"
+  },
+  "data": {
+    "error_code": 0,
+    "error_msg": "Success",
+    "output": {
+      "token": "test-session-token",
+      "expires_in_sec": 1800
+    }
+  }
+}

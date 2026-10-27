@@ -1,0 +1,710 @@
+schema: 1
+rules:
+- id: RES-01
+  rule: Results are Success, Failure, Timeout; Forbidden, Blocked(retry_after), PasswordChangeRequired,
+    CredentialsMissing are failure subtypes
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_result.dart
+    lines: 1-118
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-05
+- id: RES-02
+  rule: Re-typing a failure for another result type keeps the subtype and retry_after
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_result.dart
+    lines: 115-118
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-05
+- id: RES-03
+  rule: retry_after = retry_after_seconds field if present, else regex retry in (\d+)
+    s on the message, else unknown
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_result.dart
+    lines: 65-69
+  - path: contracts/camera_api/docs/external-api/camera-rest-api.md
+    lines: 123-131
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: RES-04
+  rule: 'REST status mapping: 403 Forbidden, 428 PasswordChangeRequired, 429 Blocked,
+    other HTTP <code>: <error_msg>; same mapping for login'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 392-414
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: RES-05
+  rule: A rejected call's reason contains the numeric status (401) and the camera's
+    text
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_failure_reason_test.dart
+    lines: 1-50
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: RES-06
+  rule: Timeout is never folded into Failure; transport errors become Failure(UNREACHABLE)
+    with the exception text
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_rest_client.dart
+    lines: 1-100
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-07
+- id: RES-07
+  rule: 'REST body that is not a JSON object -> HTTP <code>: Malformed response body;
+    2xx with non-object output -> {}; error bodies may lack output'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_rest_client.dart
+    lines: 1-100
+  - path: contracts/camera_api/docs/external-api/camera-rest-api.md
+    lines: 158-164
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-07
+- id: HTTP-01
+  rule: 'X-VizenLink-Camera-Id: <serial> sent verbatim on every request when the serial
+    is known; absent or empty serial sends nothing'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/camera_id_header_test.dart
+    lines: 1-60
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-07
+- id: HTTP-02
+  rule: Other header names (Authorization) keep their case on the wire
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/case_preserving_http_client_test.dart
+    lines: 1-50
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-07
+- id: HTTP-03
+  rule: A 421 with a camera id publishes exactly one mismatch event (host, port, expected
+    id) and the caller still receives the failure
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/camera_id_header_test.dart
+    lines: 50-100
+  requirements:
+  - FND-05
+  - CAM-03
+  - CAM-10
+  plan: 01-07
+- id: HTTP-04
+  rule: A 421 without a camera id publishes nothing
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/camera_id_header_test.dart
+    lines: 90-115
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-07
+- id: HTTP-05
+  rule: Connection refused publishes one unreachable event (with id) and still raises
+    to the caller; no id -> no event; normal answer -> no event
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/camera_unreachable_event_test.dart
+    lines: 1-50
+  requirements:
+  - FND-05
+  - CAM-03
+  - CAM-10
+  plan: 01-07
+- id: HTTP-06
+  rule: No response headers for 8 s publishes unreachable once; the caller's own timeout
+    is unchanged
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/insecure_camera_http_client.dart
+    lines: 60-80
+  requirements:
+  - FND-05
+  - CAM-03
+  - CAM-10
+  plan: 01-07
+- id: HTTP-07
+  rule: 'Camera checks the id before authentication: wrong id + wrong password ->
+    421, wrong password alone -> 401; empty header counts as absent; serial never
+    in reply'
+  sources:
+  - path: contracts/camera_api/testing_utilities/camera_id_check_test.py
+    lines: 100-135
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-07
+- id: HTTP-08
+  rule: 'REST uses Content-Type: application/json (+ Authorization: Bearer); SOAP
+    uses application/soap+xml; charset=utf-8'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_rest_client.dart
+    lines: 1-100
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 550-565
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-07
+- id: HTTP-09
+  rule: 'TLS: self-signed accepted, SECLEVEL=0, pin compared before any request bytes,
+    mismatch -> TLS_CHANGED'
+  sources:
+  - decision: D-25
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-07
+- id: WSSE-01
+  rule: digest = base64(SHA1(nonce_raw + created + password)); known-answer vector
+    for nonce AAAAAAAAAAAAAAAAAAAAAA==, created 2026-01-01T00:00:00.000Z, password
+    test-password is F3ldVt6HHuN3/vvi4vYtwEH8+w8=
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_digest_test.dart
+    lines: 24-33
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-05
+- id: WSSE-02
+  rule: created = UTC %Y-%m-%dT%H:%M:%S.000Z (milliseconds fixed at .000); nonce =
+    16 random bytes, base64; fresh per request
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/wsse_digest.dart
+    lines: 20-58
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-05
+- id: WSSE-03
+  rule: SOAP security header shape (UsernameToken, PasswordDigest type URI, Nonce
+    Base64Binary, wsu:Created); Python escapes the username (Dart does not)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 534-551
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: IDN-01
+  rule: Identity request digest is of are-you-onchip-nuraeye; expected reply digest
+    is of yes-i-am-onchip-nuraeye with the same nonce/created; POST /nuraeye/identity,
+    unauthenticated
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 556-586
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-06
+- id: IDN-02
+  rule: Wrong reply -> Success(False); HTTP error -> Failure (reason = error_msg,
+    no status prefix); missing reply -> Failure("missing reply digest in response");
+    timeout -> Timeout
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_are_you_nuraeye_device_test.dart
+    lines: 1-60
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 570-585
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-06
+- id: IDN-03
+  rule: 'Retry variant: 3 attempts, 8 s each, 1 s apart, stops at first genuine reply,
+    returns last result otherwise (manual add). Scan: single 3 s attempt per candidate'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 600-614
+  - path: contracts/mobile_app/lib/app_state/camera_scan.dart
+    lines: 1-90
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-19
+- id: SES-01
+  rule: A fresh session is reused across calls (one login for N calls)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_session_expiry_test.dart
+    lines: 1-50
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: SES-02
+  rule: 'A session past expires_in_sec - 15 s is refreshed before the next call, without
+    needing a 401 (expires_in_sec: 0 test)'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_session_expiry_test.dart
+    lines: 40-80
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: SES-03
+  rule: Each successful call extends the session (ten calls, one login)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_session_expiry_test.dart
+    lines: 70-110
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: SES-04
+  rule: A 401 on an authenticated call triggers exactly one re-login and one retry
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_session_expiry_test.dart
+    lines: 100-111
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: SES-05
+  rule: Concurrent calls for one (host, account) share a single login
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/nuraeye_client_concurrency_test.dart
+    lines: 1-44
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: SES-06
+  rule: Sessions are keyed per (host, account); clear_session_for(host) removes all
+    accounts of that host
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 102-111
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-19
+- id: SES-07
+  rule: Login failures map as RES-04; login without a token -> Failure("session/login
+    succeeded but returned no token"); login response fields parsed (role, password_change_required)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 526-544
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-18
+- id: SOAP-01
+  rule: 'A <Fault> is detected before the HTTP status: HTTP 200 + Fault -> Failure
+    with the reason text'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart
+    lines: 50-100
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: SOAP-02
+  rule: Fault sub-code = the last Subcode/Value ter:<Name>; non-role faults return
+    reason [ter:<Name>]
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/soap_fault.dart
+    lines: 12-16
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 580-581
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: SOAP-03
+  rule: InsufficientUserLevel (any HTTP status, e.g. 400) -> Forbidden, not UNAUTHORIZED
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart
+    lines: 50-120
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: SOAP-04
+  rule: TooManyAttempts fault -> Blocked; bare HTTP 429 -> Blocked; neither is Forbidden
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart
+    lines: 120-180
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: SOAP-05
+  rule: PasswordChangeRequired fault (HTTP 428) -> PasswordChangeRequired; bare 428
+    too
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart
+    lines: 180-240
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: SOAP-06
+  rule: 'Non-SOAP non-200 -> HTTP <code>: <body> (proxy HTML)'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 584-588
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: SOAP-07
+  rule: Fault with HTTP 421 (camera-id) surfaces reason Camera ID mismatch and sets
+    kind ID_MISMATCH
+  sources:
+  - path: contracts/camera_api/docs/external-api/camera-rest-api.md
+    lines: 165-175
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-21
+- id: DEV-01
+  rule: getSerialNumber = first SerialNumber text, trimmed, empty string if absent
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart
+    lines: 1-50
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-21
+- id: DEV-02
+  rule: getDeviceInformation = Manufacturer, Model, FirmwareVersion, SerialNumber,
+    HardwareId
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart
+    lines: 1-60
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-21
+- id: DEV-03
+  rule: getNetworkInterfaceInfo = first Name, HwAddress, Address; Python normalizes
+    MAC to AA:BB:CC:DD:EE:FF
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart
+    lines: 1-80
+  - path: contracts/camera_api/docs/external-api/camera-onvif-api.md
+    lines: 261-273
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-22
+- id: DEV-04
+  rule: 'getDeviceIdentity: scope items starting onvif://www.onvif.org/name/ and .../location/,
+    percent-decoded; either may be empty'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 13-271
+  requirements:
+  - FND-05
+  - CAM-08
+  plan: 01-22
+- id: DEV-05
+  rule: setDeviceName/Location send one Scopes entry, percent-encoded; name/location
+    max 32 characters enforced before sending
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 19-299
+  requirements:
+  - FND-05
+  - CAM-08
+  plan: 01-22
+- id: DEV-06
+  rule: setUserPassword = SetUser with Username + Password only, XML-escaped
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart
+    lines: 1-100
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart
+    lines: 390-400
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-22
+- id: DEV-07
+  rule: getServices sends IncludeCapability=false, returns (Namespace, XAddr) pairs
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart
+    lines: 221-245
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-22
+- id: PRF-01
+  rule: GetProfiles (Media2) -> token, Name, VideoEncoder token, Width, Height (+
+    encoding); profiles without a VideoEncoder or size are skipped; none usable ->
+    failure
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_video_encoder_client.dart
+    lines: 1-100
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-22
+- id: PRF-02
+  rule: Media2 endpoint resolved via GetServices namespace http://www.onvif.org/ver20/media/wsdl;
+    absent -> Media2 service not offered by this camera
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_video_encoder_client.dart
+    lines: 1-80
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-22
+- id: PRF-03
+  rule: NVR stream selection rule (largest = main, next = sub, single profile = both,
+    Profile_3 never)
+  sources:
+  - decision: D-23
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-24
+- id: CAP-01
+  rule: wan_command_capable and wan_live_view_capable must be booleans else Failure(GetCapabilities
+    response missing ...)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart
+    lines: 158-164
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-20
+- id: CAP-02
+  rule: 'Missing optional fields default: bools false, ranges 0, max_users 1, max_recording_schedule_windows
+    14, lists empty'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart
+    lines: 184-218
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-20
+- id: CAP-03
+  rule: supported_recording_modes keeps only continuous, scheduled, event_triggered;
+    unknown strings dropped
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart
+    lines: 209-214
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/recording_mode_types.dart
+    lines: 5-18
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-20
+- id: CAP-04
+  rule: Event types / deterrence options tolerate wrong shapes (non-list -> empty)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart
+    lines: 165-177
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-20
+- id: CAP-05
+  rule: Python keeps the raw output JSON and a typed superset (adds camera_id_check,
+    night_vision_*_capable, which Dart omits)
+  sources:
+  - path: contracts/camera_api/design/Camera-REST-API.openapi.yaml
+    lines: 1-100
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-18
+- id: CAP-06
+  rule: Every field name Python reads exists in the vendored OpenAPI /nuraeye/capabilities
+    schema
+  sources:
+  - path: contracts/camera_api/design/Camera-REST-API.openapi.yaml
+    lines: 1-200
+  requirements:
+  - FND-05
+  - CAM-03
+  plan: 01-20
+- id: LST-01
+  rule: 'POST /nuraeye/live-stream-uri {"profile_token": T} -> transport (webrtc or
+    rtsp), port (int), url; all three required'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/live_stream_uri_client.dart
+    lines: 1-100
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart
+    lines: 222-226
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-20
+- id: LST-02
+  rule: Unknown transport or unparseable URL -> Failure
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/live_stream_uri_client.dart
+    lines: 1-100
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-20
+- id: LST-03
+  rule: 400 (unknown token), 501, 404 -> Failure (no legacy fallback)
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/live_stream_uri_client_test.dart
+    lines: 1-80
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-20
+- id: LST-04
+  rule: live-stream-uri returning transport webrtc falls back to ONVIF Media2 GetStreamUri;
+    NVR-only, D-23
+  sources:
+  - decision: D-23
+  requirements:
+  - FND-05
+  - CAM-07
+  plan: 01-26
+- id: DSC-01
+  rule: 'Probe: SOAP 1.2 envelope, Types = dn:NetworkVideoTransmitter with dn = http://www.onvif.org/ver10/network/wsdl,
+    fresh uuid: MessageID, Action .../discovery/Probe'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart
+    lines: 132-150
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-23
+- id: DSC-02
+  rule: 'ProbeMatches: namespace-agnostic XAddrs, first whitespace-separated token
+    starting http:///https://; default port 80/443; dedupe by host; malformed -> ignored'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart
+    lines: 152-172
+  - path: contracts/camera_api/mobile_app/packages/camera_api/test/ws_discovery_wire_format_test.dart
+    lines: 1-45
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-23
+- id: DSC-03
+  rule: Multicast to 239.255.255.250:3702, wait 5 s
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart
+    lines: 35-42
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-23
+- id: DSC-04
+  rule: 'Unicast sweep: every host of each local IPv4 /24 except own addresses, one
+    shared socket, 50 ms pacing, 30 s cap, 10 s straggler wait'
+  sources:
+  - path: contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart
+    lines: 93-199
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-23
+- id: DSC-05
+  rule: 'Scan flow: multicast, unicast only when empty; each candidate gets a 3 s
+    identity probe; name = GetScopes name, else Model, else Camera at <host>; blank
+    credentials only'
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_scan.dart
+    lines: 1-90
+  requirements:
+  - FND-05
+  - CAM-01
+  plan: 01-23
+- id: HEAL-01
+  rule: Ignore event if no stored camera has that serial and that host; skip if a
+    heal for that serial is in flight or now < not_before
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_address_recovery.dart
+    lines: 1-80
+  requirements:
+  - FND-05
+  - CAM-10
+  plan: 01-28
+- id: HEAL-02
+  rule: 'For unreachable events: skip placeholder hosts, skip if verified within 60
+    s; ask stored address for serial (unauthenticated, 4 s); matches -> stop'
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_address_recovery.dart
+    lines: 80-140
+  requirements:
+  - FND-05
+  - CAM-10
+  plan: 01-28
+- id: HEAL-03
+  rule: Search candidates with blank credentials; exactly one matching serial -> update
+    stored host; >1 -> change nothing; 0 -> backoff
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_address_recovery.dart
+    lines: 140-200
+  requirements:
+  - FND-05
+  - CAM-10
+  plan: 01-28
+- id: HEAL-04
+  rule: 'Backoff: base 30 s * 2^(n-1), capped at 10 min; reset on success'
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_address_recovery.dart
+    lines: 200-240
+  requirements:
+  - FND-05
+  - CAM-10
+  plan: 01-28
+- id: HEAL-05
+  rule: On success update host, host_updated_at; clear session cache for old host;
+    next call carries serial header catching wrong guess with 421
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_address_recovery.dart
+    lines: 240-300
+  requirements:
+  - FND-05
+  - CAM-10
+  plan: 01-28
+- id: ONB-01
+  rule: 'Factory probe: clear session, single login admin/password; success -> factory;
+    401 -> configured; 429 -> blocked(retry_after); else unreachable'
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_onboarding.dart
+    lines: 62-69
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-27
+- id: ONB-02
+  rule: Verify = fresh login + authenticated GetCapabilities; 428 -> needs new password;
+    429 -> blocked; 401 -> wrong credentials; else unreachable
+  sources:
+  - path: contracts/mobile_app/lib/app_state/camera_onboarding.dart
+    lines: 100-180
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-27
+- id: ONB-03
+  rule: Post-verify reads are best-effort except the serial
+  sources:
+  - decision: D-06
+  requirements:
+  - FND-05
+  - CAM-02
+  - CAM-03
+  plan: 01-25
+- id: ONB-04
+  rule: 'Password rules: 8-32 characters, not password in any case'
+  sources:
+  - path: contracts/mobile_app/lib/utils/camera_account_rules.dart
+    lines: 1-40
+  requirements:
+  - FND-05
+  - CAM-02
+  plan: 01-27

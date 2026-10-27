@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
+
+import yaml
 
 # Ensure tools directory is importable
 repo_root = Path(__file__).resolve().parents[2]
@@ -162,3 +166,83 @@ def test_reference_repositories_remain_untouched() -> None:
         ).stdout
 
         assert status_before == status_after, f"Status changed in reference repo {p}"
+
+
+def test_behaviors_catalogue_schema() -> None:
+    """Validate behaviors.yaml schema, rule uniqueness, source validity, plan mappings, and rule count."""
+    behaviors_file = repo_root / "contracts" / "behaviors.yaml"
+    lock_file = repo_root / "contracts" / "camera_api.lock.json"
+
+    assert behaviors_file.exists(), "contracts/behaviors.yaml must exist"
+    assert lock_file.exists(), "contracts/camera_api.lock.json must exist"
+
+    raw_yaml = yaml.safe_load(behaviors_file.read_text(encoding="utf-8"))
+    assert raw_yaml.get("schema") == 1
+
+    lock_data = json.loads(lock_file.read_text(encoding="utf-8"))
+    vendored_paths = {entry["vendored_as"] for entry in lock_data.get("files", [])}
+
+    valid_plans = {
+        "01-05",
+        "01-06",
+        "01-07",
+        "01-18",
+        "01-19",
+        "01-20",
+        "01-21",
+        "01-22",
+        "01-23",
+        "01-24",
+        "01-25",
+        "01-26",
+        "01-27",
+        "01-28",
+    }
+    id_pattern = re.compile(r"^[A-Z]+-\d{2}$")
+    decision_pattern = re.compile(r"^D-\d{2}$")
+
+    rules = raw_yaml.get("rules", [])
+    assert len(rules) == 70, f"Expected exactly 70 rules, got {len(rules)}"
+
+    seen_ids: set[str] = set()
+    rule_by_id: dict[str, dict] = {}
+
+    for rule in rules:
+        r_id = rule["id"]
+        assert id_pattern.match(r_id), f"Invalid rule id format: {r_id}"
+        assert r_id not in seen_ids, f"Duplicate rule id: {r_id}"
+        seen_ids.add(r_id)
+        rule_by_id[r_id] = rule
+
+        # Validate plan
+        assert rule["plan"] in valid_plans, f"Invalid plan '{rule['plan']}' in rule {r_id}"
+
+        # Validate sources
+        assert "sources" in rule and len(rule["sources"]) > 0, f"Rule {r_id} missing sources"
+        for src in rule["sources"]:
+            if "decision" in src:
+                msg = f"Invalid decision {src['decision']} in {r_id}"
+                assert decision_pattern.match(src["decision"]), msg
+            elif "path" in src:
+                msg = f"Source path {src['path']} in {r_id} not vendored in lock"
+                assert src["path"] in vendored_paths, msg
+            else:
+                pytest.fail(f"Rule {r_id} source missing path or decision: {src}")
+
+        # Validate requirements
+        assert "requirements" in rule and len(rule["requirements"]) > 0, f"Rule {r_id} missing requirements"
+        assert "FND-05" in rule["requirements"], f"Rule {r_id} must have FND-05 requirement"
+
+    # Acceptance criteria checks
+    assert "LST-04" in seen_ids
+    assert "HEAL-05" in seen_ids
+
+    # Representative mappings assertion
+    assert rule_by_id["IDN-01"]["plan"] == "01-06"
+    assert rule_by_id["SES-07"]["plan"] == "01-18"
+    assert rule_by_id["SES-01"]["plan"] == "01-19"
+    assert rule_by_id["CAP-05"]["plan"] == "01-18"
+    assert rule_by_id["CAP-01"]["plan"] == "01-20"
+    assert rule_by_id["DEV-01"]["plan"] == "01-21"
+    assert rule_by_id["PRF-03"]["plan"] == "01-24"
+    assert rule_by_id["ONB-03"]["plan"] == "01-25"

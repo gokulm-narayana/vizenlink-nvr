@@ -1,0 +1,101 @@
+{
+  "batch": 5,
+  "upstream": {
+    "nuraeye-rt": {
+      "repo": "onchiptech/nuraeye-rt",
+      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "dirty_files": [],
+      "reviewed_on": "2026-10-26"
+    },
+    "mobilecctvapp": {
+      "repo": "onchiptech/mobilecctvapp",
+      "commit": "abe32d7d2f8b909fd3ad44193bf8ebefe1b13a20",
+      "dirty_files": [],
+      "reviewed_on": "2026-10-26"
+    }
+  },
+  "files": [
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/app_state/camera_address_recovery.dart",
+      "sha256": "e222376b0b38935349ffd25a8a011f75aef0da5bc8daebe88b3570cd7e261198",
+      "vendored_as": "contracts/mobile_app/lib/app_state/camera_address_recovery.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/app_state/camera_onboarding.dart",
+      "sha256": "479ce0bf01a8ec90e1ec96ba6309009ea926f2316a2f326c47de452af6d17f99",
+      "vendored_as": "contracts/mobile_app/lib/app_state/camera_onboarding.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/app_state/camera_scan.dart",
+      "sha256": "03b02401d5f49141c03f268485dae64aef30c25158885414872036bef9afa788",
+      "vendored_as": "contracts/mobile_app/lib/app_state/camera_scan.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "mobilecctvapp",
+      "path": "lib/utils/camera_account_rules.dart",
+      "sha256": "fb46706cd3f50e605a83320546367f133704d58e72aed537af8e9b2452372bb6",
+      "vendored_as": "contracts/mobile_app/lib/utils/camera_account_rules.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/camera_connection_test.dart",
+      "sha256": "e44e71d2da4d15f4bb314b84922dbaa226dc44477e9ae27c0d16e6d59154e288",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/camera_connection_test.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/multi_user_accounts_test.dart",
+      "sha256": "658923c1c16369dba0208d1802a06876e53a11c51d27db8e71c59575b96d30ed",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "SOAP-03",
+        "SOAP-04",
+        "SOAP-05",
+        "DEV-06"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/onvif_video_encoder_client_test.dart",
+      "sha256": "11bc9184b22ba10a18a03559c6827a6d60c669752712ccaabdf1d3bbbdd4fe48",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/onvif_video_encoder_client_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "PRF-01",
+        "PRF-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/rest_mock_helpers.dart",
+      "sha256": "d8a33f926baa2d8ece15ca12d141b4ac3bc583c419d08111bb1a6fa720a81303",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/rest_mock_helpers.dart",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/test/ws_discovery_wire_format_test.dart",
+      "sha256": "22fbb2a08e8f30e4f07ffad9be80fc6c7bdb09de395908a1490dc54cd719be60",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/ws_discovery_wire_format_test.dart",
+      "mirrored_by": [],
+      "behaviors": [
+        "DSC-02"
+      ]
+    }
+  ]
+}

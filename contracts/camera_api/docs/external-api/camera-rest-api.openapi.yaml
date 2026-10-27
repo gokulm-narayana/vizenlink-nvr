@@ -1,0 +1,2357 @@
+openapi: 3.1.0
+info:
+  title: VizenLink Camera REST API
+  version: 1.0.0
+  description: |-
+    Resource-oriented REST API served by the camera under /nuraeye/. Every response, success or failure, carries a JSON body. Authenticate once with POST /nuraeye/session/login and send the returned bearer token on every other request.
+    Scope: the /nuraeye/* REST endpoints only. ONVIF SOAP is described by the official ONVIF WSDLs and camera-onvif-api.md; the remote (internet) control channel is described in camera-wan-mqtt-api.md.
+servers:
+- url: '{scheme}://{camera_ip}'
+  description: |
+    Camera main server: HTTPS on port 443 on production firmware (plain HTTP on 80 only on special builds). No port in the URL, because 443/80 are the scheme defaults.
+  variables:
+    scheme:
+      default: https
+      enum:
+      - https
+      - http
+      description: https on a USE_HTTPS build (the norm), http otherwise
+    camera_ip:
+      default: 192.0.2.50
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token obtained from POST /nuraeye/session/login. Required on every resource except /nuraeye/identity and /nuraeye/session/login.
+        Idle timeout 1800s (NURAEYE_SESSION_IDLE_TIMEOUT_MS); the device holds at most NURAEYE_SESSION_MAX_CLIENTS (10) concurrent sessions, evicting
+        the least-recently-used on overflow.
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required:
+      - error_code
+      - error_msg
+      properties:
+        error_code:
+          type: integer
+          enum:
+          - 0
+        error_msg:
+          type: string
+          enum:
+          - Success
+    ErrorResponse:
+      type: object
+      required:
+      - error_code
+      - error_msg
+      - output
+      description: Every REST response, success or failure, carries this shape or the success envelope with `output`.
+      properties:
+        error_code:
+          type: integer
+          description: Mirrors the HTTP status code
+        error_msg:
+          type: string
+        output:
+          type: object
+          description: Always empty ({}) on error
+  responses:
+    BadRequest:
+      description: Missing or malformed input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: 'Authenticated, but the account''s role is below what this route needs. Distinct from 401, which means "log in again / wrong
+        credentials": the session is fine and stays valid, this account just may not do this. The body carries reason "role_not_permitted". Required
+        role per route: reads and live/playback -> User; changing runtime behaviour (privacy, deterrence, image/audio/event settings, two-way
+        talk) -> Operator; device configuration (Wi-Fi, storage, recording mode, cloud parameters, OTA, users) -> Administrator. Any route not
+        classified is Administrator-only.'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/ErrorResponse'
+            - type: object
+              properties:
+                reason:
+                  type: string
+                  enum:
+                  - role_not_permitted
+    PasswordChangeRequired:
+      description: 'The camera still has the factory-default Administrator password and (in a build that forces the change, always in production)
+        serves nothing but the basics until it is changed. Still served: the no-login ONVIF actions (GetDeviceInformation, GetCapabilities,...),
+        POST /nuraeye/identity, POST /nuraeye/session/login (which reports password_change_required), GET /nuraeye/capabilities, and the Administrator''s
+        own password change (ONVIF SetUser, WAN SetUserPassword). Everything else, on every transport, answers 428 (RTSP simply never authenticates).'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/ErrorResponse'
+            - type: object
+              properties:
+                reason:
+                  type: string
+                  enum:
+                  - password_change_required
+    TooManyAttempts:
+      description: 'Too many consecutive failed sign-ins for this account from this address: 5 failures block the account for 60 s, doubling to
+        15 minutes (the Administrator: 15 s, at most 30 s). Refused without checking, so even the correct password gets no answer until the block
+        ends. Other accounts are unaffected. A success or 15 quiet minutes clears the count.'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/ErrorResponse'
+            - type: object
+              properties:
+                reason:
+                  type: string
+                  enum:
+                  - too_many_attempts
+                retry_after_seconds:
+                  type: integer
+                  example: 60
+    Unauthorized:
+      description: Missing/invalid bearer token, or (login/identity) invalid credentials/digest
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found (e.g. unknown alert rule) or unrecognized path
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    MethodNotAllowed:
+      description: Path is a known resource, but not for this HTTP method
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Firmware-side failure applying or persisting the request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotImplemented:
+      description: The feature is not available on this camera model or firmware.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    MisdirectedRequest:
+      description: 'The request carried an X-VizenLink-Camera-Id header that does not match this camera''s serial number: the request was meant
+        for a different camera. Returned before routing and before authentication; the camera''s own serial is never in the body. Requests without
+        the header are never refused.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: A firmware upload is in progress. Every request except the upload itself is refused with HTTP 503 and error_msg "Firmware upgrade
+        in progress" until the camera reboots (upload finished, failed or aborted).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+security:
+- bearerAuth: []
+paths:
+  /nuraeye/identity:
+    post:
+      operationId: identityChallenge
+      summary: Confirm the device is a genuine VizenLink camera
+      description: 'Lets a client confirm during discovery that this is a genuine VizenLink camera, using a fixed, publicly documented challenge
+        string. It is not a credential check: the digest is of a fixed string, not the device password.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - nonce
+              - created
+              - digest
+              properties:
+                nonce:
+                  type: string
+                  description: Base64-encoded random nonce
+                  client-generated: null
+                created:
+                  type: string
+                  format: date-time
+                digest:
+                  type: string
+                  description: Base64(SHA256(nonce+created+"are-you-onchip-nuraeye"))
+      responses:
+        '200':
+          description: Genuine device
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        reply:
+                          type: string
+                          description: Base64(SHA256(nonce+created+"yes-i-am-onchip-nuraeye"))
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /nuraeye/session/login:
+    post:
+      operationId: sessionLogin
+      summary: Exchange device credentials for a bearer token
+      description: The one-time WSSE-style digest exchange (the same credentials as ONVIF). `auth_credentials` is a nested object because it uses
+        the same UsernameToken structure as ONVIF.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - auth_credentials
+              properties:
+                auth_credentials:
+                  type: object
+                  required:
+                  - username
+                  - password_digest
+                  - nonce
+                  - created
+                  properties:
+                    username:
+                      type: string
+                    password_digest:
+                      type: string
+                      description: Base64(SHA256(nonce+created+device_password))
+                    nonce:
+                      type: string
+                    created:
+                      type: string
+                      format: date-time
+                client_label:
+                  type: string
+                  description: Optional display label, e.g. "Mom's iPhone" — audit/UX only, never a security boundary
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        token:
+                          type: string
+                        expires_in_sec:
+                          type: integer
+                          example: 1800
+                        username:
+                          type: string
+                          example: admin
+                          description: The camera account the session belongs to.
+                        role:
+                          type: string
+                          enum:
+                          - Administrator
+                          - Operator
+                          - User
+                          example: Administrator
+                          description: That account's role; every later request is authorised against it.
+                        password_change_required:
+                          type: boolean
+                          example: false
+                          description: 'True while the camera still has the factory-default Administrator password and enforces the first change:
+                            every request except GET /nuraeye/capabilities then answers 428 until the Administrator sets a new password (ONVIF
+                            SetUser / WAN SetUserPassword).'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+  /nuraeye/session/logout:
+    post:
+      operationId: sessionLogout
+      summary: Revoke the presented bearer token (idempotent)
+      description: Revoking an already-unknown/expired token is not an error.
+      responses:
+        '200':
+          description: Always succeeds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /nuraeye/wifi:
+    get:
+      operationId: getWifi
+      responses:
+        '200':
+          description: Current WiFi credentials (empty strings if never provisioned / Ethernet-connected)
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        ssid:
+                          type: string
+                        psk:
+                          type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setWifi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - ssid
+              - psk
+              properties:
+                ssid:
+                  type: string
+                psk:
+                  type: string
+                verify:
+                  type: boolean
+                  default: true
+                  description: |
+                    true = connect & verify before saving; false = save only, no connect attempt. Forced false server-side if the camera is currently reached over Ethernet, regardless of the requested value (NW5 safety override).
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/wifi/signal:
+    get:
+      operationId: getWifiSignal
+      responses:
+        '200':
+          description: Current WiFi RSSI/SNR
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        rssi:
+                          type: string
+                          description: Integer value sent as a string (a long-standing wire quirk).
+                        snr:
+                          type: string
+                          description: Integer value sent as a string (a long-standing wire quirk).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/timezones:
+    get:
+      operationId: getTimezones
+      summary: Curated, camera-served time-zone catalog
+      responses:
+        '200':
+          description: Static list — same on every device, not persisted config
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        timezones:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              code:
+                                type: string
+                                example: IST-5:30
+                              name:
+                                type: string
+                                example: India Standard Time - Kolkata (UTC+05:30)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/cloud/parameters:
+    get:
+      operationId: getCloudParameters
+      responses:
+        '200':
+          description: AWS IoT broker endpoint + KVS stream name
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        iot_broker_endpoint:
+                          type: string
+                        kvs_stream_name:
+                          type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '501':
+          description: Cloud connectivity is not available on this camera.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /nuraeye/cloud/streaming:
+    get:
+      operationId: getCloudStreamingStatus
+      responses:
+        '200':
+          description: Current KVS cloud-streaming status
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        stream_status:
+                          type: string
+                          enum:
+                          - active
+                          - degraded
+                          - not_available
+                          - idle
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: stopCloudStreaming
+      summary: Stop cloud (KVS) streaming — stop only, no LAN "start" (starting is WAN/MQTT-only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - active
+              properties:
+                active:
+                  type: boolean
+                  enum:
+                  - false
+                  description: Only false is accepted
+      responses:
+        '200':
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/alert-rules/query:
+    post:
+      operationId: queryAlertRule
+      summary: Read one detection rule's alert choices (read counterpart to POST /nuraeye/alert-rules)
+      description: POST, not GET, because it needs input (the rule name) and this API puts all input in a JSON body, never a query parameter.
+        Split onto its own path rather than sharing /nuraeye/alert-rules with the write side, since both directions are POST here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - rule
+              properties:
+                rule:
+                  type: string
+                  example: MyPersonDetectorRule
+      responses:
+        '200':
+          description: Current alert choices for the rule
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        mobile_notifications:
+                          type: boolean
+                        buzzer_activation:
+                          type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /nuraeye/alert-rules:
+    post:
+      operationId: setAlertRule
+      summary: Update one detection rule's alert choices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - rule
+              - mobile_notifications
+              - buzzer_activation
+              properties:
+                rule:
+                  type: string
+                mobile_notifications:
+                  type: boolean
+                buzzer_activation:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/events/preferences:
+    get:
+      operationId: getEventPreferences
+      summary: Per-event-type enable/disable state
+      description: Not to be confused with /nuraeye/alert-rules above — that's per-rule action toggles (mobile_notifications/buzzer_activation);
+        this is whether an event *type* is generated at all, device-wide. Keys are exactly the strings GET /nuraeye/capabilities's supported_event_types
+        reports.
+      responses:
+        '200':
+          description: Current enabled/disabled state per event type
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      additionalProperties:
+                        type: boolean
+                      example:
+                        VideoModeChanged: true
+                        PrivacyModeChanged: true
+                        PersonDetected: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setEventPreferences
+      summary: Partial update — only keys present in the body change
+      description: |
+        Disabling a type suppresses it at the source (EventMgr_Send()) — before it reaches either the NuraEye MQTT alert topic or ONVIF PullPoint, so a third-party NVR/VMS client stops receiving it too, per direct user decision. A key not in supported_event_types is a 400, not silently ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: boolean
+              example:
+                VideoModeChanged: false
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/events/response-actions:
+    get:
+      operationId: getEventResponseActions
+      summary: Selected automatic response actions per detection event type
+      description: Not to be confused with /nuraeye/events/preferences above (event on/off) or /nuraeye/alert-rules (per-rule action toggles)
+        — this controls what happens in addition once an already-enabled detection-type event fires. Keys are exactly the detection-type strings
+        GET /nuraeye/capabilities's supported_event_deterrence_options reports; state-change events are never valid keys here.
+      responses:
+        '200':
+          description: Current selected response actions per detection event type
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      example:
+                        PersonDetected:
+                        - mobile_alert
+                        - warning
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setEventResponseActions
+      summary: Partial update — each key's array fully replaces that event type's action set
+      description: mobile_alert carries no device-side effect (advisory only, read by the receiving app to decide whether to show a push notification)
+        — it never gates whether the camera delivers the event, unlike /nuraeye/events/preferences. siren/spotlight/warning are real physical
+        actions the camera auto-triggers using a firmware-chosen duration. A key that isn't a detection-eligible event type, or an action not
+        eligible for that type (per supported_event_deterrence_options), is a 400 — the whole request is rejected, not partially applied.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              example:
+                PersonDetected:
+                - siren
+                - mobile_alert
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/events/loitering-duration:
+    get:
+      operationId: getLoiteringDuration
+      summary: Currently-configured loitering-detection dwell duration
+      responses:
+        '200':
+          description: Current loitering duration
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        loitering_duration_seconds:
+                          type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setLoiteringDuration
+      summary: Sets the loitering-detection dwell duration
+      description: Valid range is GET /nuraeye/capabilities' loitering_duration_min_seconds/max_seconds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - loitering_duration_seconds
+              properties:
+                loitering_duration_seconds:
+                  type: integer
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/events/bbox-overlay:
+    get:
+      operationId: getBboxOverlay
+      summary: Currently-configured detection bounding-box overlay on/off value
+      responses:
+        '200':
+          description: Current bbox-overlay value
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setBboxOverlay
+      summary: Sets the detection bounding-box overlay on/off
+      description: Whether this build is even capable of drawing a box is GET /nuraeye/capabilities' bbox_overlay_capable — this pair only reads/writes
+        the current value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/audio/recording:
+    get:
+      operationId: getAudioRecording
+      responses:
+        '200':
+          description: Whether audio recording is currently enabled
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setAudioRecording
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/audio/settings:
+    get:
+      operationId: getAudioSettings
+      summary: Mic gain + speaker volume (combined — see / for why)
+      responses:
+        '200':
+          description: Current levels
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        mic_gain:
+                          type: integer
+                          minimum: 0
+                          maximum: 100
+                        speaker_volume:
+                          type: integer
+                          minimum: 0
+                          maximum: 100
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setAudioSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              description: Provide mic_gain and/or speaker_volume — either alone is valid, both together is valid. Neither is a 400 (not enforceable
+                by this schema alone; see caveat noted when this spec was scoped).
+              properties:
+                mic_gain:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                speaker_volume:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/audio/test-sound:
+    get:
+      operationId: getTestSoundStatus
+      responses:
+        '200':
+          description: Whether the diagnostic test sound is currently playing
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        playing:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setTestSound
+      summary: Start or stop the diagnostic test sound
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - active
+              properties:
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/local-storage:
+    get:
+      operationId: getLocalStorage
+      summary: Live local-storage status (capability flag lives in GET /nuraeye/capabilities)
+      responses:
+        '200':
+          description: Current SD-card status
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        card_present:
+                          type: boolean
+                        capacity_bytes:
+                          type: integer
+                          format: int64
+                        free_bytes:
+                          type: integer
+                          format: int64
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setLocalStorage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          description: Failed to apply (capability absent or no card present)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /nuraeye/recordings:
+    get:
+      operationId: getRecordings
+      summary: List recorded clips held on local SD storage
+      parameters:
+      - name: start
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+        description: Inclusive lower bound, UTC epoch seconds. Omit for no lower bound.
+      - name: end
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+        description: Inclusive upper bound, UTC epoch seconds. Omit for no upper bound.
+      responses:
+        '200':
+          description: Clip list (storage_available/card_present distinguish capability/presence from a genuinely empty range)
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        storage_available:
+                          type: boolean
+                        card_present:
+                          type: boolean
+                        truncated:
+                          type: boolean
+                          description: More clips exist in range than fit in this response — narrow start/end rather than expecting pagination.
+                        recordings:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                format: int64
+                                description: UTC epoch seconds, clip start time. Pass to GET /nuraeye/recordings/{id}/clip.
+                              start:
+                                type: integer
+                                format: int64
+                              end:
+                                type: integer
+                                format: int64
+                              size_bytes:
+                                type: integer
+                                format: int64
+                              active:
+                                type: boolean
+                                description: True if this is the segment currently being written — size_bytes/end are not final yet.
+                              trigger:
+                                type: string
+                                nullable: true
+                                description: |
+                                  Present only when a matching event was found in the camera's recent (last ~100 events, RAM-only, does not survive a reboot) alert history. Absence does not mean nothing happened, just that it's outside that window.
+                                example: PersonDetected
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/recordings/clip-duration:
+    get:
+      operationId: getRecordingClipDuration
+      summary: Currently-configured recorded-clip (segment) duration
+      responses:
+        '200':
+          description: Current clip duration
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        clip_duration_seconds:
+                          type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setRecordingClipDuration
+      summary: Sets the recorded-clip duration for future segment rotations
+      description: Applies only to the next segment rotation -- the segment currently being written keeps its original length. Valid range is
+        GET /nuraeye/capabilities' recording_clip_duration_min_seconds/max_seconds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - clip_duration_seconds
+              properties:
+                clip_duration_seconds:
+                  type: integer
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/recordings/delete:
+    post:
+      operationId: deleteRecordings
+      summary: Deletes specific clips by id, or every clip
+      description: |
+        One bulk primitive: pass ids to delete specific clips, or delete_all: true to delete every recording on the card. Never deletes the currently-recording segment, even if requested -- it is silently skipped, not treated as an error. An id that no longer exists is likewise silently skipped.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+                  description: Clip ids to delete (GET /nuraeye/recordings' id field). Ignored if delete_all is true.
+                delete_all:
+                  type: boolean
+                  description: Delete every recording on the card except the currently-recording segment.
+      responses:
+        '200':
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        deleted:
+                          type: array
+                          items:
+                            type: integer
+                            format: int64
+                          description: Present for the ids form only -- which ids were actually deleted.
+                        deleted_count:
+                          type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/recordings/mode:
+    get:
+      operationId: getRecordingMode
+      summary: Currently-configured local SD recording mode
+      responses:
+        '200':
+          description: Current recording mode
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          enum:
+                          - continuous
+                          - scheduled
+                          - event_triggered
+                        schedule:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              day_of_week:
+                                type: integer
+                                minimum: 0
+                                maximum: 6
+                                description: 0=Sunday..6=Saturday
+                              start_minute:
+                                type: integer
+                                minimum: 0
+                                maximum: 1439
+                              end_minute:
+                                type: integer
+                                minimum: 0
+                                maximum: 1439
+                                description: Exclusive; must be > start_minute
+                                no overnight wrap.: null
+                          description: Only meaningful for mode=scheduled; empty otherwise.
+                        event_trigger_source_configured:
+                          type: boolean
+                          description: . Only meaningful for mode=event_triggered.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setRecordingMode
+      summary: Sets the local SD recording mode
+      description: Which modes are valid on this camera is `supported_recording_modes` in GET /nuraeye/capabilities. `schedule` is required (and
+        parsed) only when mode is `scheduled`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - mode
+              properties:
+                mode:
+                  type: string
+                  enum:
+                  - continuous
+                  - scheduled
+                  - event_triggered
+                schedule:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      day_of_week:
+                        type: integer
+                        minimum: 0
+                        maximum: 6
+                      start_minute:
+                        type: integer
+                        minimum: 0
+                        maximum: 1439
+                      end_minute:
+                        type: integer
+                        minimum: 0
+                        maximum: 1439
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/recordings/dates:
+    get:
+      operationId: getRecordingDates
+      summary: Which UTC calendar dates have recorded clips, and how many
+      description: 'For a mobile date-picker: computed from a cheap filename-timestamp directory scan, deliberately not sourced from the duration
+        index alone so a clip whose duration repair is still pending still counts. Same storage_available/card_present/503-while-indexing convention
+        as GET /nuraeye/recordings.'
+      parameters:
+      - name: start
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+        description: UTC epoch seconds, inclusive range start.
+      - name: end
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+        description: UTC epoch seconds, inclusive range end.
+      - name: tz_offset_minutes
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Client's local UTC offset, for bucketing by local calendar day instead of UTC. Defaults to 0 (UTC).
+      responses:
+        '200':
+          description: Datewise clip-count summary
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        storage_available:
+                          type: boolean
+                        card_present:
+                          type: boolean
+                        dates:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              date:
+                                type: string
+                                description: YYYYMMDD, 8-digit string.
+                              clip_count:
+                                type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '503':
+          description: Recordings index is still building
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    type: integer
+                    example: 503
+                  error_msg:
+                    type: string
+                  output:
+                    type: object
+                    properties:
+                      retry_after_seconds:
+                        type: integer
+  /nuraeye/capabilities:
+    get:
+      operationId: getCapabilities
+      summary: Every "is X supported on this build/unit" boolean, in one response
+      description: Consolidated 2026-08-08 — replaces the former standalone GET /nuraeye/deterrence/ capabilities, and pulls the capability-only
+        fields out of GET /nuraeye/local-storage and GET /nuraeye/video/night-vision-type. Call once (e.g. app startup / settings-screen load)
+        rather than expecting a capability flag on every individual status response.
+      responses:
+        '200':
+          description: Capability flags
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        wan_command_capable:
+                          type: boolean
+                        wan_live_view_capable:
+                          type: boolean
+                        siren_capable:
+                          type: boolean
+                        spotlight_capable:
+                          type: boolean
+                        warning_capable:
+                          type: boolean
+                        local_storage_capable:
+                          type: boolean
+                        recording_clip_duration_min_seconds:
+                          type: integer
+                        recording_clip_duration_max_seconds:
+                          type: integer
+                        supported_recording_modes:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                            - continuous
+                            - scheduled
+                            - event_triggered
+                          example:
+                          - continuous
+                          - scheduled
+                          - event_triggered
+                          description: This camera's recording-mode capability set, in the same wire vocabulary as GET/POST /nuraeye/recordings/mode.
+                        multi_user:
+                          type: boolean
+                          example: true
+                          description: True when the camera holds several accounts with roles.
+                        default_password_in_use:
+                          type: boolean
+                          example: true
+                          description: True while the Administrator still has the factory-default password; the app must force a change when adding
+                            such a camera. The Administrator is always named admin and no account may be set to the default password.
+                        max_users:
+                          type: integer
+                          example: 5
+                          description: 'Total accounts the camera supports: one Administrator plus up to max_users-1 Operator/User accounts.'
+                        user_roles:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                            - Operator
+                            - User
+                          example:
+                          - Operator
+                          - User
+                          description: Roles that can be given to a non-administrator account.
+                        camera_id_check:
+                          type: boolean
+                          example: true
+                          description: True when this firmware honours the optional X-VizenLink-Camera-Id request header (and the WAN camera_id
+                            field) and answers a mismatching id with HTTP 421.
+                        max_recording_schedule_windows:
+                          type: integer
+                          example: 14
+                          description: Maximum total number of entries the `schedule` array in POST /nuraeye/recordings/mode (Scheduled mode)
+                            may contain; Set rejects a longer schedule.
+                        loitering_duration_min_seconds:
+                          type: integer
+                        loitering_duration_max_seconds:
+                          type: integer
+                        bbox_overlay_capable:
+                          type: boolean
+                          description: Whether this build has a real detection pipeline to draw a box for (gated on AI_DETECTIONS). The current
+                            on/off value is GET/POST /nuraeye/events/bbox-overlay, not here.
+                        night_vision_color_capable:
+                          type: boolean
+                        night_vision_smart_capable:
+                          type: boolean
+                        supported_event_types:
+                          type: array
+                          items:
+                            type: string
+                          example:
+                          - VideoModeChanged
+                          - PrivacyModeChanged
+                          - PersonDetected
+                          description: Event strings this build actually generates — same identifiers as this API's own alert JSON "event" field
+                            and /nuraeye/events/preferences's keys.
+                        supported_event_deterrence_options:
+                          type: object
+                          additionalProperties:
+                            type: array
+                            items:
+                              type: string
+                          example:
+                            PersonDetected:
+                            - siren
+                            - spotlight
+                            - mobile_alert
+                          description: Per detection-type event, the response actions eligible for it (a subset of the keys of `supported_event_types`;
+                            state-change events never appear here). It is the intersection of this camera's `siren_capable`/`spotlight_capable`/`warning_capable`
+                            flags with an eligibility table in the firmware. `mobile_alert` is always eligible.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /nuraeye/privacy-mode:
+    get:
+      operationId: getPrivacyMode
+      responses:
+        '200':
+          description: Current privacy mode
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          enum:
+                          - None
+                          - Zone
+                          - Full
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setPrivacyMode
+      description: Setting None or Full clears all configured privacy masks as a side effect.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - mode
+              properties:
+                mode:
+                  type: string
+                  enum:
+                  - None
+                  - Zone
+                  - Full
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/buzzer:
+    get:
+      operationId: getBuzzerStatus
+      responses:
+        '200':
+          description: Whether the buzzer is currently active
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        active:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setBuzzer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - active
+              properties:
+                active:
+                  type: boolean
+                duration_seconds:
+                  type: integer
+                  description: Required when active is true
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/video/mode:
+    get:
+      operationId: getVideoMode
+      summary: Day/night mode — configured setting vs. effective live state
+      responses:
+        '200':
+          description: Current day/night configuration and effective state
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        configured_mode:
+                          type: string
+                          description: e.g. Auto, Day, Night — see prvVideoModeToString()
+                        effective_state:
+                          type: string
+                          enum:
+                          - day
+                          - night
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/video/night-vision-type:
+    get:
+      operationId: getNightVisionType
+      summary: Live status only — capability flags moved to GET /nuraeye/capabilities
+      responses:
+        '200':
+          description: Current night-vision type
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      required:
+                      - type
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                          - Grey
+                          - Color
+                          - Smart
+                        sub_state:
+                          type: string
+                          enum:
+                          - Grey
+                          - Color
+                          description: Present only when type is Smart
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setNightVisionType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - type
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - Grey
+                  - Color
+                  - Smart
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/video/mirror-flip:
+    get:
+      operationId: getMirrorFlip
+      responses:
+        '200':
+          description: Current mirror/flip orientation
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          enum:
+                          - false
+                          - Mirror
+                          - Flip
+                          - Both
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setMirrorFlip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - mode
+              properties:
+                mode:
+                  type: string
+                  enum:
+                  - false
+                  - Mirror
+                  - Flip
+                  - Both
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/video/anti-flicker:
+    get:
+      operationId: getAntiFlickerMode
+      summary: Power-line frequency / anti-flicker mode
+      description: No ONVIF-standard element exists for this setting (checked against the live ImagingSettings20 schema —.
+      responses:
+        '200':
+          description: Current anti-flicker mode
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          enum:
+                          - 50Hz
+                          - 60Hz
+                          - Auto
+                          - None
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setAntiFlickerMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - mode
+              properties:
+                mode:
+                  type: string
+                  enum:
+                  - 50Hz
+                  - 60Hz
+                  - Auto
+                  - None
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/video/image-defaults:
+    get:
+      operationId: getImageDefaults
+      summary: Factory-default ISP imaging settings (read-only reference values)
+      responses:
+        '200':
+          description: Factory defaults for VideoSource_1
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        brightness:
+                          type: number
+                        contrast:
+                          type: number
+                        saturation:
+                          type: number
+                        sharpness:
+                          type: number
+                        white_balance_mode:
+                          type: string
+                        wb_red_gain:
+                          type: number
+                        wb_blue_gain:
+                          type: number
+                        exposure_mode:
+                          type: string
+                        exposure_time:
+                          type: number
+                        exposure_gain:
+                          type: number
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/preview-key:
+    get:
+      operationId: getPreviewKey
+      summary: Fetch the camera-generated shared key for end-to-end-encrypted WAN preview snapshots
+      description: 'LAN-only: a client calls it at onboarding or first WAN setup. The camera generates one shared AES-256 key on first call and
+        persists it, so any number of clients can fetch the same key. The matching capture/encrypt/publish path is WAN-MQTT-only (GetPreviewSnapshot)
+        and outside this REST API.'
+      responses:
+        '200':
+          description: The shared key (generated on first call if none existed yet)
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: base64-encoded AES-256 key (32 bytes)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /nuraeye/live-stream-uri:
+    post:
+      operationId: getLiveStreamUri
+      summary: Resolve the live-view connection URI for a stream profile (transport chosen by the camera)
+      description: Resolves where to connect for live video. The response names the transport in `output.transport`; on current firmware it is
+        always `rtsp` (RTSPS). POST, not GET, because it takes input (`profile_token`) and this API puts all input in a JSON body. `profile_token`
+        Profile_3 has no ONVIF profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - profile_token
+              properties:
+                profile_token:
+                  type: string
+                  enum:
+                  - Profile_1
+                  - Profile_2
+                  - Profile_3
+      responses:
+        '200':
+          description: Live-view connection info; transport indicates which player to use
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        transport:
+                          type: string
+                          enum:
+                          - rtsp
+                          - rtsp
+                        port:
+                          type: integer
+                          example: 556
+                        path:
+                          type: string
+                          example: /mobile
+                        url:
+                          type: string
+                          format: uri
+                          example: rtsps://192.0.2.50:556/mobile
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/talk-uri:
+    post:
+      operationId: getTalkUri
+      summary: Resolve the two-way-talk connection URI (dedicated audio-only RTSPS module)
+      description: 'Two-way-talk discovery — the talk counterpart of POST /nuraeye/live-stream-uri. Resolves the connection info for, the dedicated
+        audio-only talk RTSPS server (port 560, RECORD-based, two AAC-LC/8000 Hz tracks: streamid=0 camera mic to client, streamid=1 client mic
+        to camera), completely independent of live view and limited to one talker at a time. There is one talk resource (audio-only, always-on),
+        so unlike live-stream-uri there is no profile_token and no transport choice: the module is TLS-only, so output.transport is always "rtsps".
+        The request body is ignored (send an empty object). Local-IP resolution failure, or a build without AUDIO_ENABLED, returns 400. A second
+        concurrent talk session is rejected by the module at RECORD time, not by this endpoint. No WAN counterpart ( is Planned); a future WAN
+        leg would be an additive transport value here.'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Two-way-talk connection info
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        transport:
+                          type: string
+                          enum:
+                          - rtsps
+                        port:
+                          type: integer
+                          example: 560
+                        path:
+                          type: string
+                          example: /talk
+                        url:
+                          type: string
+                          format: uri
+                          example: rtsps://192.0.2.50:560/talk
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/deterrence:
+    get:
+      operationId: getDeterrenceStatus
+      summary: Each deterrence action's own independent active/inactive state
+      description: siren/spotlight/warning are independent hardware outputs and can be active simultaneously ( — the previous single {active,
+        action} shape could only ever report one action as "the" active one, so a client that triggered a second action while the first was still
+        on had no way to represent both as active).
+      responses:
+        '200':
+          description: Current deterrence state
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        siren:
+                          type: boolean
+                        spotlight:
+                          type: boolean
+                        warning:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setDeterrence
+      description: No duration_seconds field (removed, 2026-08-14) — the camera applies its own persisted, per-action duration instead, see /nuraeye/deterrence/durations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - action
+              - active
+              properties:
+                action:
+                  type: string
+                  enum:
+                  - siren
+                  - spotlight
+                  - warning
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          description: Missing input, unsupported action, or action not supported on this build
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/deterrence/durations:
+    get:
+      operationId: getDeterrenceDurations
+      summary: Persisted, per-action auto-stop configuration for each deterrence action
+      description: Added, 2026-08-14. Shared by both manual (ActivateDeterrence) and automatic (response-actions) triggering — one configured
+        value per action, not per-request. siren_seconds/spotlight_seconds are whole seconds; warning_repeat_count (renamed from warning_seconds,
+        2026-08-15) is a repeat count, not seconds. See /nuraeye/deterrence/durations/options for each key's real valid range.
+      responses:
+        '200':
+          description: Current configured durations
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        siren_seconds:
+                          type: integer
+                        spotlight_seconds:
+                          type: integer
+                        warning_repeat_count:
+                          type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+    post:
+      operationId: setDeterrenceDurations
+      description: Partial update — any subset of the three keys. 0-255 below is only the wire type's outer bound; the real accepted range per
+        key comes from /nuraeye/deterrence/durations/options and is enforced server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                siren_seconds:
+                  type: integer
+                  minimum: 0
+                  maximum: 255
+                spotlight_seconds:
+                  type: integer
+                  minimum: 0
+                  maximum: 255
+                warning_repeat_count:
+                  type: integer
+                  minimum: 0
+                  maximum: 255
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '400':
+          description: Unrecognized key, value outside the camera-reported range, or action not supported on this build
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/deterrence/durations/options:
+    get:
+      operationId: getDeterrenceDurationOptions
+      summary: Camera-reported valid min/max range for each deterrence duration/count key
+      description: The camera's own valid min/max for each key that /nuraeye/deterrence/durations accepts. Build your UI from this response, not
+        from fixed ranges.
+      responses:
+        '200':
+          description: Current valid ranges
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        siren_seconds_min:
+                          type: integer
+                        siren_seconds_max:
+                          type: integer
+                        spotlight_seconds_min:
+                          type: integer
+                        spotlight_seconds_max:
+                          type: integer
+                        warning_repeat_count_min:
+                          type: integer
+                        warning_repeat_count_max:
+                          type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'
+  /nuraeye/health:
+    get:
+      operationId: getDeviceHealth
+      summary: Reboot/uptime/clock-sync vitals and firmware version
+      description: Read-only; every field is derived by the camera. `last_reboot_utc` reads 0 until the first NTP sync of the current boot corrects
+        it (the camera has no battery-backed clock); 0 means not yet corrected this boot, not that the camera has never booted. `clock_sync_state`
+        is `synced` or `uncertain`. `firmware_version` repeats the ONVIF `GetDeviceInformation` value.
+      responses:
+        '200':
+          description: Current reboot/uptime/clock-sync health state
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SuccessEnvelope'
+                - type: object
+                  properties:
+                    output:
+                      type: object
+                      properties:
+                        reboot_count:
+                          type: integer
+                        last_reboot_utc:
+                          type: integer
+                          description: UTC epoch seconds; 0 = not yet corrected this boot
+                        reboot_reason:
+                          type: string
+                          description: Why the current boot happened -- e.g. "Firmware Upgrade", "Factory Reset", "HTTP Server Failure", "Manual
+                            Reboot", "WiFi Provisioning", "Sensor Capture Mode Change", or "Unknown / Crash" for a genuine uncontrolled crash.
+                            Free text, not a closed enum -- new reasons may be added without a schema change.
+                        uptime_seconds:
+                          type: integer
+                        clock_sync_state:
+                          type: string
+                          enum:
+                          - synced
+                          - uncertain
+                        uncertain_since:
+                          type: integer
+                          description: UTC epoch seconds clock became uncertain; 0 if synced
+                        firmware_version:
+                          type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PasswordChangeRequired'

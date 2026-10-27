@@ -1,0 +1,93 @@
+{
+  "batch": 1,
+  "upstream": {
+    "nuraeye-rt": {
+      "repo": "onchiptech/nuraeye-rt",
+      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "dirty_files": [],
+      "reviewed_on": "2026-10-26"
+    }
+  },
+  "files": [
+    {
+      "origin": "nuraeye-rt",
+      "path": "design/Camera-REST-API.openapi.yaml",
+      "sha256": "5eefa2a7f936381e67f899fdf8a9a2d798ef44e6ee4f4a559abd70ef08e5c1b1",
+      "vendored_as": "contracts/camera_api/design/Camera-REST-API.openapi.yaml",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/CHANGELOG.md",
+      "sha256": "b3f539f865d738211bcb621fbd548523cc3df012205cd43bf97f9734893385a1",
+      "vendored_as": "contracts/camera_api/docs/external-api/CHANGELOG.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/README.md",
+      "sha256": "0802a7fe5dcca5e8a84537332eb592cf3a6a91304e7d446d3072704a37dd8426",
+      "vendored_as": "contracts/camera_api/docs/external-api/README.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/camera-onvif-api.md",
+      "sha256": "9dba44a27aaffa1c65625a703d28806c34b07e18f2dfb73ac808fd6221d99003",
+      "vendored_as": "contracts/camera_api/docs/external-api/camera-onvif-api.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/camera-rest-api.md",
+      "sha256": "6f7ee1cde7e67114515baa01a348cf58d9b2cae074659f70eaac62ed53f9f575",
+      "vendored_as": "contracts/camera_api/docs/external-api/camera-rest-api.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/camera-rest-api.openapi.yaml",
+      "sha256": "0e71b0658cdf5ddc05d7bdc7214e5e5a498b911dbcc7a7546d7a773c928c395c",
+      "vendored_as": "contracts/camera_api/docs/external-api/camera-rest-api.openapi.yaml",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "docs/external-api/quick-start.md",
+      "sha256": "6084df947670c38738996d9041b5e97e75d82fe521a17de3be0be8c60ef443ec",
+      "vendored_as": "contracts/camera_api/docs/external-api/quick-start.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/API_REFERENCE.md",
+      "sha256": "dd54015ee202106d59b1ff7331665eceb1280221648b18099a5c03d25bf84226",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/API_REFERENCE.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/SETTINGS_API_GUIDE.md",
+      "sha256": "0d79acaa0b4733ee14f781246bec12fdf6637d31166dfb5ea2ff2fdd963c1da7",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/SETTINGS_API_GUIDE.md",
+      "mirrored_by": [],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/STREAMING_GUIDE.md",
+      "sha256": "0a5ef0aa057592659bf4f9357c13e0fe075b0f39c5ff948c8b41acd56d2fd33d",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/STREAMING_GUIDE.md",
+      "mirrored_by": [],
+      "behaviors": []
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "batch": 2,
+  "upstream": {
+    "nuraeye-rt": {
+      "repo": "onchiptech/nuraeye-rt",
+      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "dirty_files": [],
+      "reviewed_on": "2026-10-26"
+    }
+  },
+  "files": [
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/camera_connection.dart",
+      "sha256": "4e3f9ec35f61b9173416a32bb82d3fd0eb0b588979c5756c7e6567ddb31d174b",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_connection.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/connection.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/camera_result.dart",
+      "sha256": "eaa81aa28a68cf5fc9aebb17ddced1efc35d0b772f3b69f49b871363ad85dd30",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_result.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/result.py"
+      ],
+      "behaviors": [
+        "RES-01",
+        "RES-02",
+        "RES-03"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/camera_role.dart",
+      "sha256": "403a2de6c777bc35f26f4c7639278d74cf1adceddf5078031e0366091140910d",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/camera_role.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/roles.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/device_reset_types.dart",
+      "sha256": "093227387abeebdd4ef7adfc709371c0ad1b79604feb7579e927d4d011cc7ef0",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/device_reset_types.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/onvif/device.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/camera_id_mismatch.dart",
+      "sha256": "1e0f913e3a375a0c499fed5bfa51f4252940cb139bf3c42845d4ac99db1793de",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/camera_id_mismatch.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/events.py",
+        "src/vizenlink_nvr/camera/http.py"
+      ],
+      "behaviors": [
+        "HTTP-03",
+        "HTTP-04"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/insecure_camera_http_client.dart",
+      "sha256": "ba12f28f98487ed6d1591b4d600daf7db07047225a34dbc15cdac7e3057b3361",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/insecure_camera_http_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/http.py"
+      ],
+      "behaviors": [
+        "HTTP-05",
+        "HTTP-06"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
+      "sha256": "2e06d2ad3a40ca56d9754e5b2b5de49d738f1de8edfe01983ad1197fa50e830d",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/client.py"
+      ],
+      "behaviors": [
+        "RES-04",
+        "IDN-01",
+        "IDN-02",
+        "IDN-03",
+        "SES-01",
+        "SES-02",
+        "SES-03",
+        "SES-04",
+        "SES-06",
+        "SES-07"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/lan/wsse_digest.dart",
+      "sha256": "103b118108cce6bc0b08bff99c472323f3499a6e19362be721059a37b5100649",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/wsse_digest.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/wsse.py"
+      ],
+      "behaviors": [
+        "WSSE-01",
+        "WSSE-02"
+      ]
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "mobile_app/packages/camera_api/lib/src/recording_mode_types.dart",
+      "sha256": "871a4cd15860091dc40e511939b4be393a16b31dc054d529c3d57554e0484740",
+      "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/recording_mode_types.dart",
+      "mirrored_by": [
+        "src/vizenlink_nvr/camera/nuraeye/capabilities.py"
+      ],
+      "behaviors": []
+    },
+    {
+      "origin": "nuraeye-rt",
+      "path": "testing_utilities/camera_id_check_test.py",
+      "sha256": "40d9b54ac1304f7a7360d7a5139d77dedeb549fe575b4552c88ae0b4b6a413a5",
+      "vendored_as": "contracts/camera_api/testing_utilities/camera_id_check_test.py",
+      "mirrored_by": [
+        "sim/fake_camera/server.py"
+      ],
+      "behaviors": [
+        "HTTP-07"
+      ]
+    }
+  ]
+}

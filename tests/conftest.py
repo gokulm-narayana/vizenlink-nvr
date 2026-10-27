@@ -9,6 +9,8 @@ from typer.testing import CliRunner
 from vizenlink_nvr.config import NvrSettings, load_settings
 from vizenlink_nvr.timeutil import UTC, FakeClock
 
+pytest_plugins = ["fake_camera.pytest_plugin"]
+
 
 @pytest.fixture(autouse=True)
 def setup_nvr_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:

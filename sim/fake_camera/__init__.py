@@ -1,0 +1,1 @@
+"""Fake camera simulator package."""

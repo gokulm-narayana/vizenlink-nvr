@@ -1,16 +1,18 @@
-"""Application settings persistence service."""
+from __future__ import annotations
 
 import json
 import logging
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.db.models import AppSetting
-from vizenlink_nvr.services.runtime import Runtime
 from vizenlink_nvr.timeutil import default_site_zone_name, utc_now, validate_zone
+
+if TYPE_CHECKING:
+    from vizenlink_nvr.services.runtime import Runtime
 
 logger = logging.getLogger(__name__)
 

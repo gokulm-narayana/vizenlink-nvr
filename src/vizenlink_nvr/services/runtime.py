@@ -1,5 +1,6 @@
 """Runtime context and database session manager."""
 
+import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from vizenlink_nvr.config import NvrSettings
 from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
 from vizenlink_nvr.paths import db_path, ensure_data_dir
+from vizenlink_nvr.secrets.vault import CanaryStatus, initialise_vault
 from vizenlink_nvr.timeutil import Clock, SystemClock
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +25,7 @@ class Runtime:
     engine: AsyncEngine
     sessions: async_sessionmaker[AsyncSession]
     clock: Clock
+    vault_status: CanaryStatus | None = None
 
 
 @asynccontextmanager
@@ -45,6 +50,11 @@ async def open_runtime(
         sessions=sessions,
         clock=clk,
     )
+    try:
+        rt.vault_status = await initialise_vault(rt)
+    except Exception as exc:
+        logger.debug("Vault initialization deferred or failed: %s", exc)
+
     try:
         yield rt
     finally:

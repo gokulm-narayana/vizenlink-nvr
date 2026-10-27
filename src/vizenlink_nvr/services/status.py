@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from vizenlink_nvr.db.engine import current_revision, head_revision
 from vizenlink_nvr.paths import db_path
+from vizenlink_nvr.secrets.vault import check_canary
 from vizenlink_nvr.services.runtime import Runtime
 from vizenlink_nvr.services.settings import get_site_timezone
 
@@ -21,10 +22,13 @@ class StatusReport(BaseModel):
     schema_revision: str | None
     schema_head: str
     site_timezone: str
+    credentials_status: str
+    key_source: str | None = None
+    key_id: str | None = None
 
 
 async def get_status(rt: Runtime) -> StatusReport:
-    """Query runtime for database connectivity, schema revisions, and site timezone."""
+    """Query runtime for database connectivity, schema revisions, site timezone, and credentials."""
     db_ok = False
     try:
         async with rt.sessions() as session:
@@ -38,6 +42,7 @@ async def get_status(rt: Runtime) -> StatusReport:
     cur_rev = current_revision(database_file)
     head_rev = head_revision()
     site_tz = await get_site_timezone(rt)
+    canary = await check_canary(rt)
 
     return StatusReport(
         data_dir=str(rt.settings.data_dir),
@@ -45,4 +50,7 @@ async def get_status(rt: Runtime) -> StatusReport:
         schema_revision=cur_rev,
         schema_head=head_rev,
         site_timezone=site_tz,
+        credentials_status=canary.status,
+        key_source=canary.key_source,
+        key_id=canary.key_id,
     )

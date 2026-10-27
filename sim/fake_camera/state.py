@@ -26,6 +26,7 @@ class ActiveSession:
     username: str
     role: CameraRole
     last_active: datetime
+    expires_in_sec: int | None = 1800
 
 
 @dataclass
@@ -41,7 +42,7 @@ class CameraState:
     name: str = "Front Door"
     location: str = "Entrance"
     accounts: dict[str, Account] = field(
-        default_factory=lambda: {"admin": Account("admin", CameraRole.ADMINISTRATOR)}
+        default_factory=lambda: {"admin": Account("password", CameraRole.ADMINISTRATOR)}
     )
     default_password_in_use: bool = True
     first_password_gate: bool = True
@@ -59,15 +60,21 @@ class CameraState:
         self.login_attempts[username] = self.login_attempts.get(username, 0) + 1
 
     def record_failure(self, username: str) -> None:
-        """Increment failure counter and enforce lockout after 5 failures."""
+        """Increment failure counter and enforce lockout after 5 consecutive failures."""
         cnt = self.lockout_counters.get(username, 0) + 1
         self.lockout_counters[username] = cnt
         if cnt >= 5:
-            # 60s lockout
-            self.lockout_expiry[username] = self.clock.now() + timedelta(seconds=60)
+            acc = self.accounts.get(username)
+            if acc and acc.role == CameraRole.ADMINISTRATOR:
+                # 15s doubling up to 30s cap
+                multiplier = 2 ** (cnt - 5)
+                seconds = min(30, 15 * multiplier)
+            else:
+                seconds = 15
+            self.lockout_expiry[username] = self.clock.now() + timedelta(seconds=seconds)
 
     def record_success(self, username: str) -> None:
-        """Reset failure counter on successful login."""
+        """Reset failure counter and lockout expiry on successful login."""
         self.lockout_counters[username] = 0
         self.lockout_expiry.pop(username, None)
 
@@ -95,34 +102,54 @@ class CameraState:
     def verify_rest_login(
         self,
         username: str,
-        password: str,
+        digest: str,
+        nonce: str,
+        created: str,
     ) -> tuple[Account | None, Literal["none", "blank", "stored", "other"]]:
-        """Verify REST login credentials, classifying credential use."""
+        """Verify REST login challenge digest."""
         self.record_attempt(username)
-        if not password:
+
+        blank_digest = compute_digest("", nonce_b64=nonce, created=created)
+        factory_digest = compute_digest("password", nonce_b64=nonce, created=created)
+
+        if not digest or digest == blank_digest:
             cred_use: Literal["none", "blank", "stored", "other"] = "blank"
-        elif username in self.accounts and self.accounts[username].password == password:
+        elif username in self.accounts and digest == compute_digest(
+            self.accounts[username].password, nonce_b64=nonce, created=created
+        ):
+            cred_use = "stored"
+        elif digest == factory_digest:
             cred_use = "stored"
         else:
             cred_use = "other"
+
+        if self.blocked_for(username) is not None:
+            self.record_failure(username)
+            return None, cred_use
 
         if username not in self.accounts:
             self.record_failure(username)
             return None, cred_use
 
         acc = self.accounts[username]
-        if acc.password != password:
+        expected_digest = compute_digest(acc.password, nonce_b64=nonce, created=created)
+        if digest != expected_digest:
             self.record_failure(username)
             return None, cred_use
 
         self.record_success(username)
         return acc, cred_use
 
-    def issue_token(self, username: str, role: CameraRole) -> str:
+    def issue_token(
+        self,
+        username: str,
+        role: CameraRole,
+        expires_in_sec: int | None = 1800,
+    ) -> str:
         """Issue fresh bearer session token, maintaining LRU table size."""
         token = secrets.token_hex(16)
         if len(self.sessions) >= self.session_table_size:
-            # Evict oldest
+            # Evict least recently active
             oldest_key = min(self.sessions, key=lambda k: self.sessions[k].last_active)
             self.sessions.pop(oldest_key, None)
 
@@ -131,6 +158,7 @@ class CameraState:
             username=username,
             role=role,
             last_active=self.clock.now(),
+            expires_in_sec=expires_in_sec,
         )
         return token
 
@@ -139,11 +167,15 @@ class CameraState:
         session = self.sessions.get(token)
         if not session:
             return None
-        # Check idle expiry (e.g. 30 minutes)
-        now = self.clock.now()
-        if (now - session.last_active).total_seconds() > 1800:
-            self.sessions.pop(token, None)
+
+        if session.expires_in_sec == 0:
             return None
+
+        now = self.clock.now()
+        if session.expires_in_sec is not None:
+            if (now - session.last_active).total_seconds() > session.expires_in_sec:
+                self.sessions.pop(token, None)
+                return None
 
         session.last_active = now
         return self.accounts.get(session.username)
@@ -156,22 +188,33 @@ class CameraState:
         digest: str,
     ) -> tuple[Account | None, Literal["none", "blank", "stored", "other"]]:
         """Verify WS-UsernameToken digest."""
-        self.record_attempt(username)
-        if username not in self.accounts:
-            self.record_failure(username)
+        if not username:
+            blank_digest = compute_digest("", nonce_b64=nonce_b64, created=created)
+            if digest == blank_digest or not digest:
+                return None, "blank"
             return None, "other"
 
-        acc = self.accounts[username]
-        expected_digest = compute_digest(acc.password, nonce_b64=nonce_b64, created=created)
+        self.record_attempt(username)
         blank_digest = compute_digest("", nonce_b64=nonce_b64, created=created)
+        factory_digest = compute_digest("password", nonce_b64=nonce_b64, created=created)
 
-        if digest == blank_digest:
+        if not digest or digest == blank_digest:
             cred_use: Literal["none", "blank", "stored", "other"] = "blank"
-        elif digest == expected_digest:
+        elif username in self.accounts and digest == compute_digest(
+            self.accounts[username].password, nonce_b64=nonce_b64, created=created
+        ):
+            cred_use = "stored"
+        elif digest == factory_digest:
             cred_use = "stored"
         else:
             cred_use = "other"
 
+        if username not in self.accounts:
+            self.record_failure(username)
+            return None, cred_use
+
+        acc = self.accounts[username]
+        expected_digest = compute_digest(acc.password, nonce_b64=nonce_b64, created=created)
         if digest != expected_digest:
             self.record_failure(username)
             return None, cred_use
@@ -180,12 +223,16 @@ class CameraState:
         return acc, cred_use
 
     def check_camera_id(self, headers: list[tuple[bytes, bytes]]) -> bool:
-        """Verify X-VizenLink-Camera-Id header if present and enforced."""
+        """Verify X-VizenLink-Camera-Id header if present and enforced.
+
+        Header value compared exactly after trimming.
+        Empty value or lower-case header name is treated as absent.
+        """
         if not self.camera_id_check:
             return True
 
         for k, v in headers:
-            if k.lower() == b"x-vizenlink-camera-id":
+            if k == b"X-VizenLink-Camera-Id":
                 val = v.decode("latin1").strip()
                 if val and val != self.serial:
                     return False

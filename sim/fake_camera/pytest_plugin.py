@@ -1,10 +1,11 @@
-"""Pytest plugin providing fake_camera fixture."""
+"""Pytest plugin providing fake_camera and discovery_responder fixtures."""
 
 from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
 import pytest
 
+from fake_camera.discovery import DiscoveryResponder
 from fake_camera.server import FakeCamera
 from fake_camera.state import CameraState
 
@@ -12,7 +13,20 @@ CameraFactory = Callable[..., Any]
 
 
 @pytest.fixture
-async def fake_camera() -> AsyncGenerator[CameraFactory, None]:
+async def discovery_responder() -> AsyncGenerator[DiscoveryResponder, None]:
+    """Async fixture providing loopback WS-Discovery responder."""
+    responder = DiscoveryResponder()
+    await responder.start()
+    try:
+        yield responder
+    finally:
+        await responder.close()
+
+
+@pytest.fixture
+async def fake_camera(
+    request: pytest.FixtureRequest,
+) -> AsyncGenerator[CameraFactory, None]:
     """Async fixture factory creating and tracking simulated cameras."""
     servers: list[FakeCamera] = []
 
@@ -21,6 +35,9 @@ async def fake_camera() -> AsyncGenerator[CameraFactory, None]:
         cam = FakeCamera(state=state)
         await cam.start()
         servers.append(cam)
+        if "discovery_responder" in request.fixturenames:
+            disc: DiscoveryResponder = request.getfixturevalue("discovery_responder")
+            disc.attach(cam)
         return cam
 
     try:

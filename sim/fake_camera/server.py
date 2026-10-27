@@ -8,7 +8,7 @@ import re
 import ssl
 import tempfile
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from fake_camera.certs import generate_self_signed_cert
 from fake_camera.faults import (
@@ -21,7 +21,7 @@ from fake_camera.faults import (
     Status,
 )
 from fake_camera.routes import find_route
-from fake_camera.state import CameraState
+from fake_camera.state import Account, CameraState
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +77,8 @@ class FakeCamera:
         self._key_pem = b""
 
     def requests_with_credentials(self) -> list[RecordedRequest]:
-        """Return requests where credentials were transmitted."""
-        return [r for r in self.requests if r.credential_use != "none"]
+        """Return requests whose credential_use is 'stored' or 'other'."""
+        return [r for r in self.requests if r.credential_use in ("stored", "other")]
 
     async def start(self) -> None:
         """Start the fake camera TLS server on an ephemeral loopback port."""
@@ -176,6 +176,8 @@ class FakeCamera:
 
                 # Classify credential use
                 cred_use: Literal["none", "blank", "stored", "other"] = "none"
+
+                # (a) Authorization header
                 for h_name, h_val in headers:
                     if h_name.lower() == b"authorization":
                         auth_val = h_val.decode("latin1").strip()
@@ -183,7 +185,7 @@ class FakeCamera:
                             token = auth_val[7:].strip()
                             if not token:
                                 cred_use = "blank"
-                            elif token in self.state.sessions:
+                            elif self.state.authenticate_bearer(token) is not None:
                                 cred_use = "stored"
                             else:
                                 cred_use = "other"
@@ -204,15 +206,32 @@ class FakeCamera:
                             except Exception:
                                 cred_use = "other"
 
+                # (b) JSON body with auth_credentials
+                if cred_use == "none" and body_bytes:
+                    try:
+                        parsed_json = json.loads(body_bytes.decode("utf-8"))
+                        if isinstance(parsed_json, dict) and "auth_credentials" in parsed_json:
+                            creds = parsed_json["auth_credentials"]
+                            user = creds.get("username", "")
+                            digest = creds.get("digest", "")
+                            nonce = creds.get("nonce", "")
+                            created = creds.get("created", "")
+                            _, cred_use = self.state.verify_rest_login(user, digest, nonce, created)
+                    except Exception:
+                        logger.debug("Non-json body or error parsing auth_credentials")
+
+                # (c) SOAP UsernameToken
                 if cred_use == "none" and b"UsernameToken" in body_bytes:
                     match_user = re.search(rb"<[a-zA-Z0-9_:]*Username[^>]*>([^<]*)</", body_bytes)
-                    user = match_user.group(1).decode("utf-8") if match_user else ""
-                    if not user:
-                        cred_use = "blank"
-                    elif user in self.state.accounts:
-                        cred_use = "stored"
-                    else:
-                        cred_use = "other"
+                    match_nonce = re.search(rb"<[a-zA-Z0-9_:]*Nonce[^>]*>([^<]*)</", body_bytes)
+                    match_created = re.search(rb"<[a-zA-Z0-9_:]*Created[^>]*>([^<]*)</", body_bytes)
+                    match_pwd = re.search(rb"<[a-zA-Z0-9_:]*Password[^>]*>([^<]*)</", body_bytes)
+
+                    u = match_user.group(1).decode("utf-8") if match_user else ""
+                    n = match_nonce.group(1).decode("utf-8") if match_nonce else ""
+                    c = match_created.group(1).decode("utf-8") if match_created else ""
+                    d = match_pwd.group(1).decode("utf-8") if match_pwd else ""
+                    _, cred_use = self.state.verify_wsse(u, n, c, d)
 
                 recorded = RecordedRequest(
                     method=method,
@@ -227,15 +246,39 @@ class FakeCamera:
 
                 # Camera ID verification
                 if not self.state.check_camera_id(headers):
-                    resp_bytes = b"Misdirected Request"
-                    resp_lines = [
-                        b"HTTP/1.1 421 Misdirected Request",
-                        b"Content-Type: text/plain",
-                        f"Content-Length: {len(resp_bytes)}".encode("latin1"),
-                        b"Connection: keep-alive",
-                        b"",
-                        resp_bytes,
-                    ]
+                    if path.startswith("/onvif"):
+                        soap_body = (
+                            b'<?xml version="1.0" encoding="utf-8"?>\n'
+                            b'<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">\n'
+                            b"  <soap:Body>\n"
+                            b"    <soap:Fault>\n"
+                            b"      <soap:Code><soap:Value>soap:Receiver</soap:Value></soap:Code>\n"
+                            b'      <soap:Reason><soap:Text xml:lang="en">'
+                            b"Camera ID mismatch</soap:Text></soap:Reason>\n"
+                            b"    </soap:Fault>\n"
+                            b"  </soap:Body>\n"
+                            b"</soap:Envelope>"
+                        )
+                        resp_lines = [
+                            b"HTTP/1.1 421 Misdirected Request",
+                            b"Content-Type: application/soap+xml; charset=utf-8",
+                            f"Content-Length: {len(soap_body)}".encode("latin1"),
+                            b"Connection: keep-alive",
+                            b"",
+                            soap_body,
+                        ]
+                    else:
+                        resp_bytes = json.dumps(
+                            {"error_code": 421, "error_msg": "Camera ID mismatch"}
+                        ).encode()
+                        resp_lines = [
+                            b"HTTP/1.1 421 Misdirected Request",
+                            b"Content-Type: application/json",
+                            f"Content-Length: {len(resp_bytes)}".encode("latin1"),
+                            b"Connection: keep-alive",
+                            b"",
+                            resp_bytes,
+                        ]
                     writer.write(b"\r\n".join(resp_lines))
                     await writer.drain()
                     continue
@@ -256,9 +299,9 @@ class FakeCamera:
                         writer.write(
                             b"HTTP/1.1 200 OK\r\n"
                             b"Content-Type: application/json\r\n"
-                            b"Content-Length: 15\r\n"
+                            b"Content-Length: 8\r\n"
                             b"Connection: close\r\n\r\n"
-                            b"{invalid json:"
+                            b"not json"
                         )
                         await writer.drain()
                         return
@@ -339,6 +382,8 @@ class FakeCamera:
                         401: "Unauthorized",
                         404: "Not Found",
                         421: "Misdirected Request",
+                        428: "Precondition Required",
+                        429: "Too Many Requests",
                         500: "Internal Server Error",
                     }
                     st_text = status_map.get(status_code, "Status")
@@ -375,3 +420,34 @@ class FakeCamera:
                 await writer.wait_closed()
             except Exception:
                 logger.debug("Exception closing writer in fake camera", exc_info=True)
+
+
+def require_bearer(
+    state: CameraState,
+    headers: list[tuple[bytes, bytes]],
+    path: str,
+) -> tuple[Account | None, tuple[int, dict[str, Any]] | None]:
+    """Helper to authenticate bearer and enforce lockout and first-password gate."""
+    token = ""
+    for k, v in headers:
+        if k.lower() == b"authorization":
+            val = v.decode("latin1").strip()
+            if val.lower().startswith("bearer "):
+                token = val[7:].strip()
+
+    if not token:
+        return None, (401, {"error_code": 401, "error_msg": "Unauthorized", "output": {}})
+
+    acc = state.authenticate_bearer(token)
+    if acc is None:
+        return None, (401, {"error_code": 401, "error_msg": "Invalid or expired token", "output": {}})
+
+    # Check first-password gate
+    allowed_gate_paths = {"/nuraeye/identity", "/nuraeye/password", "/nuraeye/set_password"}
+    if state.first_password_gate and path not in allowed_gate_paths:
+        return None, (
+            428,
+            {"error_code": 428, "error_msg": "Password change required", "output": {}},
+        )
+
+    return acc, None

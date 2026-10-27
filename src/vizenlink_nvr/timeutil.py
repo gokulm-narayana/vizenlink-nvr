@@ -1,20 +1,38 @@
 """Time and timezone utilities for VizenLink NVR."""
 
-from datetime import date, datetime, timedelta, timezone
+import logging
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
 import tzlocal
 
-UTC: timezone = timezone.utc
+logger = logging.getLogger(__name__)
+
+UTC: timezone = UTC
 EPOCH: datetime = datetime(1970, 1, 1, 0, 0, 0, tzinfo=UTC)
+
+__all__ = [
+    "Clock",
+    "EPOCH",
+    "FakeClock",
+    "InvalidTimezone",
+    "SystemClock",
+    "UTC",
+    "default_site_zone_name",
+    "format_local",
+    "from_epoch_us",
+    "local_day_bounds_utc",
+    "to_epoch_us",
+    "utc_now",
+    "validate_zone",
+]
 
 
 class Clock(Protocol):
     """Protocol for abstract clock providing UTC now."""
 
-    def now(self) -> datetime:
-        ...
+    def now(self) -> datetime: ...
 
 
 class SystemClock:
@@ -83,8 +101,8 @@ def default_site_zone_name() -> str:
         if name:
             validate_zone(name)
             return name
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not resolve local timezone name, using UTC: %s", exc)
     return "UTC"
 
 

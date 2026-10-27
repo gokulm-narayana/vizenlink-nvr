@@ -1,0 +1,51 @@
+"""Runtime context and database session manager."""
+
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
+from vizenlink_nvr.config import NvrSettings
+from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
+from vizenlink_nvr.paths import db_path, ensure_data_dir
+from vizenlink_nvr.timeutil import Clock, SystemClock
+
+
+@dataclass
+class Runtime:
+    """Encapsulates application configuration, database connection, and clock."""
+
+    settings: NvrSettings
+    engine: AsyncEngine
+    sessions: async_sessionmaker[AsyncSession]
+    clock: Clock
+
+
+@asynccontextmanager
+async def open_runtime(
+    settings: NvrSettings,
+    clock: Clock | None = None,
+) -> AsyncIterator[Runtime]:
+    """Open NVR runtime with migrated SQLite database and secure permissions."""
+    ensure_data_dir(settings)
+    database_file = db_path(settings)
+    upgrade_to_head(database_file)
+    if os.name == "posix" and database_file.exists():
+        os.chmod(database_file, 0o600)
+
+    engine = create_engine_for(database_file)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    clk = clock if clock is not None else SystemClock()
+
+    rt = Runtime(
+        settings=settings,
+        engine=engine,
+        sessions=sessions,
+        clock=clk,
+    )
+    try:
+        yield rt
+    finally:
+        await engine.dispose()

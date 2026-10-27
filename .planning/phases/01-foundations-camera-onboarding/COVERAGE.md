@@ -47,3 +47,39 @@
 | onvif:trc/tse/trp (recording, search, replay services) | OPT-OUT | not needed yet: camera SD playback/back-fill is v2 (REC-X1) |
 | onvif:events PullPoint (create subscription, pull, renew, unsubscribe) | OPT-OUT | not needed yet: event ingestion is EVT-01 in Phase 4 |
 | rtsps live streams (port 554/555 DESCRIBE/SETUP/PLAY) | OPT-OUT | not needed yet: recording ingest is Phase 2 via MediaMTX; Phase 1 only selects and stores stream port/path, and the opt-in hardware tests HW-08/09/11 probe RTSPS |
+
+## Revised execution ownership
+
+- 01-01: Dependency review, package lock, configuration and clock primitives; 9 files; wave 1.
+- 01-02: Migrated SQLite, runtime and shared status service; 12 files; wave 2.
+- 01-03: CLI status tracer, reusable command seams and listener guard; 12 files; wave 3.
+- 01-04: UTC storage, site timezone and DST transitions; 7 files; wave 4.
+- 01-05: Typed camera core, HTTP transport, WSSE and identity client; 13 files; wave 5.
+- 01-06: Loopback TLS simulator and identity tracer; 9 files; wave 6.
+- 01-07: HTTP faults, simulator authority, discovery responder and architecture guards; 13 files; wave 7.
+- 01-08: Encrypted credential vault and authoritative canary key source; 10 files; wave 5.
+- 01-09: Pinned MediaMTX binary and explicit loopback default-deny config; 11 files; wave 8.
+- 01-10: Live MediaMTX rejection probes and process cleanup; 7 files; wave 9.
+- 01-11: Read-only vendoring and drift tools with bounded batch mode; 4 files; wave 5.
+- 01-12: Vendor immutable contract batch 1 of 5; 11 files; wave 6.
+- 01-13: Vendor immutable contract batch 2 of 5; 11 files; wave 7.
+- 01-14: Vendor immutable contract batch 3 of 5; 11 files; wave 8.
+- 01-15: Vendor immutable contract batch 4 of 5; 11 files; wave 9.
+- 01-16: Vendor immutable contract batch 5 of 5; 10 files; wave 10.
+- 01-17: Finalize full contract lock, behavior catalogue and fixture provenance; 8 files; wave 11.
+- 01-18: REST login and authenticated capabilities tracer; 10 files; wave 12.
+- 01-19: REST sessions, failure taxonomy and identity retry; 10 files; wave 13.
+- 01-20: Capabilities and live-stream URI contracts; 9 files; wave 14.
+- 01-21: ONVIF serial tracer and fault-first SOAP mapping; 11 files; wave 12.
+- 01-22: ONVIF device operations and Media2 streams; 11 files; wave 13.
+- 01-23: Blank-credential discovery, bounded unicast and scan CLI; 10 files; wave 15.
+- 01-24: D-11 confirmation, serial registry schema and stream selection; 6 files; wave 15.
+- 01-25: Serial-bound configured-camera onboarding and local CLI; 6 files; wave 16.
+- 01-26: Stream fallback, capability cache and registry display; 10 files; wave 17.
+- 01-27: One-shot factory flow, error taxonomy and atomic add; 8 files; wave 18.
+- 01-28: Silent serial-based re-IP recovery; 5 files; wave 18.
+- 01-29: Rename, reprobe, credentials and certificate recovery; 11 files; wave 19.
+- 01-30: Opt-in real-camera suite and blocking hardware checkpoint; 9 files; wave 20.
+- 01-31: Local phase gate, pending OS matrix, leaks and packaging guards; 8 files; wave 20.
+
+All 12 Phase 1 requirements and D-01..D-30 remain binding; tests and external gates remain pending until run.

@@ -12,6 +12,7 @@ from vizenlink_nvr.cli import (  # noqa: F401
     cameras_scan,
 )
 from vizenlink_nvr.cli.cameras import cameras_app
+from vizenlink_nvr.cli.mediamtx_cmd import mediamtx_app
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.output import emit
 from vizenlink_nvr.cli.settings_cmd import settings_app
@@ -27,6 +28,7 @@ app = typer.Typer(
 
 app.add_typer(cameras_app, name="cameras")
 app.add_typer(settings_app, name="settings")
+app.add_typer(mediamtx_app, name="mediamtx")
 
 
 def _render_status_human(report: StatusReport) -> None:

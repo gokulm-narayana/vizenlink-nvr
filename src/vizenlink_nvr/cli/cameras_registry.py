@@ -11,9 +11,10 @@ from rich.table import Table
 from vizenlink_nvr.cli.cameras import cameras_app
 from vizenlink_nvr.cli.exitcodes import ExitCode
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
-from vizenlink_nvr.cli.output import emit, fail
+from vizenlink_nvr.cli.output import emit, err_console, fail
 from vizenlink_nvr.config import load_settings
 from vizenlink_nvr.services.registry import CameraView, get_camera, list_cameras
+from vizenlink_nvr.services.reprobe import ReprobeKind, run_reprobe
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.settings import get_site_timezone
 from vizenlink_nvr.timeutil import format_local
@@ -128,3 +129,61 @@ def show_camera(
         json_mode=json_mode,
         render_human=lambda c: _render_camera_show(c, site_tz),
     )
+
+
+@cameras_app.command(name="reprobe")
+def reprobe_camera_cmd(
+    serial: Annotated[str, typer.Option("--serial", "-s", help="Camera serial number.")],
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Reprobe and heal a registered camera after DHCP re-IP or network changes."""
+    settings = load_settings(data_dir=data_dir)
+    report = asyncio.run(run_reprobe(settings, serial))
+
+    if json_mode:
+        emit(report, json_mode=True)
+        if report.kind in (ReprobeKind.OK, ReprobeKind.HEALED):
+            return
+        if report.kind == ReprobeKind.NOT_FOUND_SERIAL:
+            raise typer.Exit(code=int(ExitCode.NOT_FOUND))
+        if report.kind in (ReprobeKind.UNREACHABLE, ReprobeKind.NOT_FOUND):
+            raise typer.Exit(code=int(ExitCode.UNREACHABLE))
+        if report.kind == ReprobeKind.AMBIGUOUS:
+            raise typer.Exit(code=int(ExitCode.GENERIC_FAILURE))
+        raise typer.Exit(code=1)
+
+    # Human mode
+    for w in report.warnings:
+        err_console.print(f"[yellow]Warning:[/] {w}")
+
+    if report.kind == ReprobeKind.OK:
+        print(f"Camera {report.serial} is at {report.address}")
+        return
+
+    if report.kind == ReprobeKind.HEALED:
+        old_addr = report.heal.old_address if report.heal else "unknown"
+        print(f"Address updated from {old_addr} to {report.address}")
+        return
+
+    if report.kind == ReprobeKind.AMBIGUOUS:
+        claimants = report.heal.claimants if report.heal else 2
+        fail(
+            ExitCode.GENERIC_FAILURE,
+            f"{claimants} devices claim serial {report.serial}; nothing was changed.",
+            json_mode=False,
+        )
+
+    if report.kind in (ReprobeKind.NOT_FOUND, ReprobeKind.UNREACHABLE):
+        fail(
+            ExitCode.UNREACHABLE,
+            f"Could not find camera {report.serial} on the network.",
+            json_mode=False,
+        )
+
+    if report.kind == ReprobeKind.NOT_FOUND_SERIAL:
+        fail(
+            ExitCode.NOT_FOUND,
+            f"Camera {report.serial} not found in registry.",
+            json_mode=False,
+        )

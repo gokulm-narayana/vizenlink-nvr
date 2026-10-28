@@ -29,13 +29,28 @@ jobs:
       - name: Lint and format check (Ubuntu 3.13 only)
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         run: |
-          uv run ruff check
-          uv run ruff format --check
+          uv run ruff check --exclude contracts .
+          uv run ruff format --check src tests sim tools
       - name: Type check (Ubuntu 3.13 only)
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         run: uv run mypy src
       - name: Run tests
         run: uv run pytest
+      - name: Cache MediaMTX binary
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.cache/vizenlink-nvr
+            ~/Library/Caches/vizenlink-nvr
+            ~/AppData/Local/vizenlink-nvr
+          key: mediamtx-v1.21.3-${{ runner.os }}-${{ runner.arch }}
+      - name: Fetch MediaMTX binary
+        run: uv run python tools/fetch_mediamtx.py
+      - name: Run MediaMTX integration tests
+        timeout-minutes: 10
+        run: uv run pytest -m mediamtx
+      - name: Verify contract mirrors drift
+        run: uv run python tools/drift_check.py --self
       - name: Migration drift check
         env:
           NVR_DATA_DIR: ${{ runner.temp }}/nvr-alembic

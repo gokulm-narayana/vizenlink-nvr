@@ -1,0 +1,12 @@
+{
+  "source": {
+    "path": "contracts/camera_api/docs/external-api/camera-rest-api.md",
+    "lines": "136-141"
+  },
+  "data": {
+    "error_code": 403,
+    "error_msg": "Not permitted for this user role",
+    "reason": "role_not_permitted",
+    "output": {}
+  }
+}

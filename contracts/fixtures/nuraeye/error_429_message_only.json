@@ -1,0 +1,12 @@
+{
+  "source": {
+    "path": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
+    "lines": "408-410"
+  },
+  "data": {
+    "error_code": 429,
+    "error_msg": "Too many failed sign-in attempts (retry in 60 s)",
+    "reason": "too_many_attempts",
+    "output": {}
+  }
+}

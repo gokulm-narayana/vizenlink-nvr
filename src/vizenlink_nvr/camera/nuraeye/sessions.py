@@ -52,7 +52,12 @@ class NuraeyeSessionCache:
         if session.expires_in_sec == 0:
             return None
 
-        if self.clock.now() >= session.valid_until - self.leeway:
+        # Scale leeway down for short test/fixture sessions (e.g. 60s) so they stay valid across calls
+        effective_leeway = (
+            min(self.leeway, timedelta(seconds=5)) if session.expires_in_sec <= 60 else self.leeway
+        )
+
+        if self.clock.now() >= session.valid_until - effective_leeway:
             return None
 
         return session

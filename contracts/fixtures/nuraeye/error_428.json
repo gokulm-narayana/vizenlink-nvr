@@ -1,0 +1,12 @@
+{
+  "source": {
+    "path": "contracts/camera_api/docs/external-api/camera-rest-api.md",
+    "lines": "97-102"
+  },
+  "data": {
+    "error_code": 428,
+    "error_msg": "Set a new Administrator password first",
+    "reason": "password_change_required",
+    "output": {}
+  }
+}

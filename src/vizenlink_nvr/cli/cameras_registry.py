@@ -205,17 +205,27 @@ def rename_camera_cmd(
 @cameras_app.command(name="reprobe")
 def reprobe_camera_cmd(
     serial: Annotated[str, typer.Option("--serial", "-s", help="Camera serial number.")],
+    accept_new_certificate: Annotated[
+        bool,
+        typer.Option("--accept-new-certificate", help="Accept new TLS certificate fingerprint."),
+    ] = False,
     json_mode: JsonOpt = False,
     data_dir: DataDirOpt = None,
 ) -> None:
     """Reprobe and heal a registered camera after DHCP re-IP or network changes."""
     settings = load_settings(data_dir=data_dir)
-    report = asyncio.run(run_reprobe(settings, serial))
+    report = asyncio.run(run_reprobe(settings, serial, accept_new_certificate=accept_new_certificate))
 
     if json_mode:
         emit(report, json_mode=True)
         if report.kind in (ReprobeKind.OK, ReprobeKind.HEALED):
             return
+        if report.kind == ReprobeKind.TLS_CHANGED:
+            raise typer.Exit(code=int(ExitCode.TLS_CHANGED))
+        if report.kind == ReprobeKind.AUTH_FAILED:
+            raise typer.Exit(code=int(ExitCode.AUTH_FAILED))
+        if report.kind == ReprobeKind.FORBIDDEN:
+            raise typer.Exit(code=int(ExitCode.FORBIDDEN))
         if report.kind == ReprobeKind.NOT_FOUND_SERIAL:
             raise typer.Exit(code=int(ExitCode.NOT_FOUND))
         if report.kind in (ReprobeKind.UNREACHABLE, ReprobeKind.NOT_FOUND):
@@ -228,13 +238,42 @@ def reprobe_camera_cmd(
     for w in report.warnings:
         err_console.print(f"[yellow]Warning:[/] {w}")
 
+    if report.kind == ReprobeKind.TLS_CHANGED:
+        fail(
+            ExitCode.TLS_CHANGED,
+            (
+                "The camera's certificate has changed since it was added. "
+                "If you replaced or updated this camera, run: "
+                f"nvr cameras reprobe {serial} --accept-new-certificate"
+            ),
+            json_mode=False,
+        )
+
+    if report.kind == ReprobeKind.AUTH_FAILED:
+        fail(
+            ExitCode.AUTH_FAILED,
+            "Camera authentication failed; password must be updated.",
+            json_mode=False,
+        )
+
+    if report.kind == ReprobeKind.FORBIDDEN:
+        fail(
+            ExitCode.FORBIDDEN,
+            "Access forbidden by camera.",
+            json_mode=False,
+        )
+
     if report.kind == ReprobeKind.OK:
         print(f"Camera {report.serial} is at {report.address}")
+        if report.refreshed:
+            print("Capabilities and streams refreshed.")
         return
 
     if report.kind == ReprobeKind.HEALED:
         old_addr = report.heal.old_address if report.heal else "unknown"
         print(f"Address updated from {old_addr} to {report.address}")
+        if report.refreshed:
+            print("Capabilities and streams refreshed.")
         return
 
     if report.kind == ReprobeKind.AMBIGUOUS:

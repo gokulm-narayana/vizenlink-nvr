@@ -4,18 +4,22 @@ import logging
 from enum import StrEnum
 
 from pydantic import BaseModel
+from sqlalchemy import select
 
+from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.layer import CameraLayer
 from vizenlink_nvr.camera.onvif.device import MAX_DEVICE_NAME_LENGTH, OnvifDeviceClient
 from vizenlink_nvr.camera.result import Failure, FailureKind, Success, Timeout
 from vizenlink_nvr.config import NvrSettings
+from vizenlink_nvr.db.models import CameraCredential
 from vizenlink_nvr.secrets.vault import Vault, open_vault
-from vizenlink_nvr.services.onboarding import PasswordProvider
+from vizenlink_nvr.services.onboarding import OnboardingService, PasswordProvider, VerifyKind
 from vizenlink_nvr.services.registry import (
     MAX_GROUP_LENGTH,
     CameraView,
     get_camera,
     load_connection,
+    replace_credential,
     set_state,
     update_identity,
 )
@@ -241,8 +245,88 @@ async def set_camera_password(
     passwords: PasswordProvider,
 ) -> ManageOutcome:
     """Update camera password after authentication failure or credential rotation (D-05, D-09, D-14)."""
-    # Stub for Task 3
-    raise NotImplementedError("set_camera_password implemented in Task 3")
+    async with rt.sessions() as session:
+        cam = await get_camera(session, serial)
+
+    if cam is None:
+        return ManageOutcome(
+            kind=ManageKind.NOT_FOUND,
+            detail=f"Camera {serial} not found in registry.",
+        )
+
+    # Prompt user for new password
+    new_pw = await passwords.current_password()
+
+    # Query stored username for camera
+    async with rt.sessions() as session:
+        cred_stmt = select(CameraCredential.username).where(CameraCredential.serial == serial)
+        username = (await session.execute(cred_stmt)).scalar_one()
+
+    conn = CameraConnection(
+        host=cam.host,
+        port=cam.https_port,
+        username=username,
+        password=new_pw,
+        serial=cam.serial,
+        tls_pin_sha256=cam.tls_fingerprint_sha256,
+    )
+
+    onboarding = OnboardingService(rt, layer, vault)
+    verify_res = await onboarding.verify_credentials(conn)
+
+    if verify_res.kind == VerifyKind.WRONG_CREDENTIALS:
+        return ManageOutcome(
+            kind=ManageKind.WRONG_CREDENTIALS,
+            camera=cam,
+            detail="Incorrect username or password.",
+        )
+
+    if verify_res.kind == VerifyKind.BLOCKED:
+        return ManageOutcome(
+            kind=ManageKind.BLOCKED,
+            camera=cam,
+            detail=verify_res.detail,
+            retry_after_seconds=verify_res.retry_after,
+        )
+
+    if verify_res.kind == VerifyKind.FORBIDDEN:
+        return ManageOutcome(
+            kind=ManageKind.FORBIDDEN,
+            camera=cam,
+            detail="Access forbidden by camera.",
+        )
+
+    if verify_res.kind == VerifyKind.TLS_CHANGED:
+        return ManageOutcome(
+            kind=ManageKind.TLS_CHANGED,
+            camera=cam,
+            detail=(
+                "The camera's certificate has changed since it was added. "
+                "If you replaced or updated this camera, run: "
+                f"nvr cameras reprobe {serial} --accept-new-certificate"
+            ),
+        )
+
+    if verify_res.kind != VerifyKind.OK:
+        return ManageOutcome(
+            kind=ManageKind.UNREACHABLE,
+            camera=cam,
+            detail=verify_res.detail or "Could not reach the camera — check the connection and try again.",
+        )
+
+    # OK: seal password and update credential + active state in one transaction
+    now = rt.clock.now()
+    sealed = vault.seal(serial, username, new_pw)
+
+    async with rt.sessions() as session:
+        async with session.begin():
+            await replace_credential(session, serial, username, sealed, now)
+            await set_state(session, serial, "active", None)
+
+    async with rt.sessions() as session:
+        updated_cam = await get_camera(session, serial)
+
+    return ManageOutcome(kind=ManageKind.OK, camera=updated_cam)
 
 
 async def run_rename(settings: NvrSettings, req: RenameRequest) -> ManageOutcome:

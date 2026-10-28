@@ -13,8 +13,14 @@ from vizenlink_nvr.cli.exitcodes import ExitCode
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.outcomes import blocked_message
 from vizenlink_nvr.cli.output import emit, err_console, fail
+from vizenlink_nvr.cli.prompts import CliPasswordProvider
 from vizenlink_nvr.config import load_settings
-from vizenlink_nvr.services.manage import ManageKind, RenameRequest, run_rename
+from vizenlink_nvr.services.manage import (
+    ManageKind,
+    RenameRequest,
+    run_rename,
+    run_set_password,
+)
 from vizenlink_nvr.services.registry import CameraView, get_camera, list_cameras
 from vizenlink_nvr.services.reprobe import ReprobeKind, run_reprobe
 from vizenlink_nvr.services.runtime import open_runtime
@@ -198,6 +204,58 @@ def rename_camera_cmd(
     code, msg = code_map.get(
         outcome.kind,
         (ExitCode.GENERIC_FAILURE, outcome.detail or "Failed to rename camera."),
+    )
+    fail(code, msg, json_mode=json_mode)
+
+
+@cameras_app.command(name="set-password")
+def set_camera_password_cmd(
+    serial: Annotated[str, typer.Option("--serial", "-s", help="Camera serial number.")],
+    password_stdin: Annotated[
+        bool,
+        typer.Option("--password-stdin", help="Read password from standard input."),
+    ] = False,
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Update stored camera password after credential failure or rotation."""
+    settings = load_settings(data_dir=data_dir)
+    passwords = CliPasswordProvider(stdin_mode=password_stdin)
+    outcome = asyncio.run(run_set_password(settings, serial, passwords))
+
+    if outcome.kind == ManageKind.OK and outcome.camera is not None:
+        emit(
+            outcome.camera,
+            json_mode=json_mode,
+            render_human=lambda c: print(f"Password updated for camera {c.serial}."),
+        )
+        return
+
+    code_map: dict[ManageKind, tuple[ExitCode, str]] = {
+        ManageKind.NOT_FOUND: (ExitCode.NOT_FOUND, f"Camera {serial} not found in registry."),
+        ManageKind.WRONG_CREDENTIALS: (
+            ExitCode.WRONG_CREDENTIALS,
+            "Incorrect username or password.",
+        ),
+        ManageKind.BLOCKED: (ExitCode.BLOCKED, blocked_message(outcome.retry_after_seconds)),
+        ManageKind.FORBIDDEN: (ExitCode.FORBIDDEN, "Access forbidden by camera."),
+        ManageKind.TLS_CHANGED: (
+            ExitCode.TLS_CHANGED,
+            outcome.detail
+            or (
+                f"The camera's certificate has changed since it was added. "
+                f"If you replaced or updated this camera, run: "
+                f"nvr cameras reprobe {serial} --accept-new-certificate"
+            ),
+        ),
+        ManageKind.UNREACHABLE: (
+            ExitCode.UNREACHABLE,
+            "Could not reach the camera — check the connection and try again.",
+        ),
+    }
+    code, msg = code_map.get(
+        outcome.kind,
+        (ExitCode.GENERIC_FAILURE, outcome.detail or "Failed to update password."),
     )
     fail(code, msg, json_mode=json_mode)
 

@@ -1,16 +1,16 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 01
-current_phase_name: Foundations & Camera Onboarding
-status: phase_complete
-stopped_at: Plan 01-31 complete; all 31 plans of Phase 01 complete
-last_updated: "2026-10-28T14:50:00.000Z"
+current_phase: 02
+current_phase_name: Headless Recording Core
+status: planning
+stopped_at: Phase 02 context gathered; ready for research & planning
+last_updated: "2026-10-28T16:30:00.000Z"
 last_activity: 2026-10-28
-last_activity_desc: Plan 01-31 complete (phase gate 7/7 passed, secret-leak sweep clean, behavior coverage 70/70, mirror integrity verified, packaging guards passed); Phase 01 100% complete
-state_head: 2e455d1
+last_activity_desc: Phase 02 context gathered (decisions D-31..D-40 locked); ready for research & planning
+state_head: 8288244
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 31
   completed_plans: 31
   percent: 100
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-26)
 
 **Core value:** Never miss footage: every added camera records reliably 24/7 (plus events), and that footage is always findable on a timeline from both the web UI and the mobile app.
-**Current focus:** Phase 01 — Foundations & Camera Onboarding (Complete)
+**Current focus:** Phase 02 — Headless Recording Core
 
 ## Current Position
 
-Phase: 01 (Foundations & Camera Onboarding) — COMPLETE (Local Gate Passed; Hardware & Remote CI Pending)
-Plan: 31 of 31 complete
-Status: Completed Phase 01
-Last activity: 2026-10-28 — Plan 01-31 completed (phase gate 7/7 passed, secret-leak sweep, behavior coverage 70/70, packaging guards)
+Phase: 02 (Headless Recording Core) — PLANNING
+Plan: Ready to plan
+Status: In progress
+Last activity: 2026-10-28 — Phase 02 context gathered (decisions D-31..D-40 locked)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] Phase 1: 100% | Phase 2: Starting
 
 ## Performance Metrics
 
@@ -89,5 +89,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-28
-Stopped at: Plan 01-31 complete (Phase 01 complete)
-Resume file: .planning/phases/01-foundations-camera-onboarding/01-31-SUMMARY.md
+Stopped at: Phase 02 context gathered (02-CONTEXT.md)
+Resume file: .planning/phases/02-headless-recording-core/02-CONTEXT.md

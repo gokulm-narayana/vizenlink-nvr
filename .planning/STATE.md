@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
 status: executing
-stopped_at: Plan 01-28 complete; ready for Plan 01-29
-last_updated: "2026-10-28T13:02:00.000Z"
+stopped_at: Plan 01-29 complete; ready for Plan 01-30
+last_updated: "2026-10-28T13:25:00.000Z"
 last_activity: 2026-10-28
-last_activity_desc: Plan 01-28 complete (silent serial-based re-IP recovery); ready for Plan 01-29
-state_head: c782cae
+last_activity_desc: Plan 01-29 complete (camera rename, reprobe, credentials and certificate recovery); ready for Plan 01-30
+state_head: 9da1a80
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 31
-  completed_plans: 28
-  percent: 90
+  completed_plans: 29
+  percent: 94
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
-Plan: 28 of 31 complete (ready for 29 of 31)
-Status: Completed 01-28
-Last activity: 2026-10-28 — Plan 01-28 completed (silent serial-based re-IP recovery)
+Plan: 29 of 31 complete (ready for 30 of 31)
+Status: Completed 01-29
+Last activity: 2026-10-28 — Plan 01-29 completed (camera rename, reprobe, credentials and certificate recovery)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░] 90%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░] 94%
 
 ## Performance Metrics
 
@@ -89,5 +89,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-28
-Stopped at: Plan 01-28 complete
-Resume file: .planning/phases/01-foundations-camera-onboarding/01-29-PLAN.md
+Stopped at: Plan 01-29 complete
+Resume file: .planning/phases/01-foundations-camera-onboarding/01-30-PLAN.md

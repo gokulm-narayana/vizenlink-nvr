@@ -1,4 +1,4 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart@2e06d2ad3a40
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart@cf09c72d1da6
 """WS-Discovery client for discovering ONVIF and VizenLink cameras on the local network."""
 
 import asyncio

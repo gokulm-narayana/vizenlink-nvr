@@ -1,3 +1,4 @@
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/camera_id_mismatch.dart@1e0f913e3a37
 # mirrors: mobile_app/packages/camera_api/lib/src/lan/insecure_camera_http_client.dart@ba12f28f9848
 """HTTP client for camera communication with certificate pinning and exact header case."""
 

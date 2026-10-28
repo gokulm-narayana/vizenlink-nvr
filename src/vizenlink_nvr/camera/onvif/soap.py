@@ -1,5 +1,5 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/soap_fault.dart@2e06d2ad3a40
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart@525-590
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/soap_fault.dart@ffb2a21c3a54
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart@bd2e63476c9c
 """SOAP message envelope builder, XML parser, and fault-first response handler for ONVIF."""
 
 import re

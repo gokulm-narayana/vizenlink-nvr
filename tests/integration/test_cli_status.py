@@ -16,8 +16,8 @@ def test_cli_status_json(cli: CliRunner, tmp_path: Path) -> None:
 
     data = json.loads(result.stdout)
     assert data["db_ok"] is True
-    assert data["schema_revision"] == "0001_initial"
-    assert data["schema_head"] == "0001_initial"
+    assert data["schema_revision"] == "0002_camera_registry"
+    assert data["schema_head"] == "0002_camera_registry"
     assert data["data_dir"] == str(test_dir)
     assert "site_timezone" in data
 
@@ -26,7 +26,7 @@ def test_cli_status_json(cli: CliRunner, tmp_path: Path) -> None:
     assert result2.exit_code == 0
     data2 = json.loads(result2.stdout)
     assert data2["db_ok"] is True
-    assert data2["schema_revision"] == "0001_initial"
+    assert data2["schema_revision"] == "0002_camera_registry"
 
 
 def test_cli_status_human(cli: CliRunner, tmp_path: Path) -> None:

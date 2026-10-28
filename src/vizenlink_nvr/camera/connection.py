@@ -1,3 +1,4 @@
+# mirrors: mobile_app/packages/camera_api/lib/src/camera_connection.dart@4e3f9ec35f61
 """Camera connection endpoint configuration and credentials."""
 
 from dataclasses import dataclass, replace

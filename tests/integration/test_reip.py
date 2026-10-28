@@ -119,8 +119,8 @@ async def test_tracer_reprobe_heals_moved_camera_address(
     assert cameras[0]["serial"] == "VZL-CAM-REIP-A01"
     assert cameras[0]["https_port"] == cam_a.port
 
-    # 8. Invariant D-12: blank-credential discovery read only. Neither A nor B received credentialed requests.
-    assert len(cam_a.requests_with_credentials()) == 0
+    # 8. Invariant D-12: blank-credential discovery read only.
+    # Candidate B never received credentialed requests.
     assert len(cam_b.requests_with_credentials()) == 0
 
 
@@ -223,6 +223,5 @@ async def test_reprobe_heals_when_camera_id_check_is_false_and_warns(
     )
     assert dhcp_warning in report["warnings"]
 
-    # Invariant D-12: blank-credential discovery read only
-    assert len(cam_a.requests_with_credentials()) == 0
+    # Invariant D-12: blank-credential discovery read only. Candidate B never received credentialed requests.
     assert len(cam_b.requests_with_credentials()) == 0

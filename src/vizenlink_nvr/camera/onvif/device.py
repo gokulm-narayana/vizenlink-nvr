@@ -1,4 +1,5 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart@2e06d2ad3a40
+# mirrors: mobile_app/packages/camera_api/lib/src/device_reset_types.dart@093227387abe
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_device_client.dart@bd2e63476c9c
 """ONVIF Device service client and models for camera identity, scopes, and network configuration."""
 
 import re

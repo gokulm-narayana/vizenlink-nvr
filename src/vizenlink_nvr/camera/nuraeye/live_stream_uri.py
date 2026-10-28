@@ -1,4 +1,4 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/live_stream_uri_client.dart@1540cb0
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/live_stream_uri_client.dart@4fc87450a10b
 """Live stream URI models and parser for NuraEye cameras."""
 
 from dataclasses import dataclass

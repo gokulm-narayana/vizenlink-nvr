@@ -1,4 +1,4 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_video_encoder_client.dart@2e06d2ad3a40
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/onvif/onvif_video_encoder_client.dart@af62024e35e1
 """ONVIF Media2 service client and models for profiles and stream URIs."""
 
 from dataclasses import dataclass

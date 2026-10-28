@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- source: contracts/camera_api/docs/external-api/camera-onvif-api.md#L865-L876 -->
+<tr2:GetProfilesResponse xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
+<tr2:Profiles token="Profile_1" fixed="true">
+<tt:Name>MainStream</tt:Name>
+<tr2:Configurations>
+<tr2:VideoSource token="VideoSourceConfig_1">...</tr2:VideoSource>
+<tr2:AudioSource token="AudioSourceConfig_1">...</tr2:AudioSource>
+<tr2:AudioOutput token="AudioOutputConfig_1">...</tr2:AudioOutput>
+<tr2:VideoEncoder token="VideoEncoderConfig_1" encoding="H264" GovLength="30" Profile="High">
+<tt:Resolution><tt:Width>2560</tt:Width><tt:Height>1440</tt:Height></tt:Resolution>
+</tr2:VideoEncoder>
+<tr2:Analytics token="VideoAnalyticsConfig_1"><tt:Name>VideoAnalyticsConfig</tt:Name><tt:UseCount>1</tt:UseCount></tr2:Analytics>
+</tr2:Configurations>
+</tr2:Profiles>
+</tr2:GetProfilesResponse>

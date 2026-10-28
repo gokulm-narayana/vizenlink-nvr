@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- source: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart#L253-L266 -->
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+<s:Body>
+<tds:GetNetworkInterfacesResponse xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
+<tds:NetworkInterfaces token="eth0">
+<tt:Enabled>true</tt:Enabled>
+<tt:Info><tt:Name>wlan</tt:Name><tt:HwAddress>AA-BB-CC-DD-EE-FF</tt:HwAddress><tt:MTU>1500</tt:MTU></tt:Info>
+<tt:IPv4><tt:Enabled>true</tt:Enabled><tt:Config><tt:FromDHCP><tt:Address>192.168.1.50</tt:Address><tt:PrefixLength>24</tt:PrefixLength></tt:FromDHCP><tt:DHCP>true</tt:DHCP></tt:Config></tt:IPv4>
+</tds:NetworkInterfaces>
+</tds:GetNetworkInterfacesResponse>
+</s:Body>
+</s:Envelope>

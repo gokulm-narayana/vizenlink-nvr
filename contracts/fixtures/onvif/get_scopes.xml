@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- source: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart#L80-L91 -->
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+<s:Body>
+<tds:GetScopesResponse xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
+<tds:Scopes><tt:ScopeDef>Fixed</tt:ScopeDef><tt:ScopeItem>onvif://www.onvif.org/Profile/Streaming</tt:ScopeItem></tds:Scopes>
+<tds:Scopes><tt:ScopeDef>Configurable</tt:ScopeDef><tt:ScopeItem>onvif://www.onvif.org/name/Front%20Door</tt:ScopeItem></tds:Scopes>
+<tds:Scopes><tt:ScopeDef>Configurable</tt:ScopeDef><tt:ScopeItem>onvif://www.onvif.org/location/Living%20Room</tt:ScopeItem></tds:Scopes>
+</tds:GetScopesResponse>
+</s:Body>
+</s:Envelope>

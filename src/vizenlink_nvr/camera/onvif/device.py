@@ -3,10 +3,13 @@
 
 import re
 from dataclasses import dataclass
+from urllib.parse import quote, unquote
+
+from pydantic import SecretStr
 
 from vizenlink_nvr.camera.connection import DEVICE_SERVICE_PATH, CameraConnection
 from vizenlink_nvr.camera.http import CameraHttp
-from vizenlink_nvr.camera.onvif.soap import find_text, parse_xml, post_soap
+from vizenlink_nvr.camera.onvif.soap import find_text, parse_xml, post_soap, xml_escape
 from vizenlink_nvr.camera.result import CameraResult, Failure, FailureKind, Success, Timeout
 from vizenlink_nvr.timeutil import Clock
 
@@ -117,3 +120,209 @@ class OnvifDeviceClient:
         if isinstance(res, (Failure, Timeout)):
             return res
         return Success(res.value.serial_number.strip())
+
+    async def get_network_interface_info(
+        self,
+        timeout: float = 8.0,
+    ) -> CameraResult[NetworkInterfaceInfo]:
+        """Fetch network interface details via GetNetworkInterfaces (DEV-03)."""
+        body = '<tds:GetNetworkInterfaces xmlns:tds="http://www.onvif.org/ver10/device/wsdl"/>'
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+
+        try:
+            root = parse_xml(res.value)
+            name = find_text(root, "Name")
+            raw_mac = find_text(root, "HwAddress")
+            address = find_text(root, "Address")
+            return Success(
+                NetworkInterfaceInfo(
+                    name=name,
+                    mac=normalize_mac(raw_mac),
+                    address=address,
+                )
+            )
+        except Exception as exc:
+            return Failure(
+                kind=FailureKind.BAD_RESPONSE,
+                reason=f"Failed to parse GetNetworkInterfaces response: {exc}",
+            )
+
+    async def get_device_identity(
+        self,
+        timeout: float = 8.0,
+    ) -> CameraResult[DeviceIdentity]:
+        """Read camera display name and location via GetScopes (DEV-04)."""
+        body = '<tds:GetScopes xmlns:tds="http://www.onvif.org/ver10/device/wsdl"/>'
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+
+        try:
+            root = parse_xml(res.value)
+            name = ""
+            location = ""
+            for el in root.iter():
+                local = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+                if local == "ScopeItem" and el.text:
+                    raw = el.text.strip()
+                    if raw.startswith(NAME_SCOPE_PREFIX):
+                        name = unquote(raw[len(NAME_SCOPE_PREFIX) :])
+                    elif raw.startswith(LOCATION_SCOPE_PREFIX):
+                        location = unquote(raw[len(LOCATION_SCOPE_PREFIX) :])
+            return Success(DeviceIdentity(name=name, location=location))
+        except Exception as exc:
+            return Failure(
+                kind=FailureKind.BAD_RESPONSE,
+                reason=f"Failed to parse GetScopes response: {exc}",
+            )
+
+    async def set_device_name(
+        self,
+        name: str,
+        timeout: float = 8.0,
+    ) -> CameraResult[None]:
+        """Set camera display name via SetScopes (DEV-05, D-13, CAM-08)."""
+        if len(name) > MAX_DEVICE_NAME_LENGTH:
+            return Failure(
+                kind=FailureKind.GENERIC,
+                reason=f"Device name exceeds maximum length of {MAX_DEVICE_NAME_LENGTH} characters",
+            )
+
+        quoted = quote(name, safe="!~*'()")
+        scope_uri = f"{NAME_SCOPE_PREFIX}{quoted}"
+        body = (
+            '<tds:SetScopes xmlns:tds="http://www.onvif.org/ver10/device/wsdl">'
+            f"<tds:Scopes>{scope_uri}</tds:Scopes>"
+            "</tds:SetScopes>"
+        )
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+        return Success(None)
+
+    async def set_device_location(
+        self,
+        location: str,
+        timeout: float = 8.0,
+    ) -> CameraResult[None]:
+        """Set camera physical location via SetScopes (DEV-05, D-13, CAM-08)."""
+        if len(location) > MAX_DEVICE_NAME_LENGTH:
+            return Failure(
+                kind=FailureKind.GENERIC,
+                reason=f"Device location exceeds maximum length of {MAX_DEVICE_NAME_LENGTH} characters",
+            )
+
+        quoted = quote(location, safe="!~*'()")
+        scope_uri = f"{LOCATION_SCOPE_PREFIX}{quoted}"
+        body = (
+            '<tds:SetScopes xmlns:tds="http://www.onvif.org/ver10/device/wsdl">'
+            f"<tds:Scopes>{scope_uri}</tds:Scopes>"
+            "</tds:SetScopes>"
+        )
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+        return Success(None)
+
+    async def set_user_password(
+        self,
+        username: str,
+        new_password: str | SecretStr,
+        timeout: float = 8.0,
+    ) -> CameraResult[None]:
+        """Set account password via SetUser (DEV-06, D-04, CAM-04)."""
+        pw = new_password.get_secret_value() if isinstance(new_password, SecretStr) else str(new_password)
+        if len(pw) > MAX_DEVICE_PASSWORD_LENGTH:
+            return Failure(
+                kind=FailureKind.GENERIC,
+                reason=f"Password exceeds maximum length of {MAX_DEVICE_PASSWORD_LENGTH} characters",
+            )
+
+        body = (
+            '<tds:SetUser xmlns:tds="http://www.onvif.org/ver10/device/wsdl" '
+            'xmlns:tt="http://www.onvif.org/ver10/schema">'
+            "<tds:User>"
+            f"<tt:Username>{xml_escape(username)}</tt:Username>"
+            f"<tt:Password>{xml_escape(pw)}</tt:Password>"
+            "</tds:User>"
+            "</tds:SetUser>"
+        )
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+        return Success(None)
+
+    async def get_services(
+        self,
+        timeout: float = 8.0,
+    ) -> CameraResult[list[ServiceEntry]]:
+        """Query available ONVIF services via GetServices (DEV-07)."""
+        body = (
+            '<tds:GetServices xmlns:tds="http://www.onvif.org/ver10/device/wsdl">'
+            "<tds:IncludeCapability>false</tds:IncludeCapability>"
+            "</tds:GetServices>"
+        )
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+
+        try:
+            root = parse_xml(res.value)
+            entries: list[ServiceEntry] = []
+            for el in root.iter():
+                local = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+                if local == "Service":
+                    namespace = find_text(el, "Namespace")
+                    xaddr = find_text(el, "XAddr")
+                    if namespace and xaddr:
+                        entries.append(ServiceEntry(namespace=namespace, xaddr=xaddr))
+            return Success(entries)
+        except Exception as exc:
+            return Failure(
+                kind=FailureKind.BAD_RESPONSE,
+                reason=f"Failed to parse GetServices response: {exc}",
+            )

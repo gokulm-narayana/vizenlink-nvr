@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
 status: executing
-stopped_at: Plan 01-17 complete; ready for Plan 01-18
-last_updated: "2026-10-27T18:44:00.000Z"
-last_activity: 2026-10-27
-last_activity_desc: Plan 01-17 complete (finalize full contract lock, behaviors catalogue, fixture provenance); ready for Plan 01-18
-state_head: 0bc5b34
+stopped_at: Plan 01-18 complete; ready for Plan 01-19
+last_updated: "2026-10-28T10:23:00.000Z"
+last_activity: 2026-10-28
+last_activity_desc: Plan 01-18 complete (REST login and authenticated capabilities tracer); ready for Plan 01-19
+state_head: 1f546f8
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 31
-  completed_plans: 17
-  percent: 54
+  completed_plans: 18
+  percent: 58
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
-Plan: 17 of 31 complete (ready for 18 of 31)
-Status: Completed 01-17
-Last activity: 2026-10-27 — Plan 01-17 completed (contract lock, behaviors catalogue, fixture provenance)
+Plan: 18 of 31 complete (ready for 19 of 31)
+Status: Completed 01-18
+Last activity: 2026-10-28 — Plan 01-18 completed (REST login and authenticated capabilities tracer)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░] 54%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░] 58%
 
 ## Performance Metrics
 
@@ -67,7 +67,6 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Await actual owner approval of the exact dependency list in 01-01 Task 1 before any fetch/install.
 - Later blocking gates: D-11 in 01-24; real-camera execution in 01-30.
 
 ### Blockers/Concerns
@@ -89,6 +88,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27
-Stopped at: 01-01 Task 1 dependency review; no implementation tasks started
-Resume file: .planning/phases/01-foundations-camera-onboarding/01-01-PLAN.md
+Last session: 2026-10-28
+Stopped at: Plan 01-18 complete
+Resume file: .planning/phases/01-foundations-camera-onboarding/01-19-PLAN.md

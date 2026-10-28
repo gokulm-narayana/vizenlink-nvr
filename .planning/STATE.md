@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
 status: executing
-stopped_at: Plan 01-20 complete; ready for Plan 01-21
-last_updated: "2026-10-28T10:44:00.000Z"
+stopped_at: Plan 01-21 complete; ready for Plan 01-22
+last_updated: "2026-10-28T10:54:00.000Z"
 last_activity: 2026-10-28
-last_activity_desc: Plan 01-20 complete (capabilities and live-stream-uri contracts); ready for Plan 01-21
-state_head: 895b610
+last_activity_desc: Plan 01-21 complete (ONVIF serial tracer and fault-first SOAP mapping); ready for Plan 01-22
+state_head: 8f87ca3
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 31
-  completed_plans: 20
-  percent: 65
+  completed_plans: 21
+  percent: 68
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
-Plan: 20 of 31 complete (ready for 21 of 31)
-Status: Completed 01-20
-Last activity: 2026-10-28 — Plan 01-20 completed (capabilities and live-stream-uri contracts)
+Plan: 21 of 31 complete (ready for 22 of 31)
+Status: Completed 01-21
+Last activity: 2026-10-28 — Plan 01-21 completed (ONVIF serial tracer and fault-first SOAP mapping)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░] 65%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░] 68%
 
 ## Performance Metrics
 

@@ -1,6 +1,6 @@
 # mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/rest_result.dart@5f873ea471c1
 # mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_rest_client.dart@c6af6ee3efb7
-"""NuraEye REST envelope handling, unwrap, and JSON helpers."""
+"""NuraEye REST envelope handling, unwrap, failure mapping, and JSON helpers."""
 
 import json
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from typing import Any
 
 from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.http import CameraHttp, HttpResponse
-from vizenlink_nvr.camera.result import Failure, FailureKind, Timeout
+from vizenlink_nvr.camera.result import Failure, FailureKind, Timeout, parse_retry_after
 
 
 @dataclass(frozen=True)
@@ -67,6 +67,41 @@ def unwrap(resp: HttpResponse) -> RestOk | RestError | Failure:
         error_code=err_code,
         error_msg=err_msg,
         body=data,
+    )
+
+
+def failure_from_rest(err: RestError) -> Failure:
+    """Map REST error envelope to classified Failure outcome (RES-04)."""
+    if err.status == 403:
+        return Failure(
+            kind=FailureKind.FORBIDDEN,
+            reason=err.error_msg,
+            http_status=err.status,
+        )
+    if err.status == 428:
+        return Failure(
+            kind=FailureKind.PASSWORD_CHANGE_REQUIRED,
+            reason=err.error_msg,
+            http_status=err.status,
+        )
+    if err.status == 429:
+        retry_after = parse_retry_after(err.body, err.error_msg)
+        return Failure(
+            kind=FailureKind.BLOCKED,
+            reason=err.error_msg,
+            http_status=err.status,
+            retry_after=retry_after,
+        )
+    if err.status == 401:
+        return Failure(
+            kind=FailureKind.UNAUTHORIZED,
+            reason=f"HTTP 401: {err.error_msg}",
+            http_status=err.status,
+        )
+    return Failure(
+        kind=FailureKind.GENERIC,
+        reason=f"HTTP {err.status}: {err.error_msg}",
+        http_status=err.status,
     )
 
 

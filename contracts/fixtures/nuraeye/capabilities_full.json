@@ -1,0 +1,51 @@
+{
+  "source": {
+    "path": "contracts/camera_api/docs/external-api/camera-rest-api.md",
+    "lines": "417-446"
+  },
+  "data": {
+    "error_code": 0,
+    "error_msg": "Success",
+    "output": {
+      "wan_command_capable": true,
+      "wan_live_view_capable": true,
+      "siren_capable": true,
+      "spotlight_capable": true,
+      "warning_capable": false,
+      "local_storage_capable": true,
+      "recording_clip_duration_min_seconds": 10,
+      "recording_clip_duration_max_seconds": 300,
+      "supported_recording_modes": [
+        "continuous",
+        "scheduled",
+        "event_triggered"
+      ],
+      "max_recording_schedule_windows": 14,
+      "loitering_duration_min_seconds": 5,
+      "loitering_duration_max_seconds": 300,
+      "bbox_overlay_capable": true,
+      "night_vision_color_capable": true,
+      "night_vision_smart_capable": false,
+      "supported_event_types": [
+        "VideoModeChanged",
+        "PrivacyModeChanged",
+        "PersonDetected"
+      ],
+      "supported_event_deterrence_options": {
+        "PersonDetected": [
+          "siren",
+          "spotlight",
+          "mobile_alert"
+        ]
+      },
+      "camera_id_check": true,
+      "multi_user": true,
+      "max_users": 5,
+      "user_roles": [
+        "Operator",
+        "User"
+      ],
+      "default_password_in_use": true
+    }
+  }
+}

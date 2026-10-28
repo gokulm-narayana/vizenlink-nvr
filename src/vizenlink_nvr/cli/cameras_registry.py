@@ -11,8 +11,10 @@ from rich.table import Table
 from vizenlink_nvr.cli.cameras import cameras_app
 from vizenlink_nvr.cli.exitcodes import ExitCode
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
+from vizenlink_nvr.cli.outcomes import blocked_message
 from vizenlink_nvr.cli.output import emit, err_console, fail
 from vizenlink_nvr.config import load_settings
+from vizenlink_nvr.services.manage import ManageKind, RenameRequest, run_rename
 from vizenlink_nvr.services.registry import CameraView, get_camera, list_cameras
 from vizenlink_nvr.services.reprobe import ReprobeKind, run_reprobe
 from vizenlink_nvr.services.runtime import open_runtime
@@ -129,6 +131,75 @@ def show_camera(
         json_mode=json_mode,
         render_human=lambda c: _render_camera_show(c, site_tz),
     )
+
+
+@cameras_app.command(name="rename")
+def rename_camera_cmd(
+    serial: Annotated[str, typer.Option("--serial", "-s", help="Camera serial number.")],
+    name: Annotated[
+        str | None,
+        typer.Option("--name", "-n", help="New camera display name."),
+    ] = None,
+    location: Annotated[
+        str | None,
+        typer.Option("--location", "-l", help="New camera physical location."),
+    ] = None,
+    group: Annotated[
+        str | None,
+        typer.Option("--group", "-g", help="New camera group tag."),
+    ] = None,
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Update camera display name, physical location, or group tag."""
+    settings = load_settings(data_dir=data_dir)
+    req = RenameRequest(serial=serial, name=name, location=location, group=group)
+    outcome = asyncio.run(run_rename(settings, req))
+
+    if outcome.kind == ManageKind.OK and outcome.camera is not None:
+
+        async def _get_tz() -> str:
+            async with open_runtime(settings) as rt:
+                return await get_site_timezone(rt)
+
+        site_tz = asyncio.run(_get_tz())
+        emit(
+            outcome.camera,
+            json_mode=json_mode,
+            render_human=lambda c: _render_camera_show(c, site_tz),
+        )
+        return
+
+    # Map failures to exit codes and messages
+    code_map: dict[ManageKind, tuple[ExitCode, str]] = {
+        ManageKind.NOT_FOUND: (ExitCode.NOT_FOUND, f"Camera {serial} not found in registry."),
+        ManageKind.INVALID_INPUT: (ExitCode.INVALID_INPUT, outcome.detail or "Invalid input."),
+        ManageKind.AUTH_FAILED: (
+            ExitCode.AUTH_FAILED,
+            "Camera authentication failed; password must be updated.",
+        ),
+        ManageKind.TLS_CHANGED: (
+            ExitCode.TLS_CHANGED,
+            outcome.detail
+            or (
+                f"The camera's certificate has changed since it was added. "
+                f"If you replaced or updated this camera, run: "
+                f"nvr cameras reprobe {serial} --accept-new-certificate"
+            ),
+        ),
+        ManageKind.FORBIDDEN: (ExitCode.FORBIDDEN, "Access forbidden by camera."),
+        ManageKind.BLOCKED: (ExitCode.BLOCKED, blocked_message(outcome.retry_after_seconds)),
+        ManageKind.WRONG_CREDENTIALS: (ExitCode.WRONG_CREDENTIALS, "Incorrect username or password."),
+        ManageKind.UNREACHABLE: (
+            ExitCode.UNREACHABLE,
+            "Could not reach the camera — check the connection and try again.",
+        ),
+    }
+    code, msg = code_map.get(
+        outcome.kind,
+        (ExitCode.GENERIC_FAILURE, outcome.detail or "Failed to rename camera."),
+    )
+    fail(code, msg, json_mode=json_mode)
 
 
 @cameras_app.command(name="reprobe")

@@ -53,12 +53,31 @@ def add_camera(
         bool,
         typer.Option("--allow-public", help="Allow public IP addresses."),
     ] = False,
+    name: Annotated[
+        str | None,
+        typer.Option("--name", "-n", help="Camera display name."),
+    ] = None,
+    location: Annotated[
+        str | None,
+        typer.Option("--location", "-l", help="Camera physical location."),
+    ] = None,
+    group: Annotated[
+        str | None,
+        typer.Option("--group", "-g", help="Camera group tag."),
+    ] = None,
     json_mode: JsonOpt = False,
     data_dir: DataDirOpt = None,
 ) -> None:
     """Add and onboard a camera into the NVR registry."""
     settings = load_settings(data_dir=data_dir)
-    req = AddRequest(host=host, port=port, allow_public=allow_public)
+    req = AddRequest(
+        host=host,
+        port=port,
+        allow_public=allow_public,
+        name=name,
+        location=location,
+        group=group,
+    )
     passwords = CliPasswordProvider(stdin_mode=password_stdin)
 
     outcome = asyncio.run(run_add(settings, req, passwords))

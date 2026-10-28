@@ -66,6 +66,9 @@ class AddRequest(BaseModel):
     host: str
     port: int = 443
     allow_public: bool = False
+    name: str | None = None
+    location: str | None = None
+    group: str | None = None
 
 
 class AddOutcome(BaseModel):
@@ -423,6 +426,33 @@ class OnboardingService:
         name = ident_res.value.name if isinstance(ident_res, Success) else ""
         location = ident_res.value.location if isinstance(ident_res, Success) else ""
 
+        # Apply name and location to camera if requested (CAM-08, D-13)
+        if req.name is not None:
+            name_res = await onvif_authed.set_device_name(req.name)
+            if isinstance(name_res, (Failure, Timeout)):
+                return AddOutcome(
+                    kind=AddOutcomeKind.GENERIC_FAILURE,
+                    serial=serial,
+                    detail="Could not set the camera name or location. Nothing was stored.",
+                )
+        if req.location is not None:
+            loc_res = await onvif_authed.set_device_location(req.location)
+            if isinstance(loc_res, (Failure, Timeout)):
+                return AddOutcome(
+                    kind=AddOutcomeKind.GENERIC_FAILURE,
+                    serial=serial,
+                    detail="Could not set the camera name or location. Nothing was stored.",
+                )
+
+        if req.name is not None or req.location is not None:
+            ident_res = await onvif_authed.get_device_identity()
+            if isinstance(ident_res, Success):
+                name = ident_res.value.name
+                location = ident_res.value.location
+            else:
+                name = req.name or name
+                location = req.location or location
+
         # 9. Duplicate check by serial
         now = self.layer.clock.now()
         async with self.rt.sessions() as session:
@@ -490,7 +520,7 @@ class OnboardingService:
             mac=mac,
             name=name,
             location=location,
-            group_tag="",
+            group_tag=req.group or "",
             manufacturer=manufacturer,
             model=model,
             firmware_version=firmware_version,

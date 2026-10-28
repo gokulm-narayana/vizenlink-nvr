@@ -33,6 +33,9 @@ class StreamView(BaseModel):
     probed_at: datetime
 
 
+MAX_GROUP_LENGTH: int = 64
+
+
 class CameraView(BaseModel):
     """Safe view model for camera details without secret credentials."""
 
@@ -242,6 +245,44 @@ async def update_host(
     cam.host = host
     cam.https_port = port
     cam.host_updated_at = at
+    await session.flush()
+
+
+async def update_identity(
+    session: AsyncSession,
+    serial: str,
+    *,
+    name: str | None = None,
+    location: str | None = None,
+    group: str | None = None,
+    at: datetime,
+) -> CameraView:
+    """Update camera name, location, or group tag, and record identity sync timestamp."""
+    stmt = select(Camera).options(selectinload(Camera.streams)).where(Camera.serial == serial)
+    res = await session.execute(stmt)
+    cam = res.scalar_one()
+    if name is not None:
+        cam.name = name
+    if location is not None:
+        cam.location = location
+    if group is not None:
+        cam.group_tag = group
+    cam.identity_synced_at = at
+    await session.flush()
+    return _to_camera_view(cam)
+
+
+async def set_tls_fingerprint(
+    session: AsyncSession,
+    serial: str,
+    sha256_hex: str,
+    at: datetime,
+) -> None:
+    """Update stored TLS certificate pin for camera."""
+    stmt = select(Camera).where(Camera.serial == serial)
+    res = await session.execute(stmt)
+    cam = res.scalar_one()
+    cam.tls_fingerprint_sha256 = sha256_hex
     await session.flush()
 
 

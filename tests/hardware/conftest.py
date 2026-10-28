@@ -1,5 +1,6 @@
 """Pytest fixtures and configuration for real-camera hardware suite (D-20, D-24)."""
 
+import asyncio
 import contextlib
 import os
 import sys
@@ -103,7 +104,7 @@ def hw_report() -> Generator[HwReport, None, None]:
 
 
 @pytest.fixture(scope="session")
-async def hw_camera_snapshot(
+def hw_camera_snapshot(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Generator[CameraSnapshot, None, None]:
     """Snapshots hardware camera identity at session start, restores on session end if mutated."""
@@ -127,9 +128,9 @@ async def hw_camera_snapshot(
     )
     http = CameraHttp(ssl_context=camera_ssl_context(None))
     clock = SystemClock()
+    dev_client = OnvifDeviceClient(conn, http, clock)
 
-    with contextlib.suppress(Exception):
-        dev_client = OnvifDeviceClient(conn, http, clock)
+    async def _snapshot_init() -> None:
         info = await dev_client.get_device_information()
         if info.is_success():
             snapshot.serial = info.unwrap().serial_number
@@ -142,14 +143,21 @@ async def hw_camera_snapshot(
                 elif sc.startswith("onvif://www.onvif.org/location/"):
                     snapshot.location = sc.removeprefix("onvif://www.onvif.org/location/")
 
+    with contextlib.suppress(Exception):
+        asyncio.run(_snapshot_init())
+
     yield snapshot
 
     # Teardown: restore name/location ONLY if mutations occurred
     if snapshot.mutation_occurred and (snapshot.name or snapshot.location):
-        with contextlib.suppress(Exception):
+
+        async def _snapshot_teardown() -> None:
             restore_scopes: list[str] = []
             if snapshot.name:
                 restore_scopes.append(f"onvif://www.onvif.org/name/{snapshot.name}")
             if snapshot.location:
                 restore_scopes.append(f"onvif://www.onvif.org/location/{snapshot.location}")
             await dev_client.set_scopes(restore_scopes)
+
+        with contextlib.suppress(Exception):
+            asyncio.run(_snapshot_teardown())

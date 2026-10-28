@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- source: contracts/camera_api/mobile_app/packages/camera_api/test/onvif_device_client_test.dart#L13-L24 -->
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+<s:Body>
+<tds:GetDeviceInformationResponse xmlns:tds="http://www.onvif.org/ver10/device/wsdl">
+<tds:Manufacturer>VizenLink</tds:Manufacturer>
+<tds:Model>VZL-CAM</tds:Model>
+<tds:FirmwareVersion>1.0.0</tds:FirmwareVersion>
+<tds:SerialNumber>VZL-CAM-000001</tds:SerialNumber>
+<tds:HardwareId>HW-VZL-DEV-A</tds:HardwareId>
+</tds:GetDeviceInformationResponse>
+</s:Body>
+</s:Envelope>

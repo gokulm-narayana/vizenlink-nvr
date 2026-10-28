@@ -1,0 +1,4 @@
+<!-- source: contracts/camera_api/mobile_app/packages/camera_api/test/multi_user_accounts_test.dart#L306-L308 -->
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body><s:Fault><s:Code><s:Value>s:Sender</s:Value>
+<s:Subcode><s:Value>ter:OperationProhibited</s:Value><s:Subcode><s:Value>ter:TooManyAttempts</s:Value></s:Subcode></s:Subcode></s:Code>
+<s:Reason><s:Text xml:lang="en">Too many failed sign-in attempts for this account from this address.</s:Text></s:Reason></s:Fault></s:Body></s:Envelope>

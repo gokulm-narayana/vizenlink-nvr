@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
 status: executing
-stopped_at: Plan 01-29 complete; ready for Plan 01-30
-last_updated: "2026-10-28T13:25:00.000Z"
+stopped_at: Plan 01-30 complete; ready for Plan 01-31
+last_updated: "2026-10-28T14:16:00.000Z"
 last_activity: 2026-10-28
-last_activity_desc: Plan 01-29 complete (camera rename, reprobe, credentials and certificate recovery); ready for Plan 01-30
-state_head: 9da1a80
+last_activity_desc: Plan 01-30 complete (opt-in real-camera test suite & checkpoint complete; hardware pending); ready for Plan 01-31
+state_head: c7fabab
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
-Plan: 29 of 31 complete (ready for 30 of 31)
-Status: Completed 01-29
-Last activity: 2026-10-28 — Plan 01-29 completed (camera rename, reprobe, credentials and certificate recovery)
+Plan: 30 of 31 complete (ready for 31 of 31)
+Status: Completed 01-30
+Last activity: 2026-10-28 — Plan 01-30 completed (opt-in real-camera suite & checkpoint complete; hardware pending)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░] 94%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓█] 97%
 
 ## Performance Metrics
 

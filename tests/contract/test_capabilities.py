@@ -348,7 +348,7 @@ def test_parse_capabilities_strict_mode() -> None:
     res = parse_capabilities({}, strict=True)
     assert isinstance(res, Failure)
     assert res.kind == FailureKind.BAD_RESPONSE
-    assert "missing wan_command_capable/wan_live_view_capable" in res.reason
+    assert res.reason.startswith("GetCapabilities response missing")
 
     # Non-boolean flags
     res2 = parse_capabilities(
@@ -357,12 +357,14 @@ def test_parse_capabilities_strict_mode() -> None:
     )
     assert isinstance(res2, Failure)
     assert res2.kind == FailureKind.BAD_RESPONSE
+    assert res2.reason.startswith("GetCapabilities response missing")
 
-    # Non-strict defaults to False
-    res3 = parse_capabilities({}, strict=False)
+    # Non-strict defaults to False and records in missing_required
+    res3 = parse_capabilities({"wan_live_view_capable": True}, strict=False)
     assert isinstance(res3, Capabilities)
     assert res3.wan_command_capable is False
-    assert res3.wan_live_view_capable is False
+    assert res3.wan_live_view_capable is True
+    assert res3.missing_required == ["wan_command_capable"]
 
 
 @pytest.mark.behavior("CAP-02")
@@ -384,6 +386,23 @@ def test_parse_capabilities_defaults() -> None:
     assert caps.supported_recording_modes == []
     assert caps.supported_event_types == []
     assert caps.supported_event_deterrence_options == {}
+
+    import json
+    from pathlib import Path
+
+    fixture_path = (
+        Path(__file__).resolve().parents[2]
+        / "contracts"
+        / "fixtures"
+        / "nuraeye"
+        / "capabilities_minimal.json"
+    )
+    fixture_data = json.loads(fixture_path.read_text(encoding="utf-8"))["data"]["output"]
+    caps_min = parse_capabilities(fixture_data)
+    assert isinstance(caps_min, Capabilities)
+    assert caps_min.wan_command_capable is False
+    assert caps_min.wan_live_view_capable is False
+    assert caps_min.missing_required == []
 
 
 @pytest.mark.behavior("CAP-03")
@@ -419,6 +438,89 @@ def test_parse_capabilities_malformed_event_shapes() -> None:
     assert isinstance(caps, Capabilities)
     assert caps.supported_event_types == []
     assert caps.supported_event_deterrence_options == {}
+
+
+@pytest.mark.behavior("CAP-05")
+def test_parse_capabilities_raw_and_typed_superset() -> None:
+    """raw preserves unknown fields verbatim; camera_id_check and night_vision fields are typed (CAP-05)."""
+    raw_input = {
+        "wan_command_capable": True,
+        "wan_live_view_capable": True,
+        "camera_id_check": True,
+        "night_vision_color_capable": True,
+        "night_vision_smart_capable": True,
+        "custom_future_flag": "present",
+        "nested_unknown": {"foo": "bar"},
+    }
+    caps = parse_capabilities(raw_input)
+    assert isinstance(caps, Capabilities)
+    assert caps.raw == raw_input
+    assert caps.raw["custom_future_flag"] == "present"
+    assert caps.raw["nested_unknown"] == {"foo": "bar"}
+    assert caps.camera_id_check is True
+    assert caps.night_vision_color_capable is True
+    assert caps.night_vision_smart_capable is True
+
+
+@pytest.mark.behavior("CAP-06")
+def test_parse_capabilities_keys_in_openapi_schema() -> None:
+    """Every key name read by parse_capabilities exists in vendored OpenAPI capabilities schema (CAP-06)."""
+    from pathlib import Path
+    from typing import Any
+
+    import yaml
+
+    openapi_path = (
+        Path(__file__).resolve().parents[2]
+        / "contracts"
+        / "camera_api"
+        / "design"
+        / "Camera-REST-API.openapi.yaml"
+    )
+    with openapi_path.open("r", encoding="utf-8") as f:
+        spec = yaml.safe_load(f)
+
+    cap_path = spec["paths"]["/nuraeye/capabilities"]["get"]
+    resp_schema = cap_path["responses"]["200"]["content"]["application/json"]["schema"]
+    all_props: dict[str, Any] = {}
+    for sub in resp_schema.get("allOf", []):
+        if "properties" in sub and "output" in sub["properties"]:
+            all_props = sub["properties"]["output"]["properties"]
+            break
+
+    assert len(all_props) > 0, "Failed to locate capabilities output properties in OpenAPI spec"
+
+    accessed_keys: set[str] = set()
+
+    class KeyAuditor(dict):  # type: ignore[type-arg]
+        def __getitem__(self, item: Any) -> Any:
+            accessed_keys.add(str(item))
+            return super().__getitem__(item)
+
+        def get(self, item: Any, default: Any = None) -> Any:
+            accessed_keys.add(str(item))
+            return super().get(item, default)
+
+        def __contains__(self, item: Any) -> bool:
+            accessed_keys.add(str(item))
+            return super().__contains__(item)
+
+    test_input = KeyAuditor(
+        {
+            "wan_command_capable": True,
+            "wan_live_view_capable": True,
+            "supported_recording_modes": ["continuous"],
+            "user_roles": ["Operator"],
+            "supported_event_types": ["PersonDetected"],
+            "supported_event_deterrence_options": {"PersonDetected": ["siren"]},
+        }
+    )
+
+    _ = parse_capabilities(test_input, strict=True)
+    _ = parse_capabilities(test_input, strict=False)
+
+    for key in accessed_keys:
+        assert key in all_props, f"Key '{key}' read by parse_capabilities is not in OpenAPI schema"
 
 
 async def test_edge_expires_in_sec_zero(

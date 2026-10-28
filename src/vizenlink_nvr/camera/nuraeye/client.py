@@ -13,6 +13,10 @@ from pydantic import SecretStr
 from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.http import CameraHttp
 from vizenlink_nvr.camera.nuraeye.capabilities import Capabilities, parse_capabilities
+from vizenlink_nvr.camera.nuraeye.live_stream_uri import (
+    LiveStreamUri,
+    parse_live_stream_uri,
+)
 from vizenlink_nvr.camera.nuraeye.models import LoginInfo
 from vizenlink_nvr.camera.nuraeye.rest import (
     RestError,
@@ -264,6 +268,22 @@ class NuraeyeClient:
             return res
 
         parsed = parse_capabilities(res.value, strict=strict)
+        if isinstance(parsed, Failure):
+            return parsed
+        return Success(parsed)
+
+    async def get_live_stream_uri(
+        self,
+        profile_token: str,
+        timeout: float = 8.0,
+    ) -> CameraResult[LiveStreamUri]:
+        """Fetch and parse live stream URI for given profile token (LST-01..03, CAM-07)."""
+        payload = {"profile_token": profile_token}
+        res = await self._authed("POST", "/nuraeye/live-stream-uri", payload=payload, timeout=timeout)
+        if isinstance(res, (Failure, Timeout)):
+            return res
+
+        parsed = parse_live_stream_uri(res.value)
         if isinstance(parsed, Failure):
             return parsed
         return Success(parsed)

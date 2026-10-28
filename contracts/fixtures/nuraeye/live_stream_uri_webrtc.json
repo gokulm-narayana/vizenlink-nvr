@@ -1,0 +1,16 @@
+{
+  "source": {
+    "path": "contracts/camera_api/mobile_app/packages/camera_api/test/live_stream_uri_client_test.dart",
+    "lines": "18-23"
+  },
+  "data": {
+    "error_code": 0,
+    "error_msg": "Success",
+    "output": {
+      "transport": "webrtc",
+      "port": 8444,
+      "path": "/webrtc",
+      "url": "http://192.168.1.50:8444/webrtc"
+    }
+  }
+}

@@ -46,6 +46,7 @@ class Capabilities(BaseModel):
     night_vision_smart_capable: bool = False
     supported_event_types: list[str] = Field(default_factory=list)
     supported_event_deterrence_options: dict[str, list[str]] = Field(default_factory=dict)
+    missing_required: list[str] = Field(default_factory=list)
 
 
 def parse_capabilities(
@@ -54,16 +55,17 @@ def parse_capabilities(
     strict: bool = False,
 ) -> Capabilities | Failure:
     """Parse /nuraeye/capabilities output dict into typed Capabilities object."""
-    if strict:
-        wan_cmd = output.get("wan_command_capable")
-        wan_live = output.get("wan_live_view_capable")
-        if not isinstance(wan_cmd, bool) or not isinstance(wan_live, bool):
-            return Failure(
-                kind=FailureKind.BAD_RESPONSE,
-                reason=(
-                    f"GetCapabilities response missing wan_command_capable/wan_live_view_capable: {output}"
-                ),
-            )
+    missing_required: list[str] = []
+    if not isinstance(output.get("wan_command_capable"), bool):
+        missing_required.append("wan_command_capable")
+    if not isinstance(output.get("wan_live_view_capable"), bool):
+        missing_required.append("wan_live_view_capable")
+
+    if strict and missing_required:
+        return Failure(
+            kind=FailureKind.BAD_RESPONSE,
+            reason=(f"GetCapabilities response missing {', '.join(missing_required)}: {output}"),
+        )
 
     wan_command_capable = (
         output["wan_command_capable"] if isinstance(output.get("wan_command_capable"), bool) else False
@@ -168,4 +170,5 @@ def parse_capabilities(
         night_vision_smart_capable=night_vision_smart_capable,
         supported_event_types=supported_event_types,
         supported_event_deterrence_options=supported_event_deterrence_options,
+        missing_required=missing_required,
     )

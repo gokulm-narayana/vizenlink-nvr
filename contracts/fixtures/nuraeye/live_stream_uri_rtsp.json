@@ -1,0 +1,16 @@
+{
+  "source": {
+    "path": "contracts/camera_api/docs/external-api/camera-rest-api.md",
+    "lines": "1412-1421"
+  },
+  "data": {
+    "error_code": 0,
+    "error_msg": "Success",
+    "output": {
+      "transport": "rtsp",
+      "port": 556,
+      "path": "/mobile",
+      "url": "rtsps://192.0.2.50:556/mobile"
+    }
+  }
+}

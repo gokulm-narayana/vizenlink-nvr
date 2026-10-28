@@ -1,5 +1,6 @@
 """Stream selection and resolution for camera video profiles."""
 
+import logging
 import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
@@ -8,6 +9,8 @@ from vizenlink_nvr.camera.nuraeye.client import NuraeyeClient
 from vizenlink_nvr.camera.nuraeye.live_stream_uri import MOBILE_ONLY_PROFILE_TOKEN
 from vizenlink_nvr.camera.onvif.media2 import MediaProfile, OnvifMedia2Client
 from vizenlink_nvr.camera.result import Failure, FailureKind, Timeout
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -86,6 +89,13 @@ async def resolve_streams(
 
     for role, profile in targets:
         sub_is_main = selection.sub_is_main if role == "sub" else False
+
+        if profile.encoding.upper() in ("H265", "HEVC", "H.265"):
+            logger.warning(
+                "Profile %s uses codec %s; H.265 requires compatible client in Phase 3",
+                profile.token,
+                profile.encoding,
+            )
 
         live_res = await nuraeye.get_live_stream_uri(profile.token, timeout=timeout)
         if isinstance(live_res, (Failure, Timeout)):

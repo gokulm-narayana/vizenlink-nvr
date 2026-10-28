@@ -93,7 +93,10 @@ def list_registered_cameras(
                 return await list_cameras(session)
 
     cameras = asyncio.run(_fetch())
-    emit(cameras, json_mode=json_mode, render_human=_render_cameras_list)
+    if json_mode:
+        emit([c.model_dump(mode="json") for c in cameras], json_mode=True)
+    else:
+        emit(cameras, json_mode=False, render_human=_render_cameras_list)
 
 
 @cameras_app.command(name="show")

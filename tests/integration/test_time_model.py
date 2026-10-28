@@ -1,5 +1,6 @@
 """Integration tests for time model, timezone setting persistence, and CLI commands."""
 
+import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -113,3 +114,86 @@ def test_cli_timezone_set_and_status(cli: CliRunner, tmp_path: Path) -> None:
     assert res_status2.exit_code == 0
     status_data2 = json.loads(res_status2.stdout)
     assert status_data2["site_timezone"] == "Europe/London"
+
+
+@pytest.mark.asyncio
+async def test_cameras_show_dst_rendering(cli: CliRunner, tmp_path: Path) -> None:
+    """cameras show renders added_at with correct DST abbreviation and offset for America/New_York."""
+    from pydantic import SecretStr
+    from sqlalchemy import select
+
+    from vizenlink_nvr.db.models import Camera
+    from vizenlink_nvr.secrets.vault import Vault
+    from vizenlink_nvr.services.registry import NewCameraRecord, insert_camera
+    from vizenlink_nvr.services.streams import StreamRecord
+
+    settings = NvrSettings(data_dir=tmp_path)
+    vault = Vault(key=b"\x01" * 32, key_id="v1", source="test")
+
+    # Set site timezone to America/New_York
+    async with open_runtime(settings) as rt:
+        await set_site_timezone(rt, "America/New_York")
+
+        # 2026-11-01T05:30:00Z is 01:30:00 EDT (-04:00) before fall-back transition
+        t1 = datetime(2026, 11, 1, 5, 30, 0, tzinfo=UTC)
+        rec = NewCameraRecord(
+            serial="VZL-DST-01",
+            host="127.0.0.1",
+            https_port=443,
+            mac="AA:BB:CC:DD:EE:01",
+            name="Front",
+            location="Entrance",
+            group_tag="",
+            manufacturer="VZL",
+            model="Pro",
+            firmware_version="1.0",
+            hardware_id="HW",
+            tls_fingerprint_sha256="fp",
+            camera_id_check=True,
+            username="admin",
+            sealed_password=vault.seal("VZL-DST-01", "admin", SecretStr("p")),
+            capabilities_raw="{}",
+            streams=[
+                StreamRecord(
+                    role="main",
+                    profile_token="Profile_1",
+                    profile_name="Main",
+                    venc_token="v1",
+                    codec="H264",
+                    width=1920,
+                    height=1080,
+                    transport="rtsp",
+                    scheme="rtsps",
+                    port=554,
+                    path="/high",
+                    source="nuraeye",
+                    sub_is_main=False,
+                )
+            ],
+            added_at=t1,
+        )
+        async with rt.sessions() as session:
+            await insert_camera(session, rec)
+            await session.commit()
+
+    # CLI show in human mode
+    res1 = await asyncio.to_thread(
+        cli.invoke, app, ["cameras", "show", "--serial", "VZL-DST-01", "--data-dir", str(tmp_path)]
+    )
+    assert res1.exit_code == 0, f"Show failed: {res1.output}"
+    assert "2026-11-01 01:30:00 EDT (-04:00)" in res1.output
+
+    # Update added_at to 2026-11-01T06:30:00Z -> 01:30:00 EST (-05:00) after transition
+    t2 = datetime(2026, 11, 1, 6, 30, 0, tzinfo=UTC)
+    async with open_runtime(settings) as rt:
+        async with rt.sessions() as session:
+            stmt = select(Camera).where(Camera.serial == "VZL-DST-01")
+            cam_obj = (await session.execute(stmt)).scalar_one()
+            cam_obj.added_at = t2
+            await session.commit()
+
+    res2 = await asyncio.to_thread(
+        cli.invoke, app, ["cameras", "show", "--serial", "VZL-DST-01", "--data-dir", str(tmp_path)]
+    )
+    assert res2.exit_code == 0, f"Show 2 failed: {res2.output}"
+    assert "2026-11-01 01:30:00 EST (-05:00)" in res2.output

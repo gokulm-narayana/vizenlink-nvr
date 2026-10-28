@@ -3,6 +3,7 @@
 import asyncio
 import ipaddress
 import json
+import logging
 import socket
 from enum import StrEnum
 from typing import Any, Protocol
@@ -12,6 +13,7 @@ from pydantic import BaseModel, SecretStr
 from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.http import fetch_certificate_sha256
 from vizenlink_nvr.camera.layer import CameraLayer
+from vizenlink_nvr.camera.nuraeye.capabilities import Capabilities, parse_capabilities
 from vizenlink_nvr.camera.nuraeye.client import NuraeyeClient
 from vizenlink_nvr.camera.onvif.device import OnvifDeviceClient
 from vizenlink_nvr.camera.onvif.media2 import OnvifMedia2Client
@@ -27,6 +29,8 @@ from vizenlink_nvr.services.registry import (
 )
 from vizenlink_nvr.services.runtime import Runtime, open_runtime
 from vizenlink_nvr.services.streams import resolve_streams
+
+logger = logging.getLogger(__name__)
 
 FACTORY_USERNAME = "admin"
 FACTORY_PASSWORD = "password"  # noqa: S105
@@ -355,11 +359,32 @@ class OnboardingService:
 
         # 11. Seal password and atomic commit
         sealed = self.vault.seal(serial, FACTORY_USERNAME, current_pw)
-        caps_raw = (
-            json.dumps(verify_res.capabilities)
-            if isinstance(verify_res.capabilities, (dict, list))
-            else str(verify_res.capabilities or "{}")
-        )
+        if isinstance(verify_res.capabilities, Capabilities):
+            caps_dict = verify_res.capabilities.raw
+            camera_id_check_val = verify_res.capabilities.camera_id_check
+            if verify_res.capabilities.missing_required:
+                logger.warning(
+                    "Camera %s capabilities missing required fields: %s",
+                    serial,
+                    verify_res.capabilities.missing_required,
+                )
+        elif isinstance(verify_res.capabilities, dict):
+            caps_dict = verify_res.capabilities
+            parsed_caps = parse_capabilities(caps_dict, strict=False)
+            camera_id_check_val = (
+                parsed_caps.camera_id_check if isinstance(parsed_caps, Capabilities) else False
+            )
+            if isinstance(parsed_caps, Capabilities) and parsed_caps.missing_required:
+                logger.warning(
+                    "Camera %s capabilities missing required fields: %s",
+                    serial,
+                    parsed_caps.missing_required,
+                )
+        else:
+            caps_dict = {}
+            camera_id_check_val = False
+
+        caps_raw = json.dumps(caps_dict)
 
         rec = NewCameraRecord(
             serial=serial,
@@ -374,7 +399,7 @@ class OnboardingService:
             firmware_version=firmware_version,
             hardware_id=hardware_id,
             tls_fingerprint_sha256=pin,
-            camera_id_check=True,
+            camera_id_check=camera_id_check_val,
             username=FACTORY_USERNAME,
             sealed_password=sealed,
             capabilities_raw=caps_raw,

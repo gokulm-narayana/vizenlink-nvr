@@ -1,5 +1,7 @@
 """Integration tests for camera registry, storage, cascading deletes, and credential sealing."""
 
+import asyncio
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -7,7 +9,10 @@ import pytest
 from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from typer.testing import CliRunner
 
+from vizenlink_nvr.cli.app import app
+from vizenlink_nvr.config import NvrSettings
 from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
 from vizenlink_nvr.db.models import Camera, CameraCapabilitiesRow, CameraCredential, CameraStream
 from vizenlink_nvr.secrets.vault import Vault
@@ -25,6 +30,7 @@ from vizenlink_nvr.services.registry import (
     stream_url,
     update_host,
 )
+from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.streams import StreamRecord
 
 
@@ -443,3 +449,83 @@ async def test_stream_url_and_cascade_delete(db_session, vault: Vault) -> None:
             await session.execute(select(CameraStream).where(CameraStream.serial == "VZL-CASCADE"))
         ).all()
         assert len(streams) == 0
+
+
+async def test_list_show_json_never_contains_secret_keys(
+    tmp_path: Path,
+    vault: Vault,
+) -> None:
+    """CLI list and show commands never emit password, ciphertext, nonce, or key_id in JSON."""
+    settings = NvrSettings(data_dir=tmp_path)
+    now = datetime(2026, 10, 28, 12, 0, 0, tzinfo=UTC)
+    rec = NewCameraRecord(
+        serial="VZL-SAFE-01",
+        host="192.168.1.50",
+        https_port=443,
+        mac="11:22:33:44:55:66",
+        name="SafeCam",
+        location="Office",
+        group_tag="",
+        manufacturer="VZL",
+        model="VZ-1",
+        firmware_version="1.0",
+        hardware_id="HW",
+        tls_fingerprint_sha256="fp",
+        camera_id_check=True,
+        username="admin",
+        sealed_password=vault.seal("VZL-SAFE-01", "admin", SecretStr("TopSecret")),
+        capabilities_raw="{}",
+        streams=[
+            StreamRecord(
+                role="main",
+                profile_token="Profile_1",
+                profile_name="Main",
+                venc_token="v1",
+                codec="H264",
+                width=1920,
+                height=1080,
+                transport="rtsp",
+                scheme="rtsps",
+                port=554,
+                path="/live/ch0",
+                source="nuraeye",
+                sub_is_main=False,
+            )
+        ],
+        added_at=now,
+    )
+
+    async with open_runtime(settings) as rt:
+        async with rt.sessions() as session:
+            await insert_camera(session, rec)
+            await session.commit()
+
+    runner = CliRunner()
+    # 1. list
+    list_res = await asyncio.to_thread(
+        runner.invoke, app, ["cameras", "list", "--json", "--data-dir", str(tmp_path)]
+    )
+    assert list_res.exit_code == 0, f"List failed: {list_res.output}"
+    list_text = list_res.stdout.lower()
+    for forbidden in ("password", "ciphertext", "nonce", "key_id"):
+        assert forbidden not in list_text
+
+    # 2. show
+    show_res = await asyncio.to_thread(
+        runner.invoke,
+        app,
+        ["cameras", "show", "--serial", "VZL-SAFE-01", "--json", "--data-dir", str(tmp_path)],
+    )
+    assert show_res.exit_code == 0, f"Show failed: {show_res.output}"
+    show_text = show_res.stdout.lower()
+    for forbidden in ("password", "ciphertext", "nonce", "key_id"):
+        assert forbidden not in show_text
+
+    # 3. status reports cameras_total 1 and cameras_by_state {"active": 1}
+    status_res = await asyncio.to_thread(
+        runner.invoke, app, ["status", "--json", "--data-dir", str(tmp_path)]
+    )
+    assert status_res.exit_code == 0, f"Status failed: {status_res.output}"
+    status_data = json.loads(status_res.stdout)
+    assert status_data["cameras_total"] == 1
+    assert status_data["cameras_by_state"] == {"active": 1}

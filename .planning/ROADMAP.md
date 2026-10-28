@@ -82,7 +82,17 @@ Plans:
   3. Per-camera recording mode (Continuous / Event / Scheduled / Off), weekly schedule, audio on/off and retention (days and/or size, with a storage estimate) can be set from the CLI and take effect; only the NVR deletes footage, oldest first, and a filling disk overwrites the oldest footage while keeping a hard free-space reserve instead of stopping
   4. Every segment appears in the database index, and after files are added, removed or truncated behind the NVR's back (including a hard power-off) the startup and periodic scans bring the index back in line with what is on disk; removing a camera honours the owner's keep-or-delete choice for its recordings
   5. When the recording drive is missing, unmounted, read-only or full, the NVR refuses to record onto the system disk and reports a critical storage state distinct from camera problems; the status CLI shows disk usage, free space, estimated days of retention, and a "recorder degraded" state whenever the API, MediaMTX or the database is unhealthy
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Schema migration 0003 and core recording data models (wave 1)
+- [ ] 02-02-PLAN.md — Storage safeguards, system drive guard, and telemetry (wave 2)
+- [ ] 02-03-PLAN.md — Recording modes, weekly schedule engine, and audio toggle (wave 3)
+- [ ] 02-04-PLAN.md — Declarative MediaMTX reconciler and process supervision (wave 4)
+- [ ] 02-05-PLAN.md — Two-source segment indexing: real-time hook and disk scanner (wave 5)
+- [ ] 02-06-PLAN.md — Retention janitor engine, low-water mark pruning, and camera removal (wave 6)
+- [ ] 02-07-PLAN.md — Recording gap watchdog, stream reconnect backoff, and health badges (wave 7)
+- [ ] 02-08-PLAN.md — Headless recording pipeline end-to-end tracer and local phase gate (wave 8)
 **Research**: Needed (spikes): fMP4 power-loss behaviour (10 hard kills) and a 24 h recording on a real camera; recordPath %s vs %z in the playback lookup; MediaMTX playback `/get` across gaps and seeks (decides the Phase 5 playback approach); MediaMTX restart with API-created paths; segment-hook helper on Windows/macOS (no shell strings); slow USB disk; janitor-only-deletion test.
 
 ### Phase 3: Secure API, Auth & Live View

@@ -94,3 +94,4 @@ The user approved the core defaults and architectures established in research. E
   - `nvr cameras remove --serial <SERIAL> (--keep-recordings | --delete-recordings)`
 
 </decisions>
+

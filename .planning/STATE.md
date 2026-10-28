@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Foundations & Camera Onboarding
 status: executing
-stopped_at: Plan 01-24 complete; ready for Plan 01-25
-last_updated: "2026-10-28T11:45:00.000Z"
+stopped_at: Plan 01-25 complete; ready for Plan 01-26
+last_updated: "2026-10-28T12:05:00.000Z"
 last_activity: 2026-10-28
-last_activity_desc: Plan 01-24 complete (serial-keyed camera schema, registry service, and stream selection); ready for Plan 01-25
-state_head: eb7d84b
+last_activity_desc: Plan 01-25 complete (serial-bound configured-camera onboarding and local CLI); ready for Plan 01-26
+state_head: 2b7f1e1
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 31
-  completed_plans: 24
-  percent: 77
+  completed_plans: 25
+  percent: 80
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 01 (Foundations & Camera Onboarding) — EXECUTING
-Plan: 24 of 31 complete (ready for 25 of 31)
-Status: Completed 01-24
-Last activity: 2026-10-28 — Plan 01-24 completed (serial-keyed camera schema, registry service, and stream selection)
+Plan: 25 of 31 complete (ready for 26 of 31)
+Status: Completed 01-25
+Last activity: 2026-10-28 — Plan 01-25 completed (serial-bound configured-camera onboarding and local CLI)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░] 77%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░] 80%
 
 ## Performance Metrics
 

@@ -5,6 +5,11 @@ import sys
 import typer
 from pydantic import SecretStr
 
+from vizenlink_nvr.services.passwords import (
+    PasswordRuleError,
+    validate_new_camera_password,
+)
+
 
 class PasswordMismatch(Exception):
     """Raised when password confirmation does not match the new password."""
@@ -38,8 +43,30 @@ class CliPasswordProvider:
 
     async def new_password(self) -> SecretStr:
         """Prompt user for new camera password with confirmation."""
-        p1 = read_secret("New camera password: ", stdin_mode=self.stdin_mode)
-        p2 = read_secret("Confirm new camera password: ", stdin_mode=self.stdin_mode)
-        if p1.get_secret_value() != p2.get_secret_value():
-            raise PasswordMismatch("Passwords do not match")
-        return p1
+        sys.stderr.write("This camera still uses its factory password. Set a new password to continue.\n")
+        sys.stderr.flush()
+
+        if self.stdin_mode:
+            p1 = read_secret("New camera password: ", stdin_mode=True)
+            p2 = read_secret("Confirm new camera password: ", stdin_mode=True)
+            if p1.get_secret_value() != p2.get_secret_value():
+                raise PasswordMismatch("Passwords do not match.")
+            validate_new_camera_password(p1)
+            return p1
+
+        for _ in range(3):
+            p1 = read_secret("New camera password: ", stdin_mode=False)
+            p2 = read_secret("Confirm new camera password: ", stdin_mode=False)
+            if p1.get_secret_value() != p2.get_secret_value():
+                sys.stderr.write("Passwords do not match.\n")
+                sys.stderr.flush()
+                continue
+            try:
+                validate_new_camera_password(p1)
+            except PasswordRuleError as err:
+                sys.stderr.write(f"{err}\n")
+                sys.stderr.flush()
+                continue
+            return p1
+
+        raise PasswordMismatch("Passwords do not match.")

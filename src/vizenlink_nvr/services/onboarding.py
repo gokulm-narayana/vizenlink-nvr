@@ -18,8 +18,13 @@ from vizenlink_nvr.camera.nuraeye.client import NuraeyeClient
 from vizenlink_nvr.camera.onvif.device import OnvifDeviceClient
 from vizenlink_nvr.camera.onvif.media2 import OnvifMedia2Client
 from vizenlink_nvr.camera.result import Failure, FailureKind, Success, Timeout
+from vizenlink_nvr.cli.prompts import PasswordMismatch
 from vizenlink_nvr.config import NvrSettings
 from vizenlink_nvr.secrets.vault import Vault, open_vault
+from vizenlink_nvr.services.passwords import (
+    PasswordRuleError,
+    validate_new_camera_password,
+)
 from vizenlink_nvr.services.registry import (
     CameraView,
     NewCameraRecord,
@@ -71,6 +76,7 @@ class AddOutcome(BaseModel):
     camera: CameraView | None = None
     retry_after_seconds: int | None = None
     detail: str | None = None
+    notice: str | None = None
 
 
 class PasswordProvider(Protocol):
@@ -113,6 +119,7 @@ class VerifyOutcome(BaseModel):
     kind: VerifyKind
     capabilities: Any | None = None
     retry_after: int | None = None
+    detail: str | None = None
 
 
 def _is_safe_local_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -167,6 +174,11 @@ class OnboardingService:
             return VerifyOutcome(kind=VerifyKind.UNREACHABLE)
 
         if isinstance(login_res, Failure):
+            if login_res.http_status == 503 or "503" in login_res.reason:
+                return VerifyOutcome(
+                    kind=VerifyKind.UNREACHABLE,
+                    detail="The camera is upgrading its firmware. Try again in about a minute.",
+                )
             if login_res.kind == FailureKind.UNAUTHORIZED:
                 return VerifyOutcome(kind=VerifyKind.WRONG_CREDENTIALS)
             if login_res.kind == FailureKind.BLOCKED:
@@ -187,6 +199,11 @@ class OnboardingService:
             return VerifyOutcome(kind=VerifyKind.UNREACHABLE)
 
         if isinstance(cap_res, Failure):
+            if cap_res.http_status == 503 or "503" in cap_res.reason:
+                return VerifyOutcome(
+                    kind=VerifyKind.UNREACHABLE,
+                    detail="The camera is upgrading its firmware. Try again in about a minute.",
+                )
             if cap_res.kind == FailureKind.UNAUTHORIZED:
                 return VerifyOutcome(kind=VerifyKind.WRONG_CREDENTIALS)
             if cap_res.kind == FailureKind.PASSWORD_CHANGE_REQUIRED:
@@ -271,19 +288,98 @@ class OnboardingService:
 
         # 5. Probe factory credentials
         factory_result, retry_after = await self.probe_factory(bound_conn)
-        if factory_result == FactoryProbe.FACTORY_PASSWORD:
-            return AddOutcome(kind=AddOutcomeKind.NEEDS_NEW_PASSWORD, serial=serial)
         if factory_result == FactoryProbe.BLOCKED:
             return AddOutcome(kind=AddOutcomeKind.BLOCKED, serial=serial, retry_after_seconds=retry_after)
         if factory_result == FactoryProbe.UNREACHABLE:
             return AddOutcome(kind=AddOutcomeKind.UNREACHABLE, serial=serial)
 
-        # 6. Request current configured password
-        current_pw = await passwords.current_password()
+        notice: str | None = None
+        if factory_result == FactoryProbe.FACTORY_PASSWORD:
+            try:
+                new_pw = await passwords.new_password()
+                validate_new_camera_password(new_pw)
+            except (PasswordRuleError, PasswordMismatch) as err:
+                return AddOutcome(
+                    kind=AddOutcomeKind.INVALID_INPUT,
+                    serial=serial,
+                    detail=str(err),
+                )
+
+            conn_factory = bound_conn.with_credentials(FACTORY_USERNAME, FACTORY_PASSWORD)
+            onvif_factory = OnvifDeviceClient(conn_factory, self.layer.http, self.layer.clock)
+            set_res = await onvif_factory.set_user_password(FACTORY_USERNAME, new_pw)
+
+            if isinstance(set_res, Timeout):
+                return AddOutcome(
+                    kind=AddOutcomeKind.UNREACHABLE,
+                    serial=serial,
+                    detail=(
+                        "The camera did not confirm the change. It may already use the new password: "
+                        "run the add again and enter it when asked."
+                    ),
+                )
+            if isinstance(set_res, Failure):
+                if set_res.kind == FailureKind.FORBIDDEN:
+                    return AddOutcome(kind=AddOutcomeKind.FORBIDDEN, serial=serial, detail=set_res.reason)
+                if set_res.kind == FailureKind.BLOCKED:
+                    return AddOutcome(
+                        kind=AddOutcomeKind.BLOCKED,
+                        serial=serial,
+                        retry_after_seconds=_retry_sec(set_res),
+                    )
+                return AddOutcome(kind=AddOutcomeKind.GENERIC_FAILURE, serial=serial, detail=set_res.reason)
+
+            self.layer.sessions.clear_session_for(bound_conn.host)
+            current_pw = new_pw
+            notice = "Use this new password in the VizenLink mobile app too."
+        else:
+            current_pw = await passwords.current_password()
+
         authed_conn = bound_conn.with_credentials(FACTORY_USERNAME, current_pw)
 
         # 7. Authenticated verification via GetCapabilities
         verify_res = await self.verify_credentials(authed_conn)
+
+        if verify_res.kind == VerifyKind.NEEDS_NEW_PASSWORD:
+            try:
+                new_pw = await passwords.new_password()
+                validate_new_camera_password(new_pw)
+            except (PasswordRuleError, PasswordMismatch) as err:
+                return AddOutcome(
+                    kind=AddOutcomeKind.INVALID_INPUT,
+                    serial=serial,
+                    detail=str(err),
+                )
+
+            onvif_authed_device = OnvifDeviceClient(authed_conn, self.layer.http, self.layer.clock)
+            set_res = await onvif_authed_device.set_user_password(FACTORY_USERNAME, new_pw)
+
+            if isinstance(set_res, Timeout):
+                return AddOutcome(
+                    kind=AddOutcomeKind.UNREACHABLE,
+                    serial=serial,
+                    detail=(
+                        "The camera did not confirm the change. It may already use the new password: "
+                        "run the add again and enter it when asked."
+                    ),
+                )
+            if isinstance(set_res, Failure):
+                if set_res.kind == FailureKind.FORBIDDEN:
+                    return AddOutcome(kind=AddOutcomeKind.FORBIDDEN, serial=serial, detail=set_res.reason)
+                if set_res.kind == FailureKind.BLOCKED:
+                    return AddOutcome(
+                        kind=AddOutcomeKind.BLOCKED,
+                        serial=serial,
+                        retry_after_seconds=_retry_sec(set_res),
+                    )
+                return AddOutcome(kind=AddOutcomeKind.GENERIC_FAILURE, serial=serial, detail=set_res.reason)
+
+            self.layer.sessions.clear_session_for(bound_conn.host)
+            current_pw = new_pw
+            authed_conn = bound_conn.with_credentials(FACTORY_USERNAME, current_pw)
+            notice = "Use this new password in the VizenLink mobile app too."
+            verify_res = await self.verify_credentials(authed_conn)
+
         if verify_res.kind != VerifyKind.OK:
             mapping = {
                 VerifyKind.WRONG_CREDENTIALS: AddOutcomeKind.WRONG_CREDENTIALS,
@@ -298,6 +394,7 @@ class OnboardingService:
                 kind=mapping.get(verify_res.kind, AddOutcomeKind.GENERIC_FAILURE),
                 serial=serial,
                 retry_after_seconds=verify_res.retry_after,
+                detail=verify_res.detail,
             )
 
         # 8. Authenticated reads (serial re-verification, dev info, MAC, identity)
@@ -407,14 +504,23 @@ class OnboardingService:
             added_at=now,
         )
 
-        async with self.rt.sessions() as session:
-            async with session.begin():
-                cam_view = await insert_camera(session, rec)
+        try:
+            async with self.rt.sessions() as session:
+                async with session.begin():
+                    cam_view = await insert_camera(session, rec)
+        except Exception as exc:
+            logger.exception("Failed to insert camera %s: %s", serial, exc)
+            return AddOutcome(
+                kind=AddOutcomeKind.GENERIC_FAILURE,
+                serial=serial,
+                detail="Could not save the camera. Nothing was stored; try again.",
+            )
 
         return AddOutcome(
             kind=AddOutcomeKind.OK,
             serial=serial,
             camera=cam_view,
+            notice=notice,
         )
 
 

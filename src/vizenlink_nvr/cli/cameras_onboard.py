@@ -1,6 +1,8 @@
 """Camera onboarding CLI command (nvr cameras add)."""
 
 import asyncio
+import json
+import sys
 from typing import Annotated
 
 import typer
@@ -10,7 +12,7 @@ from rich.table import Table
 from vizenlink_nvr.cli.cameras import cameras_app
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.outcomes import present
-from vizenlink_nvr.cli.output import emit, fail
+from vizenlink_nvr.cli.output import emit, err_console, fail
 from vizenlink_nvr.cli.prompts import CliPasswordProvider
 from vizenlink_nvr.config import load_settings
 from vizenlink_nvr.services.onboarding import AddOutcomeKind, AddRequest, run_add
@@ -62,7 +64,20 @@ def add_camera(
     outcome = asyncio.run(run_add(settings, req, passwords))
 
     if outcome.kind == AddOutcomeKind.OK:
-        emit(outcome.camera, json_mode=json_mode, render_human=_render_camera_added)
+        if json_mode:
+            payload = outcome.camera.model_dump(mode="json") if outcome.camera else {}
+            if outcome.notice is not None:
+                payload["notice"] = outcome.notice
+            emit(payload, json_mode=True)
+            return
+
+        def render_human(cam: CameraView | None) -> None:
+            if cam:
+                _render_camera_added(cam)
+            if outcome.notice:
+                print(outcome.notice)
+
+        emit(outcome.camera, json_mode=False, render_human=render_human)
         return
 
     if outcome.kind == AddOutcomeKind.ADDRESS_UPDATED:
@@ -71,4 +86,22 @@ def add_camera(
         return
 
     code, msg = present(outcome)
-    fail(code, msg, json_mode=json_mode)
+    if json_mode:
+        payload = {
+            "kind": outcome.kind.value,
+            "message": msg,
+            "error": msg,
+            "code": int(code),
+        }
+        if outcome.detail:
+            payload["detail"] = outcome.detail
+        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+        sys.stdout.flush()
+        err_console.print(f"Error: {msg}")
+        if outcome.detail and outcome.detail.startswith("The camera"):
+            err_console.print(outcome.detail)
+        raise typer.Exit(code=int(code))
+
+    if outcome.detail and outcome.detail.startswith("The camera"):
+        err_console.print(outcome.detail)
+    fail(code, msg, json_mode=False)

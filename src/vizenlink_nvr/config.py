@@ -21,6 +21,9 @@ class NvrSettings(BaseSettings):
     )
     secrets_backend: Literal["auto", "keyring", "file"] = "auto"
     mediamtx_bin: Path | None = None
+    discovery_port: int = 3702
+    discovery_multicast_group: str = "239.255.255.250"
+    discovery_unicast_hosts: list[str] | None = None
 
 
 def load_settings(data_dir: Path | None = None) -> NvrSettings:

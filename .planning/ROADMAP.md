@@ -12,8 +12,8 @@ The NVR is built recorder-first. Phase 1 lays a locked-down, contract-tested fou
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundations & Camera Onboarding** - Secure, contract-tested base; cameras discovered, verified and registered by serial (headless)
-- [ ] **Phase 2: Headless Recording Core** - 24/7 fMP4 recording with reconciler, segment index, retention janitor, gap watchdog and storage guard
+- [x] **Phase 1: Foundations & Camera Onboarding** - Secure, contract-tested base; cameras discovered, verified and registered by serial (headless)
+- [x] **Phase 2: Headless Recording Core** - 24/7 fMP4 recording with reconciler, segment index, retention janitor, gap watchdog and storage guard
 - [ ] **Phase 3: Secure API, Auth & Live View** - First LAN exposure: accounts and roles, media auth, `/api/v1`, React web app, live grid, health overview
 - [ ] **Phase 4: Events & Event Recording** - Camera events ingested, protecting footage around them, listed, filtered and notified
 - [ ] **Phase 5: Playback, Export & Gallery** - Timeline playback, event jump, clip export, snapshots, gallery and recordings search
@@ -86,13 +86,13 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Schema migration 0003 and core recording data models (wave 1)
-- [ ] 02-02-PLAN.md — Storage safeguards, system drive guard, and telemetry (wave 2)
-- [ ] 02-03-PLAN.md — Recording modes, weekly schedule engine, and audio toggle (wave 3)
-- [ ] 02-04-PLAN.md — Declarative MediaMTX reconciler and process supervision (wave 4)
-- [ ] 02-05-PLAN.md — Two-source segment indexing: real-time hook and disk scanner (wave 5)
-- [ ] 02-06-PLAN.md — Retention janitor engine, low-water mark pruning, and camera removal (wave 6)
-- [ ] 02-07-PLAN.md — Recording gap watchdog, stream reconnect backoff, and health badges (wave 7)
-- [ ] 02-08-PLAN.md — Headless recording pipeline end-to-end tracer and local phase gate (wave 8)
+- [x] 02-02-PLAN.md — Storage safeguards, system drive guard, and telemetry (wave 2)
+- [x] 02-03-PLAN.md — Recording modes, weekly schedule engine, and audio toggle (wave 3)
+- [x] 02-04-PLAN.md — Declarative MediaMTX reconciler and process supervision (wave 4)
+- [x] 02-05-PLAN.md — Two-source segment indexing: real-time hook and disk scanner (wave 5)
+- [x] 02-06-PLAN.md — Retention janitor engine, low-water mark pruning, and camera removal (wave 6)
+- [x] 02-07-PLAN.md — Recording gap watchdog, stream reconnect backoff, and health badges (wave 7)
+- [x] 02-08-PLAN.md — Headless recording pipeline end-to-end tracer and local phase gate (wave 8)
 **Research**: Needed (spikes): fMP4 power-loss behaviour (10 hard kills) and a 24 h recording on a real camera; recordPath %s vs %z in the playback lookup; MediaMTX playback `/get` across gaps and seeks (decides the Phase 5 playback approach); MediaMTX restart with API-created paths; segment-hook helper on Windows/macOS (no shell strings); slow USB disk; janitor-only-deletion test.
 
 ### Phase 3: Secure API, Auth & Live View

@@ -14,6 +14,7 @@ from vizenlink_nvr.cli.exitcodes import ExitCode
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.output import emit, fail
 from vizenlink_nvr.config import load_settings
+from vizenlink_nvr.services.indexer import ScanReport, scan_and_reconcile
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.storage import (
     StorageConfig,
@@ -186,3 +187,53 @@ def set_path(
             f"[bold green]Storage path updated:[/] {res['storage_path']}"
         ),
     )
+
+
+@storage_app.command(name="scan")
+def scan(
+    serial: Annotated[
+        str | None,
+        typer.Option(
+            "--serial",
+            help="Filter reconciliation scan to a specific camera serial.",
+        ),
+    ] = None,
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Scan recording volume to reconcile disk segments with SQLite index."""
+    settings = load_settings(data_dir=data_dir)
+
+    async def _run() -> ScanReport:
+        async with open_runtime(settings) as rt:
+            async with rt.sessions() as session:
+                storage_cfg = await get_storage_config(
+                    session,
+                    default_path=settings.data_dir / "recordings",
+                )
+                return await scan_and_reconcile(
+                    session,
+                    storage_path=storage_cfg.storage_path,
+                    serial_filter=serial,
+                )
+
+    report = asyncio.run(_run())
+    payload = {
+        "adopted": report.adopted,
+        "missing_marked": report.missing_marked,
+        "truncated_marked": report.truncated_marked,
+        "total_valid": report.total_valid,
+    }
+
+    def _render_human(data: dict[str, Any]) -> None:
+        table = Table(title="Storage Segment Reconciliation Scan", show_header=True)
+        table.add_column("Metric", style="cyan")
+        table.add_column("Count", style="magenta")
+
+        table.add_row("Adopted Segments", str(data["adopted"]))
+        table.add_row("Marked Missing", str(data["missing_marked"]))
+        table.add_row("Marked Truncated", str(data["truncated_marked"]))
+        table.add_row("Total Valid Segments", str(data["total_valid"]))
+        Console().print(table)
+
+    emit(payload, json_mode=json_mode, render_human=_render_human)

@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: Headless Recording Core
 status: executing
-stopped_at: Plan 02-04 complete; ready for Plan 02-05
-last_updated: "2026-11-02T13:00:00.000Z"
+stopped_at: Plan 02-05 complete; ready for Plan 02-06
+last_updated: "2026-11-02T13:05:00.000Z"
 last_activity: 2026-11-02
-last_activity_desc: Plan 02-04 complete (declarative reconciler, MediaMTX API, nvr recording reconcile CLI); ready for Plan 02-05
-state_head: d10b412
+last_activity_desc: Plan 02-05 complete (two-source indexing, hook-segment-complete, nvr storage scan CLI); ready for Plan 02-06
+state_head: 908390d
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 39
-  completed_plans: 35
-  percent: 90
+  completed_plans: 36
+  percent: 92
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 02 (Headless Recording Core) — EXECUTING
-Plan: 4 of 8 complete (ready for 02-05)
+Plan: 5 of 8 complete (ready for 02-06)
 Status: Executing
-Last activity: 2026-11-02 — Plan 02-04 complete (declarative reconciler, MediaMTX API, nvr recording reconcile CLI)
+Last activity: 2026-11-02 — Plan 02-05 complete (two-source indexing, hook-segment-complete, nvr storage scan CLI)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░] 90%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░] 92%
 
 ## Performance Metrics
 

@@ -25,6 +25,7 @@ from vizenlink_nvr.media.reconciler import (
     get_control_password,
 )
 from vizenlink_nvr.secrets.vault import open_vault
+from vizenlink_nvr.services.indexer import record_segment_from_hook
 from vizenlink_nvr.services.recording_settings import (
     AudioNotSupportedError,
     CameraNotFoundError,
@@ -343,3 +344,22 @@ def reconcile(
         Console().print(table)
 
     emit(payload, json_mode=json_mode, render_human=_render_human)
+
+
+@recording_app.command(name="hook-segment-complete", hidden=True)
+def hook_segment_complete(
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Internal hook executed by MediaMTX when a recording segment completes."""
+    env = dict(os.environ)
+    settings = load_settings(data_dir=data_dir)
+
+    async def _run() -> None:
+        async with open_runtime(settings) as rt:
+            async with rt.sessions() as session:
+                await record_segment_from_hook(session, env)
+
+    try:
+        asyncio.run(_run())
+    except Exception as exc:
+        logger.error("Error processing hook-segment-complete: %s", exc)

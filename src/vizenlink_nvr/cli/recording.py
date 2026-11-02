@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import os
 from typing import Annotated, Any
 
+import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -14,6 +17,14 @@ from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.output import emit, fail
 from vizenlink_nvr.config import load_settings
 from vizenlink_nvr.db.models import RecordingSettings
+from vizenlink_nvr.media.config import CONTROL_USER
+from vizenlink_nvr.media.reconciler import (
+    MediaMtxReconciler,
+    ReconcileResult,
+    compute_desired_paths,
+    get_control_password,
+)
+from vizenlink_nvr.secrets.vault import open_vault
 from vizenlink_nvr.services.recording_settings import (
     AudioNotSupportedError,
     CameraNotFoundError,
@@ -25,11 +36,14 @@ from vizenlink_nvr.services.recording_settings import (
 )
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.schedule import WeeklySchedule
+from vizenlink_nvr.services.settings import get_site_timezone
+from vizenlink_nvr.services.storage import StorageHealthState, get_storage_config
 
 recording_app = typer.Typer(
     no_args_is_help=True,
     help="Recording configuration and status.",
 )
+logger = logging.getLogger(__name__)
 
 
 @recording_app.callback()
@@ -258,3 +272,74 @@ def set_retention(
         json_mode=json_mode,
         render_human=_render_settings_human,
     )
+
+
+@recording_app.command(name="reconcile")
+def reconcile(
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Synchronize camera recording paths from database into MediaMTX."""
+    settings = load_settings(data_dir=data_dir)
+    api_url = os.environ.get("NVR_MEDIAMTX_API_URL", "http://127.0.0.1:9997")
+    control_pw = get_control_password(settings)
+    auth = (CONTROL_USER, control_pw)
+
+    async def _run() -> ReconcileResult:
+        async with open_runtime(settings) as rt:
+            site_tz = await get_site_timezone(rt)
+            vault = None
+            try:
+                vault = await open_vault(rt)
+            except Exception as exc:
+                logger.debug("Vault deferred or unavailable: %s", exc)
+
+            async with rt.sessions() as session:
+                storage_cfg = await get_storage_config(
+                    session,
+                    default_path=settings.data_dir / "recordings",
+                )
+                volume_ok = storage_cfg.health_state == StorageHealthState.OK
+
+                desired = await compute_desired_paths(
+                    session,
+                    storage_path=storage_cfg.storage_path,
+                    volume_ok=volume_ok,
+                    tz_name=site_tz,
+                    vault=vault,
+                )
+
+                async with httpx.AsyncClient() as client:
+                    reconciler = MediaMtxReconciler(client, api_url, auth)
+                    return await reconciler.reconcile(desired)
+
+    try:
+        result = asyncio.run(_run())
+    except Exception as exc:
+        fail(
+            ExitCode.MEDIAMTX_CHECK_FAILED,
+            f"Failed to reconcile MediaMTX paths: {exc}",
+            json_mode=json_mode,
+        )
+
+    payload = {
+        "added": result.added,
+        "patched": result.patched,
+        "deleted": result.deleted,
+        "unchanged": result.unchanged,
+        "total_managed": len(result.added) + len(result.patched) + len(result.unchanged),
+    }
+
+    def _render_human(data: dict[str, Any]) -> None:
+        table = Table(title="MediaMTX Path Reconciliation", show_header=True)
+        table.add_column("Action", style="cyan")
+        table.add_column("Count", style="magenta")
+        table.add_column("Paths", style="white")
+
+        table.add_row("Added", str(len(data["added"])), ", ".join(data["added"]) or "-")
+        table.add_row("Patched", str(len(data["patched"])), ", ".join(data["patched"]) or "-")
+        table.add_row("Deleted", str(len(data["deleted"])), ", ".join(data["deleted"]) or "-")
+        table.add_row("Unchanged", str(len(data["unchanged"])), ", ".join(data["unchanged"]) or "-")
+        Console().print(table)
+
+    emit(payload, json_mode=json_mode, render_human=_render_human)

@@ -85,7 +85,7 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Schema migration 0003 and core recording data models (wave 1)
+- [x] 02-01-PLAN.md — Schema migration 0003 and core recording data models (wave 1)
 - [ ] 02-02-PLAN.md — Storage safeguards, system drive guard, and telemetry (wave 2)
 - [ ] 02-03-PLAN.md — Recording modes, weekly schedule engine, and audio toggle (wave 3)
 - [ ] 02-04-PLAN.md — Declarative MediaMTX reconciler and process supervision (wave 4)

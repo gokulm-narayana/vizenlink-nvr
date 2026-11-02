@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, LargeBinary, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    Text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from vizenlink_nvr.db.types import UtcDateTime
@@ -66,6 +75,19 @@ class Camera(Base):
     )
     streams: Mapped[list["CameraStream"]] = relationship(
         "CameraStream",
+        back_populates="camera",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    recording_settings: Mapped["RecordingSettings | None"] = relationship(
+        "RecordingSettings",
+        back_populates="camera",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    segments: Mapped[list["Segment"]] = relationship(
+        "Segment",
         back_populates="camera",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -147,3 +169,78 @@ class CameraStream(Base):
         CheckConstraint("role IN ('main', 'sub')", name="ck_camera_stream_role"),
         CheckConstraint("source IN ('nuraeye', 'onvif_fallback')", name="ck_camera_stream_source"),
     )
+
+
+class RecordingSettings(Base):
+    """Per-camera recording configuration and retention policies."""
+
+    __tablename__ = "recording_settings"
+
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    mode: Mapped[str] = mapped_column(Text, nullable=False, default="continuous")
+    schedule_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    audio_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    retention_max_gb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="recording_settings")
+
+    __table_args__ = (
+        CheckConstraint(
+            "mode IN ('continuous', 'scheduled', 'event', 'off')",
+            name="ck_recording_settings_mode",
+        ),
+    )
+
+
+class Segment(Base):
+    """Indexed recording segment stored on disk."""
+
+    __tablename__ = "segments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    stream_type: Mapped[str] = mapped_column(Text, nullable=False, default="main")
+    file_path: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    start_time: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    end_time: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    duration_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
+    is_protected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    protection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="segments")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'missing', 'truncated')",
+            name="ck_segment_status",
+        ),
+    )
+
+
+class StorageSettings(Base):
+    """System-wide recording storage path and safety thresholds."""
+
+    __tablename__ = "storage_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    allow_system_disk: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    reserve_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=10 * 1024 * 1024 * 1024)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+

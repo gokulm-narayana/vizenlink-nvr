@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 02 (Headless Recording Core) — EXECUTING
-Plan: 6 of 8 complete (ready for 02-07)
+Plan: 7 of 8 complete (ready for 02-08)
 Status: Executing
-Last activity: 2026-11-02 — Plan 02-06 complete (retention janitor, low-water mark pruning, camera removal keep/delete choice)
+Last activity: 2026-11-02 — Plan 02-07 complete (gap watchdog, stream reconnect backoff, dual health badges, recorder health)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░] 95%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░] 97%
 
 ## Performance Metrics
 

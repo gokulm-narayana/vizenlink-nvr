@@ -11,12 +11,14 @@ import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from vizenlink_nvr.cli.exitcodes import ExitCode
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
 from vizenlink_nvr.cli.output import emit, fail
 from vizenlink_nvr.config import load_settings
-from vizenlink_nvr.db.models import RecordingSettings
+from vizenlink_nvr.db.models import Camera, RecordingSettings
 from vizenlink_nvr.media.config import CONTROL_USER
 from vizenlink_nvr.media.reconciler import (
     MediaMtxReconciler,
@@ -39,6 +41,7 @@ from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.schedule import WeeklySchedule
 from vizenlink_nvr.services.settings import get_site_timezone
 from vizenlink_nvr.services.storage import StorageHealthState, get_storage_config
+from vizenlink_nvr.services.watchdog import check_camera_gaps
 
 recording_app = typer.Typer(
     no_args_is_help=True,
@@ -363,3 +366,87 @@ def hook_segment_complete(
         asyncio.run(_run())
     except Exception as exc:
         logger.error("Error processing hook-segment-complete: %s", exc)
+
+
+@recording_app.command(name="status")
+def recording_status(
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Show per-camera recording state, mode, current segment age, and health badges."""
+    settings = load_settings(data_dir=data_dir)
+
+    async def _run() -> dict[str, Any]:
+        async with open_runtime(settings) as rt:
+            async with rt.sessions() as session:
+                health_map = await check_camera_gaps(session)
+                cam_res = await session.execute(
+                    select(Camera).options(selectinload(Camera.recording_settings))
+                )
+                cameras = {c.serial: c for c in cam_res.scalars().all()}
+
+                out: list[dict[str, Any]] = []
+                for serial, h in sorted(health_map.items()):
+                    cam = cameras.get(serial)
+                    mode = cam.recording_settings.mode if (cam and cam.recording_settings) else "continuous"
+                    out.append({
+                        "camera_serial": serial,
+                        "name": cam.name if cam else None,
+                        "online_state": h.online_state.value,
+                        "recording_state": h.recording_state.value,
+                        "mode": mode,
+                        "last_segment_at": h.last_segment_at.isoformat() if h.last_segment_at else None,
+                        "segment_age_seconds": h.segment_age_seconds,
+                        "gap_alarm": h.gap_alarm,
+                        "details": h.details,
+                    })
+                return {"cameras": out}
+
+    data = asyncio.run(_run())
+
+    def _render_human(report: dict[str, Any]) -> None:
+        table = Table(title="Camera Recording & Health Status", show_header=True)
+        table.add_column("Serial", style="cyan", no_wrap=True)
+        table.add_column("Name", style="green")
+        table.add_column("Online", style="bold")
+        table.add_column("Recording", style="bold")
+        table.add_column("Mode", style="white")
+        table.add_column("Last Segment Age", style="magenta")
+        table.add_column("Gap Alarm", style="bold")
+
+        for item in report.get("cameras", []):
+            online = item["online_state"]
+            on_style = "green" if online == "online" else "red"
+            on_badge = f"[{on_style}]{online.upper()}[/{on_style}]"
+
+            rec = item["recording_state"]
+            if rec == "recording":
+                rec_badge = "[green]RECORDING[/green]"
+            elif rec == "disabled":
+                rec_badge = "[yellow]DISABLED[/yellow]"
+            else:
+                rec_badge = "[red]NOT RECORDING[/red]"
+
+            age_str = (
+                f"{item['segment_age_seconds']}s ago"
+                if item.get("segment_age_seconds") is not None
+                else "-"
+            )
+            alarm_badge = (
+                "[bold red]ALARM[/bold red]" if item.get("gap_alarm") else "[green]OK[/green]"
+            )
+
+            table.add_row(
+                item["camera_serial"],
+                item["name"] or "-",
+                on_badge,
+                rec_badge,
+                item["mode"],
+                age_str,
+                alarm_badge,
+            )
+
+        Console().print(table)
+
+    emit(data, json_mode=json_mode, render_human=_render_human)
+

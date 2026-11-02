@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 ## Current Position
 
 Phase: 02 (Headless Recording Core) — EXECUTING
-Plan: 5 of 8 complete (ready for 02-06)
+Plan: 6 of 8 complete (ready for 02-07)
 Status: Executing
-Last activity: 2026-11-02 — Plan 02-05 complete (two-source indexing, hook-segment-complete, nvr storage scan CLI)
+Last activity: 2026-11-02 — Plan 02-06 complete (retention janitor, low-water mark pruning, camera removal keep/delete choice)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░] 92%
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░] 95%
 
 ## Performance Metrics
 

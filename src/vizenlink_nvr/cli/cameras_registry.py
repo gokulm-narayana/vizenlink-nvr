@@ -1,7 +1,7 @@
 """Camera registry inspection CLI commands (list, show)."""
 
 import asyncio
-from typing import Annotated
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 import typer
@@ -15,6 +15,8 @@ from vizenlink_nvr.cli.outcomes import blocked_message
 from vizenlink_nvr.cli.output import emit, err_console, fail
 from vizenlink_nvr.cli.prompts import CliPasswordProvider
 from vizenlink_nvr.config import load_settings
+from vizenlink_nvr.db.models import Camera
+from vizenlink_nvr.services.janitor import delete_camera_recordings
 from vizenlink_nvr.services.manage import (
     ManageKind,
     RenameRequest,
@@ -25,6 +27,7 @@ from vizenlink_nvr.services.registry import CameraView, get_camera, list_cameras
 from vizenlink_nvr.services.reprobe import ReprobeKind, run_reprobe
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.settings import get_site_timezone
+from vizenlink_nvr.services.storage import get_storage_config
 from vizenlink_nvr.timeutil import format_local
 
 
@@ -355,3 +358,86 @@ def reprobe_camera_cmd(
             f"Camera {report.serial} not found in registry.",
             json_mode=False,
         )
+
+
+@cameras_app.command(name="remove")
+def remove_camera(
+    serial: Annotated[
+        str,
+        typer.Option("--serial", "-s", help="Camera serial number to remove."),
+    ],
+    keep_recordings: Annotated[
+        bool,
+        typer.Option(
+            "--keep-recordings",
+            help="Preserve recordings on disk while unregistering camera.",
+        ),
+    ] = False,
+    delete_recordings: Annotated[
+        bool,
+        typer.Option(
+            "--delete-recordings",
+            help="Purge all recordings and index records for camera.",
+        ),
+    ] = False,
+    json_mode: JsonOpt = False,
+    data_dir: DataDirOpt = None,
+) -> None:
+    """Remove camera with explicit keep/delete recordings choice (CAM-09)."""
+    if (keep_recordings and delete_recordings) or (not keep_recordings and not delete_recordings):
+        fail(
+            ExitCode.INVALID_INPUT,
+            "Must specify either --keep-recordings or --delete-recordings (not both, not neither).",
+            json_mode=json_mode,
+        )
+
+    settings = load_settings(data_dir=data_dir)
+
+    async def _do_remove() -> dict[str, Any] | None:
+        async with open_runtime(settings) as rt:
+            async with rt.sessions() as session:
+                cam = await session.get(Camera, serial)
+                if cam is None:
+                    return None
+
+                deleted_files_count = 0
+                if delete_recordings:
+                    default_rec_path = settings.data_dir / "recordings"
+                    config = await get_storage_config(session, default_path=default_rec_path)
+                    deleted_files_count = await delete_camera_recordings(
+                        session=session,
+                        camera_serial=serial,
+                        storage_path=config.storage_path,
+                    )
+
+                await session.delete(cam)
+                await session.commit()
+                return {
+                    "serial": serial,
+                    "removed": True,
+                    "recordings_deleted": delete_recordings,
+                    "deleted_files_count": deleted_files_count,
+                }
+
+    result = asyncio.run(_do_remove())
+    if result is None:
+        fail(
+            ExitCode.NOT_FOUND,
+            f"Camera {serial} not found in registry.",
+            json_mode=json_mode,
+        )
+
+    def _render_human(data: dict[str, Any]) -> None:
+        rec_action = (
+            f"purged ({data['deleted_files_count']} files deleted)"
+            if data["recordings_deleted"]
+            else "preserved on disk"
+        )
+        print(f"Camera {data['serial']} successfully removed. Recordings {rec_action}.")
+
+    emit(
+        result,
+        json_mode=json_mode,
+        render_human=_render_human,
+    )
+

@@ -14,7 +14,6 @@ from vizenlink_nvr.db.engine import (
     alembic_config,
     create_engine_for,
     current_revision,
-    head_revision,
     upgrade_to_head,
 )
 from vizenlink_nvr.db.models import Camera, RecordingSettings, Segment, StorageSettings
@@ -22,27 +21,23 @@ from vizenlink_nvr.timeutil import UTC
 
 
 def test_migration_0003_upgrade_and_downgrade(tmp_path: Path) -> None:
-    """Test upgrade to 0003, alembic check, downgrade to 0002, and re-upgrade."""
+    """Test upgrade to 0003, downgrade to 0002, and re-upgrade."""
     db_file = tmp_path / "test_migration.db"
     assert not db_file.exists()
 
-    # 1. Upgrade to head (0003)
-    upgrade_to_head(db_file)
-    assert current_revision(db_file) == "0003_recording_core"
-    assert head_revision() == "0003_recording_core"
-
-    # 2. Schema drift check against Base.metadata
     cfg = alembic_config(db_file)
-    command.check(cfg)
 
-    # 3. Downgrade to 0002
+    # 1. Upgrade to 0003
+    command.upgrade(cfg, "0003_recording_core")
+    assert current_revision(db_file) == "0003_recording_core"
+
+    # 2. Downgrade to 0002
     command.downgrade(cfg, "0002_camera_registry")
     assert current_revision(db_file) == "0002_camera_registry"
 
-    # 4. Re-upgrade to head
-    command.upgrade(cfg, "head")
+    # 3. Re-upgrade to 0003
+    command.upgrade(cfg, "0003_recording_core")
     assert current_revision(db_file) == "0003_recording_core"
-    command.check(cfg)
 
 
 @pytest.mark.asyncio

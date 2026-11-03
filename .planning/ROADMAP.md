@@ -108,7 +108,7 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Schema migration 0004, auth models, and Argon2id password hashing (wave 1)
+- [x] 03-01-PLAN.md — Schema migration 0004, auth models, and Argon2id password hashing (wave 1)
 - [ ] 03-02-PLAN.md — First-run setup wizard, session authentication, and brute-force rate-limiting (wave 2)
 - [ ] 03-03-PLAN.md — Server-side RBAC dependencies and user management API (wave 3)
 - [ ] 03-04-PLAN.md — MediaMTX HTTP media auth webhook and signed media tokens (wave 4)

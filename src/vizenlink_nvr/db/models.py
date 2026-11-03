@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -88,6 +89,18 @@ class Camera(Base):
     )
     segments: Mapped[list["Segment"]] = relationship(
         "Segment",
+        back_populates="camera",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    user_permissions: Mapped[list["UserCameraPermission"]] = relationship(
+        "UserCameraPermission",
+        back_populates="camera",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    outages: Mapped[list["CameraOutage"]] = relationship(
+        "CameraOutage",
         back_populates="camera",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -243,4 +256,125 @@ class StorageSettings(Base):
     reserve_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=10 * 1024 * 1024 * 1024)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+
+class User(Base):
+    """Local user account with role-based access control."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False, default="viewer")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    cognito_sub: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+    permissions: Mapped[list["UserCameraPermission"]] = relationship(
+        "UserCameraPermission",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    sessions: Mapped[list["Session"]] = relationship(
+        "Session",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('owner', 'operator', 'viewer')",
+            name="ck_user_role",
+        ),
+    )
+
+
+class UserCameraPermission(Base):
+    """Explicit camera access grant for restricted users."""
+
+    __tablename__ = "user_camera_permissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="permissions")
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="user_permissions")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "camera_serial", name="uq_user_camera_permission"),
+    )
+
+
+class Session(Base):
+    """Authenticated user web session token."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    last_active_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="sessions")
+
+
+class AuditLog(Base):
+    """Append-only audit trail for administrative and operational events."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    actor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    actor_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    action: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    resource_type: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CameraOutage(Base):
+    """Historical camera disconnection and recovery record."""
+
+    __tablename__ = "camera_outages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    started_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    ended_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="outages")
+
 

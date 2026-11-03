@@ -34,11 +34,11 @@ def test_migration_upgrade_and_drift_check(tmp_path: Path) -> None:
     cur = current_revision(database_file)
     head = head_revision()
     assert cur == head
-    assert cur == "0003_recording_core"
+    assert cur == "0004_auth_and_audit"
 
     # Idempotent second upgrade
     upgrade_to_head(database_file)
-    assert current_revision(database_file) == "0003_recording_core"
+    assert current_revision(database_file) == "0004_auth_and_audit"
 
     # Check for schema drift against Base.metadata
     cfg = alembic_config(database_file)
@@ -61,8 +61,8 @@ async def test_runtime_open_and_permissions(tmp_path: Path) -> None:
 
         report = await get_status(rt)
         assert report.db_ok is True
-        assert report.schema_revision == "0003_recording_core"
-        assert report.schema_head == "0003_recording_core"
+        assert report.schema_revision == "0004_auth_and_audit"
+        assert report.schema_head == "0004_auth_and_audit"
         assert report.data_dir == str(tmp_path)
 
 

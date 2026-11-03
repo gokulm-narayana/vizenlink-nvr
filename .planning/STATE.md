@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 02
-current_phase_name: Headless Recording Core
-status: executing
-stopped_at: Plan 02-05 complete; ready for Plan 02-06
-last_updated: "2026-11-02T13:05:00.000Z"
-last_activity: 2026-11-02
-last_activity_desc: Plan 02-05 complete (two-source indexing, hook-segment-complete, nvr storage scan CLI); ready for Plan 02-06
-state_head: 908390d
+current_phase: 03
+current_phase_name: Secure API, Auth & Live View
+status: ready_to_execute
+stopped_at: Phase 03 planning complete; ready for Plan 03-01
+last_updated: "2026-11-03T05:55:00.000Z"
+last_activity: 2026-11-03
+last_activity_desc: Phase 03 discussion and planning complete (8 plans generated across 8 waves); ready for Plan 03-01
+state_head: df8c81f
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 39
-  completed_plans: 36
-  percent: 92
+  completed_phases: 2
+  total_plans: 47
+  completed_plans: 39
+  percent: 83
 ---
 
 # Project State
@@ -23,71 +23,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-26)
 
 **Core value:** Never miss footage: every added camera records reliably 24/7 (plus events), and that footage is always findable on a timeline from both the web UI and the mobile app.
-**Current focus:** Phase 02 — Headless Recording Core
+**Current focus:** Phase 03 — Secure API, Auth & Live View
 
 ## Current Position
 
-Phase: 02 (Headless Recording Core) — COMPLETE
-Plan: 8 of 8 complete (Phase 02 Gate Passed)
-Status: Ready for next phase
-Last activity: 2026-11-02 — Plan 02-08 complete (end-to-end recording pipeline tracer, fMP4 verification, Phase 02 gate 8/8 PASS)
+Phase: 03 (Secure API, Auth & Live View) — Ready to Execute
+Plan: 0 of 8 complete
+Status: Ready for Plan 03-01 execution
+Last activity: 2026-11-03 — Phase 03 planning complete (Context, Discussion Log, Research, Validation, and 8 Plans authored)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100% (Phases 01 & 02)
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0.0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░] 83% (Phases 01 & 02 complete; Phase 03 planned)
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Decisions are logged in PROJECT.md Key Decisions table and Phase 03 Context (D-41 to D-45):
 
-- [Roadmap]: Recording core (Phase 2) ships and is proven headless before any LAN exposure; auth incl. MediaMTX media auth lands with the first LAN-exposed API (Phase 3)
-- [Roadmap]: Phases 1-2 are verified through a local admin CLI on loopback; Phase 3 surfaces onboarding, recording settings and health in the web app
-- [Roadmap]: Event source defaults to ONVIF PullPoint behind an EventSource interface; NuraEye LAN slot reserved
-- [Roadmap]: Event recording = continuous recording + protected ranges (pre/post-roll); NVR janitor is the sole deleter (recordDeleteAfter 0s)
-
-### Pending Todos
-
-- Later blocking gates: D-11 in 01-24; real-camera execution in 01-30.
-
-### Blockers/Concerns
-
-- [Phase 2]: Spikes decide fMP4 power-loss safety, recordPath %s vs %z, and whether MediaMTX `/get` handles gaps/seeks (drives Phase 5 playback design)
-- [Phase 3]: MediaMTX authMethod jwt vs http undecided (spike)
-- [Phase 4]: Firmware owner must confirm whether a NuraEye LAN alert feed exists (not blocking; PullPoint is default)
-- [Open]: Mobile TLS posture (origin strategy in Phase 3, finalised in Phase 7); Cognito link UI assumed v1.x
-- [Open]: Default recording profile/retention: 16 cameras at 4 Mbps is about 690 GB/day; dedicated recording disk needed for 8+ cameras
-- [Research]: FEATURES.md still mentions mpegts for REC-01/PLAY-04; superseded by fMP4
-
-## Deferred Items
-
-Items acknowledged and deferred at milestone close, most recent first:
-
-| Category | Item | Status | Deferred At | Milestone |
-|----------|------|--------|-------------|-----------|
-| *(none)* | | | | |
+- [D-41]: Web Setup Wizard on uninitialized NVR redirects to `/setup`. Creates Owner account (Argon2id, min 8 chars), site timezone, and storage directory. HTTP-only, SameSite=Lax session cookies with 5-failure 15-minute brute-force lockout.
+- [D-42]: MediaMTX configured with `authMethod: http` pointing to NVR loopback auth endpoint `/api/v1/auth/mediamtx`. Short-lived (15 min) signed media tokens validated on read attempts.
+- [D-43]: OpenAPI 3.1 REST API under `/api/v1` for auth, users, cameras, recording, storage, and health. Data model includes nullable `cognito_sub` for future cloud linking (AUTH-08). CI breaking-change detector guards compatibility.
+- [D-44]: Persistent SQLite `audit_logs` tracking logins, failures, camera ops, config changes, and user management.
+- [D-45]: React + Vite + Tailwind CSS Single Page App served by FastAPI. WebRTC (WHEP) player with HLS fallback. 1×1 to 4×4 multiview grid using sub-streams by default, auto-switching to main stream on zoom. Layout persisted in `localStorage`. Simple vs Advanced view toggle (AUTH-06).
 
 ## Session Continuity
 
-Last session: 2026-11-02
-Stopped at: Plan 02-01 complete; ready for Plan 02-02
-Resume file: .planning/phases/02-headless-recording-core/02-02-PLAN.md
+Last session: 2026-11-03
+Stopped at: Phase 03 planning complete; ready for Plan 03-01
+Resume file: .planning/phases/03-secure-api-auth-live-view/03-01-PLAN.md

@@ -105,7 +105,17 @@ Plans:
   3. User can watch one camera live over WebRTC (HLS fallback) in fullscreen, or a paginated 1×1/2×2/3×3/4×4 grid on sub streams where an enlarged tile switches to the main stream; every tile shows connecting/live/offline truthfully and reconnects on its own, tile controls (snapshot, maximize, mute, name overlay, recording indicator) work, and the arranged layout is remembered
   4. The dashboard summarizes cameras online, recording, issues, storage used and active alerts, with separate online and recording badges per camera and each camera's offline/recovery history; in-app alerts fire for a camera offline longer than N minutes, a nearly full disk and recording gaps; the owner can add cameras and set recording modes in the web app, and Simple view (the default) hides advanced settings that Advanced view reveals
   5. `/api/v1` is published as a versioned OpenAPI 3.1 document, the web app uses a client generated from it, and CI fails on a breaking API change; a user account can hold a linked VizenLink (Cognito) identity in the data model
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Schema migration 0004, auth models, and Argon2id password hashing (wave 1)
+- [ ] 03-02-PLAN.md — First-run setup wizard, session authentication, and brute-force rate-limiting (wave 2)
+- [ ] 03-03-PLAN.md — Server-side RBAC dependencies and user management API (wave 3)
+- [ ] 03-04-PLAN.md — MediaMTX HTTP media auth webhook and signed media tokens (wave 4)
+- [ ] 03-05-PLAN.md — Core /api/v1 REST endpoints and OpenAPI 3.1 breaking-change guard (wave 5)
+- [ ] 03-06-PLAN.md — Persistent audit logging, camera outage tracking, and in-app alerts (wave 6)
+- [ ] 03-07-PLAN.md — React SPA, live multiview grid (1x1 to 4x4), and WHEP/HLS player (wave 7)
+- [ ] 03-08-PLAN.md — Health dashboard, Simple vs Advanced view toggle, and end-to-end tracer (wave 8)
 **UI hint**: yes
 **Research**: Needed (spikes): MediaMTX authMethod jwt vs http, including media-token renewal before expiry; multi-NIC WebRTC with UDP blocked; WebRTC load at 16 sessions; H.265 browser support matrix.
 

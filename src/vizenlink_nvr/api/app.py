@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from vizenlink_nvr.api.v1.audit import audit_router
 from vizenlink_nvr.api.v1.auth import auth_router
 from vizenlink_nvr.api.v1.cameras import cameras_router
 from vizenlink_nvr.api.v1.health import health_router
@@ -41,6 +42,7 @@ def create_app(
     v1_router.include_router(recording_router)
     v1_router.include_router(storage_router)
     v1_router.include_router(health_router)
+    v1_router.include_router(audit_router)
 
     app.include_router(v1_router)
 

@@ -18,6 +18,7 @@ from vizenlink_nvr.api.dependencies import (
 )
 from vizenlink_nvr.db.models import Camera
 from vizenlink_nvr.secrets.vault import Vault
+from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.media_token import DEFAULT_TOKEN_TTL_SECONDS, default_media_token_service
 from vizenlink_nvr.services.registry import (
     CameraView,
@@ -184,6 +185,18 @@ async def add_camera_endpoint(
 
     created_view = await insert_camera(db, record)
     await db.commit()
+
+    await AuditService.record_event(
+        session=db,
+        action="camera.add",
+        resource_type="camera",
+        resource_id=payload.serial,
+        actor_id=user.id,
+        actor_username=user.username,
+        details={"host": payload.host, "name": payload.name},
+        commit=True,
+    )
+
     return created_view
 
 
@@ -219,6 +232,17 @@ async def remove_camera_endpoint(
 
     await db.delete(cam)
     await db.commit()
+
+    await AuditService.record_event(
+        session=db,
+        action="camera.remove",
+        resource_type="camera",
+        resource_id=serial,
+        actor_id=user.id,
+        actor_username=user.username,
+        details={"keep_recordings": keep_recordings},
+        commit=True,
+    )
 
     return {
         "serial": serial,

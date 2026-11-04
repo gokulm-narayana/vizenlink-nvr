@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from vizenlink_nvr.api.dependencies import DbSession, RequireOwner
 from vizenlink_nvr.db.models import Camera, User, UserCameraPermission
+from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.auth_hasher import hash_password
 from vizenlink_nvr.services.session_manager import SessionManager
 from vizenlink_nvr.services.setup import MIN_PASSWORD_LENGTH
@@ -85,7 +86,7 @@ async def list_users(
 async def create_user(
     payload: CreateUserRequest,
     db: DbSession,
-    _: RequireOwner,
+    owner: RequireOwner,
 ) -> UserDetailResponse:
     """Create a new user account with role and optional camera whitelist (Admin/Owner only)."""
     username = payload.username.strip()
@@ -151,6 +152,18 @@ async def create_user(
     # Eagerly load user with permissions
     stmt = select(User).where(User.id == new_user.id).options(selectinload(User.permissions))
     loaded = (await db.execute(stmt)).scalar_one()
+
+    await AuditService.record_event(
+        session=db,
+        action="user.create",
+        resource_type="user",
+        resource_id=str(loaded.id),
+        actor_id=owner.id,
+        actor_username=owner.username,
+        details={"username": loaded.username, "role": loaded.role},
+        commit=True,
+    )
+
     return _serialize_user(loaded)
 
 
@@ -250,6 +263,18 @@ async def update_user(
 
     user.updated_at = now
     await db.commit()
+
+    await AuditService.record_event(
+        session=db,
+        action="user.update",
+        resource_type="user",
+        resource_id=str(user.id),
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        details={"role": user.role, "is_active": user.is_active},
+        commit=True,
+    )
+
     return _serialize_user(user)
 
 
@@ -258,7 +283,7 @@ async def reset_password(
     user_id: int,
     payload: ResetPasswordRequest,
     db: DbSession,
-    _: RequireOwner,
+    owner: RequireOwner,
 ) -> dict[str, Any]:
     """Admin reset of a user's password; invalidates user's existing sessions (Admin/Owner only)."""
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
@@ -274,5 +299,15 @@ async def reset_password(
     # Invalidate all existing sessions so old logins cannot continue
     await SessionManager.invalidate_user_sessions(db, user.id)
     await db.commit()
+
+    await AuditService.record_event(
+        session=db,
+        action="user.reset_password",
+        resource_type="user",
+        resource_id=str(user.id),
+        actor_id=owner.id,
+        actor_username=owner.username,
+        commit=True,
+    )
 
     return {"success": True, "message": f"Password reset successfully for user '{user.username}'"}

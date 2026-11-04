@@ -18,6 +18,7 @@ from vizenlink_nvr.api.dependencies import (
 )
 from vizenlink_nvr.db.models import User
 from vizenlink_nvr.media.config import CONTROL_USER
+from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.auth_hasher import hash_password, verify_password
 from vizenlink_nvr.services.media_token import default_media_token_service
 from vizenlink_nvr.services.rate_limiter import login_rate_limiter
@@ -142,6 +143,17 @@ async def setup_nvr(
     sess = await SessionManager.create_session(db, owner.id, ip, ua)
     SessionManager.set_cookie(response, sess.id)
 
+    await AuditService.record_event(
+        session=db,
+        action="system.setup",
+        resource_type="system",
+        actor_id=owner.id,
+        actor_username=owner.username,
+        ip_address=ip,
+        details={"timezone": payload.timezone, "storage_path": payload.storage_path},
+        commit=True,
+    )
+
     return {
         "success": True,
         "user": {
@@ -188,6 +200,14 @@ async def login(
     if user is None or not user.is_active or not verify_password(user.password_hash, payload.password):
         login_rate_limiter.record_failure(username)
         login_rate_limiter.record_failure(ip)
+        await AuditService.record_event(
+            session=db,
+            action="auth.login_failure",
+            resource_type="user",
+            actor_username=username,
+            ip_address=ip,
+            commit=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
@@ -201,6 +221,17 @@ async def login(
     ua = request.headers.get("user-agent")
     sess = await SessionManager.create_session(db, user.id, ip, ua)
     SessionManager.set_cookie(response, sess.id)
+
+    await AuditService.record_event(
+        session=db,
+        action="auth.login_success",
+        resource_type="user",
+        resource_id=str(user.id),
+        actor_id=user.id,
+        actor_username=user.username,
+        ip_address=ip,
+        commit=True,
+    )
 
     return {
         "success": True,
@@ -229,6 +260,13 @@ async def logout(
 
     if token:
         await SessionManager.invalidate_session(db, token)
+        await AuditService.record_event(
+            session=db,
+            action="auth.logout",
+            resource_type="session",
+            resource_id=token,
+            commit=True,
+        )
 
     SessionManager.clear_cookie(response)
     return {"success": True}
@@ -283,6 +321,17 @@ async def change_password(
     ua = request.headers.get("user-agent")
     sess = await SessionManager.create_session(db, current_user.id, ip, ua)
     SessionManager.set_cookie(response, sess.id)
+
+    await AuditService.record_event(
+        session=db,
+        action="auth.password_change",
+        resource_type="user",
+        resource_id=str(current_user.id),
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        ip_address=ip,
+        commit=True,
+    )
 
     return {"success": True}
 

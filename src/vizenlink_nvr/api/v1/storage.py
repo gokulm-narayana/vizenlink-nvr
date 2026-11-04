@@ -14,6 +14,7 @@ from vizenlink_nvr.api.dependencies import (
     RequireOperator,
     RequireOwner,
 )
+from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.storage import (
     DEFAULT_RESERVE_BYTES,
     StorageHealthState,
@@ -110,6 +111,17 @@ async def set_storage_path_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=cfg.health_reason or "Recording to system root disk is refused without allow_system_disk",
         )
+
+    await AuditService.record_event(
+        session=db,
+        action="storage.update_path",
+        resource_type="storage",
+        resource_id=str(cfg.storage_path),
+        actor_id=user.id,
+        actor_username=user.username,
+        details={"allow_system_disk": payload.allow_system_disk, "reserve_bytes": payload.reserve_bytes},
+        commit=True,
+    )
 
     telemetry_view = None
     if cfg.telemetry is not None:

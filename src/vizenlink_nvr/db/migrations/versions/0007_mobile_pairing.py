@@ -41,8 +41,16 @@ def upgrade() -> None:
     op.create_index("ix_paired_devices_user_id", "paired_devices", ["user_id"])
     op.create_index("ix_paired_devices_access_token", "paired_devices", ["access_token"], unique=True)
     op.create_index("ix_paired_devices_refresh_token", "paired_devices", ["refresh_token"], unique=True)
-    op.create_index("ix_paired_devices_access_token_expires_at", "paired_devices", ["access_token_expires_at"])
-    op.create_index("ix_paired_devices_refresh_token_expires_at", "paired_devices", ["refresh_token_expires_at"])
+    op.create_index(
+        "ix_paired_devices_access_token_expires_at",
+        "paired_devices",
+        ["access_token_expires_at"],
+    )
+    op.create_index(
+        "ix_paired_devices_refresh_token_expires_at",
+        "paired_devices",
+        ["refresh_token_expires_at"],
+    )
     op.create_index("ix_paired_devices_is_revoked", "paired_devices", ["is_revoked"])
 
     op.create_table(
@@ -57,7 +65,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_qr_pairing_sessions_pairing_code", "qr_pairing_sessions", ["pairing_code"], unique=True)
+    op.create_index(
+        "ix_qr_pairing_sessions_pairing_code",
+        "qr_pairing_sessions",
+        ["pairing_code"],
+        unique=True,
+    )
     op.create_index("ix_qr_pairing_sessions_user_id", "qr_pairing_sessions", ["user_id"])
     op.create_index("ix_qr_pairing_sessions_expires_at", "qr_pairing_sessions", ["expires_at"])
 

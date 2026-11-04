@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Events & Event Recording** - Camera events ingested, protecting footage around them, listed, filtered and notified
 - [x] **Phase 5: Playback, Export & Gallery** - Timeline playback, event jump, clip export, snapshots, gallery and recordings search
 - [x] **Phase 6: Camera Settings** - Capability-gated camera configuration that behaves exactly like `camera_api`
-- [ ] **Phase 7: Mobile LAN Integration** - Mobile app finds, pairs with and uses the NVR for live, recordings, health and management
+- [x] **Phase 7: Mobile LAN Integration** - Mobile app finds, pairs with and uses the NVR for live, recordings, health and management
 - [ ] **Phase 8: Cross-Platform Packaging & Soak** - Installable service on every target platform, proven by a 16-camera soak
 
 ## Phase Details
@@ -129,16 +129,14 @@ Plans:
   3. User sees an event list with thumbnail, type, camera and time, filters it by camera, type and date range, opens any event to play its recorded footage, and gets live in-app event notifications with an unread badge
   4. For each camera the user can see whether its event subscription is alive and when its last event arrived; the NVR auto-resubscribes after drops and camera reboots, and warns when event-mode recording is at risk
   5. User can see whether each camera's clock is synced or uncertain, and events from a camera with an uncertain clock carry NVR time instead of the camera's time
-**Plans**: 7 plans (completed)
+**Plans**: 5 plans (completed)
 
 Plans:
-- [x] 04-01-PLAN.md — Schema migration 0005, Event models, EventService, and pre/post-roll configuration (wave 1)
-- [x] 04-02-PLAN.md — ONVIF PullPoint subscription engine, event parsing, clock drift normalization, and supervisor (wave 2)
-- [x] 04-03-PLAN.md — Event snapshot manager, storage layout, tiny JPEG fallback, and path traversal guards (wave 3)
-- [x] 04-04-PLAN.md — Pre-roll / post-roll segment protection and retention janitor pruning immunity (wave 4)
-- [x] 04-05-PLAN.md — Events REST API, RBAC camera scoping, event locking, and OpenAPI baseline (wave 5)
-- [x] 04-06-PLAN.md — React UI event feed, filters, cards, and real-time unread notification badge (wave 6)
-- [x] 04-07-PLAN.md — Phase 4 end-to-end pipeline tracer and 11-step phase gate verification (wave 7)
+- [x] 07-01-PLAN.md — LAN Discovery via mDNS / Zeroconf (wave 1)
+- [x] 07-02-PLAN.md — Database migration 0007, PairedDevice models, and MobileAuthService (wave 2)
+- [x] 07-03-PLAN.md — Mobile REST API endpoints and OpenAPI baseline (wave 3)
+- [x] 07-04-PLAN.md — React UI QR code pairing modal and paired devices view (wave 4)
+- [x] 07-05-PLAN.md — Phase 7 end-to-end pipeline tracer and 14-step phase gate verification (wave 5)
 **UI hint**: yes
 **Research**: Needed, highest priority: confirm with the firmware owner whether a NuraEye LAN alert feed exists (PullPoint is the default either way); 24 h PullPoint capture on real hardware; power-cycle and resubscribe behaviour; event rates and queue overflow.
 
@@ -195,16 +193,14 @@ Plans:
   2. The mobile app pairs by login or by scanning a QR code shown by the NVR and receives a per-device token; an admin can see paired devices and revoke one, after which that device is refused
   3. The mobile app watches any camera live through the NVR relay on the sub stream by default, browses the days that have footage and plays NVR recordings
   4. The mobile app shows NVR health and per-camera recording and storage status, and lets permitted users add/remove cameras and change recording mode, while users without that permission are refused server-side
-**Plans**: 7 plans (completed)
+**Plans**: 5 plans (completed)
 
 Plans:
-- [x] 04-01-PLAN.md — Schema migration 0005, Event models, EventService, and pre/post-roll configuration (wave 1)
-- [x] 04-02-PLAN.md — ONVIF PullPoint subscription engine, event parsing, clock drift normalization, and supervisor (wave 2)
-- [x] 04-03-PLAN.md — Event snapshot manager, storage layout, tiny JPEG fallback, and path traversal guards (wave 3)
-- [x] 04-04-PLAN.md — Pre-roll / post-roll segment protection and retention janitor pruning immunity (wave 4)
-- [x] 04-05-PLAN.md — Events REST API, RBAC camera scoping, event locking, and OpenAPI baseline (wave 5)
-- [x] 04-06-PLAN.md — React UI event feed, filters, cards, and real-time unread notification badge (wave 6)
-- [x] 04-07-PLAN.md — Phase 4 end-to-end pipeline tracer and 11-step phase gate verification (wave 7)
+- [x] 07-01-PLAN.md — LAN Discovery via mDNS / Zeroconf (wave 1)
+- [x] 07-02-PLAN.md — Database migration 0007, PairedDevice models, and MobileAuthService (wave 2)
+- [x] 07-03-PLAN.md — Mobile REST API endpoints and OpenAPI baseline (wave 3)
+- [x] 07-04-PLAN.md — React UI QR code pairing modal and paired devices view (wave 4)
+- [x] 07-05-PLAN.md — Phase 7 end-to-end pipeline tracer and 14-step phase gate verification (wave 5)
 **UI hint**: yes
 **Research**: Moderate: Dart client for OpenAPI 3.1 (codegen spike vs a thin hand-written client); mobile TLS posture on the LAN; Flutter video_player with NVR recordings; recordings list shape agreed with the mobile app owner.
 
@@ -217,16 +213,14 @@ Plans:
   2. A 16-camera soak on mid-range hardware with two concurrent viewers shows zero recording gaps on healthy cameras, and hard power-offs, recording-drive unplug/replug and MediaMTX or core crashes all recover with no manual action
   3. Upgrading to a new release preserves cameras, users, settings and recordings, and the database can be backed up and restored
   4. On Windows and macOS the host does not sleep while the NVR is recording, required firewall ports are opened or clearly stated by the installer, and the supported camera count per hardware class is measured and published
-**Plans**: 7 plans (completed)
+**Plans**: 5 plans (completed)
 
 Plans:
-- [x] 04-01-PLAN.md — Schema migration 0005, Event models, EventService, and pre/post-roll configuration (wave 1)
-- [x] 04-02-PLAN.md — ONVIF PullPoint subscription engine, event parsing, clock drift normalization, and supervisor (wave 2)
-- [x] 04-03-PLAN.md — Event snapshot manager, storage layout, tiny JPEG fallback, and path traversal guards (wave 3)
-- [x] 04-04-PLAN.md — Pre-roll / post-roll segment protection and retention janitor pruning immunity (wave 4)
-- [x] 04-05-PLAN.md — Events REST API, RBAC camera scoping, event locking, and OpenAPI baseline (wave 5)
-- [x] 04-06-PLAN.md — React UI event feed, filters, cards, and real-time unread notification badge (wave 6)
-- [x] 04-07-PLAN.md — Phase 4 end-to-end pipeline tracer and 11-step phase gate verification (wave 7)
+- [x] 07-01-PLAN.md — LAN Discovery via mDNS / Zeroconf (wave 1)
+- [x] 07-02-PLAN.md — Database migration 0007, PairedDevice models, and MobileAuthService (wave 2)
+- [x] 07-03-PLAN.md — Mobile REST API endpoints and OpenAPI baseline (wave 3)
+- [x] 07-04-PLAN.md — React UI QR code pairing modal and paired devices view (wave 4)
+- [x] 07-05-PLAN.md — Phase 7 end-to-end pipeline tracer and 14-step phase gate verification (wave 5)
 **Research**: Needed: WinSW vs pywin32 service wrapper; macOS codesigning and notarization; Pi and Jetson capacity at 16 cameras; USB hot-unplug behaviour per OS; antivirus exclusions on Windows.
 
 ## Progress
@@ -242,5 +236,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Ph
 | 4. Events & Event Recording | 7/7 | Completed | 2026-11-04 |
 | 5. Playback, Export & Gallery | 8/8 | Completed | 2026-11-04 |
 | 6. Camera Settings | 4/4 | Completed | 2026-11-04 |
-| 7. Mobile LAN Integration | 0/TBD | In progress | - |
-| 8. Cross-Platform Packaging & Soak | 0/TBD | Not started | - |
+| 7. Mobile LAN Integration | 5/5 | Completed | 2026-11-04 |
+| 8. Cross-Platform Packaging & Soak | 0/TBD | In progress | - |

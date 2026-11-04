@@ -191,6 +191,7 @@ class MobileAuthService:
 
         await db.commit()
         await db.refresh(device)
+        device.user = user
 
         await AuditService.record_event(
             session=db,
@@ -242,6 +243,7 @@ class MobileAuthService:
 
         await db.commit()
         await db.refresh(device)
+        device.user = user
 
         return new_access_token, new_access_exp
 

@@ -42,7 +42,7 @@ def run_command(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run Phase 01 through Phase 06 local gate verification"
+        description="Run Phase 01 through Phase 07 local gate verification"
     )
     parser.add_argument(
         "--keep-going",
@@ -52,10 +52,10 @@ def main() -> None:
     args = parser.parse_args()
 
     steps_passed = 0
-    total_steps = 13
+    total_steps = 14
 
     # 1. Default pytest suite
-    ok1 = run_command(["uv", "run", "pytest", "-q"], "Step 1/13: Default pytest suite")
+    ok1 = run_command(["uv", "run", "pytest", "-q"], "Step 1/14: Default pytest suite")
     if not ok1 and not args.keep_going:
         sys.exit(1)
     if ok1:
@@ -64,7 +64,7 @@ def main() -> None:
     # 2. Fetch MediaMTX binary
     ok2 = run_command(
         ["uv", "run", "python", "tools/fetch_mediamtx.py"],
-        "Step 2/13: Fetch MediaMTX binary",
+        "Step 2/14: Fetch MediaMTX binary",
     )
     if not ok2 and not args.keep_going:
         sys.exit(1)
@@ -74,7 +74,7 @@ def main() -> None:
     # 3. MediaMTX integration tests
     ok3 = run_command(
         ["uv", "run", "pytest", "-m", "mediamtx", "-q"],
-        "Step 3/13: MediaMTX integration tests",
+        "Step 3/14: MediaMTX integration tests",
     )
     if not ok3 and not args.keep_going:
         sys.exit(1)
@@ -84,7 +84,7 @@ def main() -> None:
     # 4. Drift check self
     ok4 = run_command(
         ["uv", "run", "python", "tools/drift_check.py", "--self"],
-        "Step 4/13: Drift check against camera_api.lock.json",
+        "Step 4/14: Drift check against camera_api.lock.json",
     )
     if not ok4 and not args.keep_going:
         sys.exit(1)
@@ -100,14 +100,14 @@ def main() -> None:
     try:
         ok5_up = run_command(
             ["uv", "run", "alembic", "upgrade", "head"],
-            "Step 5/13a: Alembic upgrade head on temporary database",
+            "Step 5/14a: Alembic upgrade head on temporary database",
             env=alembic_env,
         )
         ok5_chk = False
         if ok5_up or args.keep_going:
             ok5_chk = run_command(
                 ["uv", "run", "alembic", "check"],
-                "Step 5/13b: Alembic schema drift check",
+                "Step 5/14b: Alembic schema drift check",
                 env=alembic_env,
             )
         ok5 = ok5_up and ok5_chk
@@ -130,7 +130,7 @@ def main() -> None:
             "tests/unit/test_cli_password_options.py",
             "-q",
         ],
-        "Step 6/13: Recording core pipeline tracer & password safety check",
+        "Step 6/14: Recording core pipeline tracer & password safety check",
     )
     if not ok6 and not args.keep_going:
         sys.exit(1)
@@ -140,7 +140,7 @@ def main() -> None:
     # 7. Ruff check
     ok7 = run_command(
         ["uv", "run", "ruff", "check", "--exclude", "contracts", "."],
-        "Step 7/13: Ruff linter check",
+        "Step 7/14: Ruff linter check",
     )
     if not ok7 and not args.keep_going:
         sys.exit(1)
@@ -148,7 +148,7 @@ def main() -> None:
         steps_passed += 1
 
     # 8. Mypy type check
-    ok8 = run_command(["uv", "run", "mypy", "src"], "Step 8/13: Mypy type check")
+    ok8 = run_command(["uv", "run", "mypy", "src"], "Step 8/14: Mypy type check")
     if not ok8 and not args.keep_going:
         sys.exit(1)
     if ok8:
@@ -157,7 +157,7 @@ def main() -> None:
     # 9. OpenAPI 3.1 breaking change detector
     ok9 = run_command(
         ["uv", "run", "python", "tools/check_api_breaking_changes.py"],
-        "Step 9/13: OpenAPI 3.1 breaking change guard",
+        "Step 9/14: OpenAPI 3.1 breaking change guard",
     )
     if not ok9 and not args.keep_going:
         sys.exit(1)
@@ -167,7 +167,7 @@ def main() -> None:
     # 10. Phase 3 end-to-end pipeline tracer
     ok10 = run_command(
         ["uv", "run", "pytest", "tests/integration/test_phase3_tracer.py", "-q"],
-        "Step 10/13: Phase 3 end-to-end pipeline tracer",
+        "Step 10/14: Phase 3 end-to-end pipeline tracer",
     )
     if not ok10 and not args.keep_going:
         sys.exit(1)
@@ -177,7 +177,7 @@ def main() -> None:
     # 11. Phase 4 end-to-end pipeline tracer
     ok11 = run_command(
         ["uv", "run", "pytest", "tests/integration/test_phase4_tracer.py", "-q"],
-        "Step 11/13: Phase 4 end-to-end pipeline tracer",
+        "Step 11/14: Phase 4 end-to-end pipeline tracer",
     )
     if not ok11 and not args.keep_going:
         sys.exit(1)
@@ -187,7 +187,7 @@ def main() -> None:
     # 12. Phase 5 end-to-end pipeline tracer
     ok12 = run_command(
         ["uv", "run", "pytest", "tests/integration/test_phase5_tracer.py", "-q"],
-        "Step 12/13: Phase 5 end-to-end pipeline tracer",
+        "Step 12/14: Phase 5 end-to-end pipeline tracer",
     )
     if not ok12 and not args.keep_going:
         sys.exit(1)
@@ -197,11 +197,21 @@ def main() -> None:
     # 13. Phase 6 end-to-end pipeline tracer
     ok13 = run_command(
         ["uv", "run", "pytest", "tests/integration/test_phase6_tracer.py", "-q"],
-        "Step 13/13: Phase 6 end-to-end pipeline tracer",
+        "Step 13/14: Phase 6 end-to-end pipeline tracer",
     )
     if not ok13 and not args.keep_going:
         sys.exit(1)
     if ok13:
+        steps_passed += 1
+
+    # 14. Phase 7 end-to-end pipeline tracer
+    ok14 = run_command(
+        ["uv", "run", "pytest", "tests/integration/test_phase7_tracer.py", "-q"],
+        "Step 14/14: Phase 7 end-to-end pipeline tracer",
+    )
+    if not ok14 and not args.keep_going:
+        sys.exit(1)
+    if ok14:
         steps_passed += 1
 
     print(f"\nPhase Gate Result: {steps_passed}/{total_steps} steps passed.")

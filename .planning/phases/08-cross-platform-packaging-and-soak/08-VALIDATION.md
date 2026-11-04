@@ -21,3 +21,4 @@
 
 ## 3. Phase Gate Step 15
 Step 15 in `tools/phase_gate.py` executes `tests/integration/test_phase8_tracer.py`, validating the entire packaging, backup, power, and soak lifecycle end-to-end.
+

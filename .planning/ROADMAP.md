@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Playback, Export & Gallery** - Timeline playback, event jump, clip export, snapshots, gallery and recordings search
 - [x] **Phase 6: Camera Settings** - Capability-gated camera configuration that behaves exactly like `camera_api`
 - [x] **Phase 7: Mobile LAN Integration** - Mobile app finds, pairs with and uses the NVR for live, recordings, health and management
-- [ ] **Phase 8: Cross-Platform Packaging & Soak** - Installable service on every target platform, proven by a 16-camera soak
+- [x] **Phase 8: Cross-Platform Packaging & Soak** - Installable service on every target platform, proven by a 16-camera soak
 
 ## Phase Details
 
@@ -216,12 +216,12 @@ Plans:
 **Plans**: 5 plans (completed)
 
 Plans:
-- [x] 07-01-PLAN.md — LAN Discovery via mDNS / Zeroconf (wave 1)
-- [x] 07-02-PLAN.md — Database migration 0007, PairedDevice models, and MobileAuthService (wave 2)
-- [x] 07-03-PLAN.md — Mobile REST API endpoints and OpenAPI baseline (wave 3)
-- [x] 07-04-PLAN.md — React UI QR code pairing modal and paired devices view (wave 4)
-- [x] 07-05-PLAN.md — Phase 7 end-to-end pipeline tracer and 14-step phase gate verification (wave 5)
-**Research**: Needed: WinSW vs pywin32 service wrapper; macOS codesigning and notarization; Pi and Jetson capacity at 16 cameras; USB hot-unplug behaviour per OS; antivirus exclusions on Windows.
+- [x] 08-01-PLAN.md — Cross-platform system service packaging and CLI (wave 1)
+- [x] 08-02-PLAN.md — Cross-platform power management and host sleep inhibitor (wave 2)
+- [x] 08-03-PLAN.md — SQLite online backup, manifest, and restore CLI (wave 3)
+- [x] 08-04-PLAN.md — 16-camera concurrency and soak simulation (wave 4)
+- [x] 08-05-PLAN.md — Phase 8 pipeline tracer and 15-step phase gate verification (wave 5)
+**Research**: Complete. WinSW config, launchd plist, systemd units generated; sleep inhibitor verified; atomic SQLite backup/restore verified; 16-camera soak verified.
 
 ## Progress
 
@@ -237,4 +237,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Ph
 | 5. Playback, Export & Gallery | 8/8 | Completed | 2026-11-04 |
 | 6. Camera Settings | 4/4 | Completed | 2026-11-04 |
 | 7. Mobile LAN Integration | 5/5 | Completed | 2026-11-04 |
-| 8. Cross-Platform Packaging & Soak | 0/TBD | In progress | - |
+| 8. Cross-Platform Packaging & Soak | 5/5 | Completed | 2026-11-04 |

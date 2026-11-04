@@ -11,3 +11,4 @@
 ## Verification
 - `uv run pytest tests/integration/test_16camera_soak.py -v` (1 passed in 0.33s).
 - `uv run ruff check` passed cleanly.
+

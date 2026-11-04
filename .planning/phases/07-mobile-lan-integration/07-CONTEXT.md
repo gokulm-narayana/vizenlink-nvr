@@ -32,3 +32,4 @@ Phase 07 connects the VizenLink mobile application (Flutter) to the NVR over the
 5. **Server-Side RBAC Invariant (`MOB-07`):**
    - Mobile authentication inherits user roles (`owner`, `operator`, `viewer`).
    - Administrative camera operations (add/remove) and recording mode changes strictly enforce RBAC server-side; viewers attempting modifications receive HTTP 403 Forbidden.
+

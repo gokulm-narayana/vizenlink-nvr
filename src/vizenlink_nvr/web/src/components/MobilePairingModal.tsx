@@ -292,3 +292,4 @@ export const MobilePairingModal: React.FC<MobilePairingModalProps> = ({ isOpen, 
     </div>
   );
 };
+

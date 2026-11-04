@@ -54,3 +54,4 @@
   - Gap watchdog evaluating windows.
   - 2 simulated viewers seeking video segments.
   - Reconciler and database verifying no deadlock, no corruption, zero unrecorded segments.
+

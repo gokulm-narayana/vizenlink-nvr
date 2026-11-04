@@ -22,3 +22,4 @@ Implemented the unified React web UI components for mobile device enrollment and
 - `cd src/vizenlink_nvr/web && npm run build`: 0 errors, build succeeded.
 - `uv run pytest tests/unit/test_mobile_ui.py -v`: 3 passed in 0.02s.
 - `uv run ruff check tests/unit/test_mobile_ui.py`: All checks passed.
+

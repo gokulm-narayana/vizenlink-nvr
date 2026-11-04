@@ -18,3 +18,4 @@
 ## Verification
 - `uv run pytest tests/unit/test_backup_restore.py -v` (5 passed).
 - `uv run ruff check` and `uv run mypy` passed 100% green.
+

@@ -25,3 +25,4 @@ Implemented the database models (`PairedDevice`, `QRPairingSession`), Alembic mi
 - `uv run alembic upgrade head && uv run alembic check`: Upgrade passed, 0 drift.
 - `uv run pytest tests/unit/test_mobile_auth.py -v`: 5 passed in 0.75s.
 - `uv run ruff check` & `uv run mypy`: All checks passed.
+

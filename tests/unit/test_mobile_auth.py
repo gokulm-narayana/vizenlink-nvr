@@ -211,3 +211,4 @@ async def test_list_devices(async_db: AsyncSession, sample_users: tuple[User, Us
     viewer_devs = await MobileAuthService.list_devices(async_db, user_id=viewer.id)
     assert len(viewer_devs) == 1
     assert viewer_devs[0].device_name == "Viewer Phone"
+

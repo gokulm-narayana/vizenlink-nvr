@@ -76,3 +76,4 @@
 - Remove Camera: `DELETE /api/v1/mobile/cameras/{camera_id}` (Owner/Admin)
 - Set Recording Mode: `PUT /api/v1/mobile/cameras/{camera_id}/recording-mode` (Owner/Operator)
   - Viewers rejected with HTTP 403 Forbidden.
+

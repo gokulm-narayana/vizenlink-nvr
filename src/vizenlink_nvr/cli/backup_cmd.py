@@ -134,3 +134,4 @@ def backup_list_cmd(
             print(f"  SHA-256: {b.get('sha256')}\n")
 
     emit(result, json_mode=json_mode, render_human=_render)
+

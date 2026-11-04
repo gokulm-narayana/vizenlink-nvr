@@ -16,3 +16,4 @@
 ## Verification
 - `uv run pytest tests/unit/test_power_management.py -v` (6 passed in 0.02s).
 - `uv run ruff check` and `uv run mypy` passed 100% green.
+

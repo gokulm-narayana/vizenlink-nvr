@@ -18,3 +18,4 @@ Implemented the zero-configuration mDNS LAN discovery advertiser using `python-z
 - `uv run pytest tests/unit/test_mdns_discovery.py -v`: 6 passed in 0.04s.
 - `uv run ruff check src/vizenlink_nvr/network tests/unit/test_mdns_discovery.py`: All checks passed.
 - `uv run mypy src/vizenlink_nvr/network`: Success, 0 issues.
+

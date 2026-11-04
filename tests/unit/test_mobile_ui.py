@@ -52,3 +52,4 @@ def test_platform_icon_resolution() -> None:
     assert get_platform_icon("iOS") == "🍏"
     assert get_platform_icon("android") == "🤖"
     assert get_platform_icon("unknown") == "🤖"
+

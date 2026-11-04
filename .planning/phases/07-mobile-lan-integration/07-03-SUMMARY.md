@@ -35,3 +35,4 @@ Implemented the Mobile REST API router under `/api/v1/mobile` covering pairing, 
 - `uv run ruff check src/vizenlink_nvr/api/v1/mobile.py`: All checks passed.
 - `uv run mypy src/vizenlink_nvr/api/v1/mobile.py`: All checks passed.
 - `uv run python tools/check_api_breaking_changes.py`: Success, backward-compatible.
+

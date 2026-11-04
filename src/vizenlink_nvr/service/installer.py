@@ -151,3 +151,4 @@ class ServiceManager:
             "standard_path": str(dest) if dest else None,
             "installed": installed,
         }
+

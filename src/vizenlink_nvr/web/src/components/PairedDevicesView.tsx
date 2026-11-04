@@ -367,3 +367,4 @@ export const PairedDevicesView: React.FC<PairedDevicesViewProps> = () => {
     </div>
   );
 };
+

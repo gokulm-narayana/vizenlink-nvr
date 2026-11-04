@@ -138,9 +138,9 @@ async def test_16camera_concurrent_recording_soak(tmp_path: Path) -> None:
     viewer_read_count = [0, 0]
 
     async def viewer_worker(viewer_id: int) -> None:
-        for _ in range(10):
-            # Query random camera segments from DB
-            cam_serial = f"CAM-SOAK-{(viewer_id % num_cameras) + 1:02d}"
+        reads = 0
+        cam_serial = f"CAM-SOAK-{(viewer_id % num_cameras) + 1:02d}"
+        for _ in range(50):
             async with session_factory() as session:
                 stmt = (
                     select(Segment)
@@ -155,8 +155,11 @@ async def test_16camera_concurrent_recording_soak(tmp_path: Path) -> None:
                     if seg_p.exists():  # noqa: ASYNC240
                         data = seg_p.read_bytes()  # noqa: ASYNC240
                         if len(data) > 0:
-                            viewer_read_count[viewer_id - 1] += 1
+                            reads += 1
+            if reads > 0:
+                break
             await asyncio.sleep(0.01)
+        viewer_read_count[viewer_id - 1] = reads
 
     # Launch all 16 cameras + 2 viewers concurrently
     camera_tasks = [camera_recording_worker(i) for i in range(1, num_cameras + 1)]

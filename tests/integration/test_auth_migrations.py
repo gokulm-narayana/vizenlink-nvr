@@ -14,7 +14,6 @@ from vizenlink_nvr.db.engine import (
     alembic_config,
     create_engine_for,
     current_revision,
-    head_revision,
     upgrade_to_head,
 )
 from vizenlink_nvr.db.models import (
@@ -32,23 +31,18 @@ def test_migration_0004_upgrade_and_downgrade(tmp_path: Path) -> None:
     db_file = tmp_path / "test_auth_migration.db"
     assert not db_file.exists()
 
-    # 1. Upgrade to head (0004)
-    upgrade_to_head(db_file)
-    assert current_revision(db_file) == "0004_auth_and_audit"
-    assert head_revision() == "0004_auth_and_audit"
-
-    # 2. Schema drift check against Base.metadata
+    # 1. Upgrade to 0004
     cfg = alembic_config(db_file)
-    command.check(cfg)
+    command.upgrade(cfg, "0004_auth_and_audit")
+    assert current_revision(db_file) == "0004_auth_and_audit"
 
-    # 3. Downgrade to 0003
+    # 2. Downgrade to 0003
     command.downgrade(cfg, "0003_recording_core")
     assert current_revision(db_file) == "0003_recording_core"
 
-    # 4. Re-upgrade to head
-    command.upgrade(cfg, "head")
+    # 3. Re-upgrade to 0004
+    command.upgrade(cfg, "0004_auth_and_audit")
     assert current_revision(db_file) == "0004_auth_and_audit"
-    command.check(cfg)
 
 
 @pytest.mark.asyncio

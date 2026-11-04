@@ -27,3 +27,4 @@
 - `src/vizenlink_nvr/web/src/App.tsx`
 - `src/vizenlink_nvr/web/dist/*`
 - `tests/unit/test_event_notifications.py`
+

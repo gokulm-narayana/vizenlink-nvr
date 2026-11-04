@@ -102,3 +102,4 @@ def test_directory_traversal_protection(tmp_path: Path) -> None:
     # Attempt directory traversal
     resolved = manager.resolve_snapshot_file("../../etc/passwd")
     assert resolved is None
+

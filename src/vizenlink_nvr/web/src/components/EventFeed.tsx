@@ -310,3 +310,4 @@ export const EventFeed: React.FC<EventFeedProps> = ({
     </div>
   );
 };
+

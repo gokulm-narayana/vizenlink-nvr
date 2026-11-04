@@ -99,3 +99,4 @@ async def test_event_crud_and_locking(tmp_path: Path) -> None:
         assert evts[0].id == created.id
 
     await engine.dispose()
+

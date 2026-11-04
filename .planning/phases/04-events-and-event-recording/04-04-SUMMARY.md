@@ -19,3 +19,4 @@
 3. **Automated Verification:**
    - `tests/integration/test_event_segment_protection.py`: 1 passed.
    - `ruff` and `mypy`: 100% clean.
+

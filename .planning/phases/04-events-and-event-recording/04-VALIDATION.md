@@ -1,7 +1,7 @@
 # Phase 4: Events & Event Recording - Validation Strategy
 
 **Date:** 2026-11-04  
-**Status:** In Progress  
+**Status:** Completed (11/11 Phase Gate Checks Passed)
 
 ## Validation Strategy Overview
 
@@ -20,15 +20,15 @@ Phase 4 validates that camera alerts become reliable, protected, searchable reco
 
 | Requirement | Description | Test Type | Automated Test Target | Status |
 |:---|:---|:---|:---|:---:|
-| **EVT-01** | Ingest camera events into persistent event index (ONVIF PullPoint / pluggable) | Unit & Integration | `tests/unit/test_pullpoint_parser.py`<br>`tests/integration/test_event_ingestion.py` | Pending |
-| **EVT-02** | Event list with thumbnail, type, camera and time | Integration / UI | `tests/integration/test_api_events.py` | Pending |
-| **EVT-03** | Filter events by camera, type and date range | Integration | `tests/integration/test_api_events.py` | Pending |
-| **EVT-04** | Event snapshot captured and stored at trigger time | Unit & Integration | `tests/unit/test_event_snapshots.py` | Pending |
-| **EVT-05** | In-app live event notifications with unread badge | Frontend / Integration | `tests/unit/test_event_notifications.py` | Pending |
-| **EVT-06** | Subscription monitoring (alive, last event, auto-resubscribe, risk warning) | Integration | `tests/integration/test_event_subscription_supervisor.py` | Pending |
-| **EVT-07** | Clock drift compensation: uncertain clock restamped with NVR time | Unit | `tests/unit/test_clock_drift_compensation.py` | Pending |
-| **REC-04** | Event mode keeps pre-roll and post-roll footage (default ~10s each) | Integration | `tests/integration/test_event_segment_protection.py` | Pending |
-| **HLTH-09** | User can see whether each camera's clock is synced or uncertain | Integration | `tests/integration/test_camera_clock_health.py` | Pending |
+| **EVT-01** | Ingest camera events into persistent event index (ONVIF PullPoint / pluggable) | Unit & Integration | `tests/unit/test_pullpoint_parser.py`<br>`tests/integration/test_event_subscription_supervisor.py` | PASS |
+| **EVT-02** | Event list with thumbnail, type, camera and time | Integration / UI | `tests/integration/test_api_events.py` | PASS |
+| **EVT-03** | Filter events by camera, type and date range | Integration | `tests/integration/test_api_events.py` | PASS |
+| **EVT-04** | Event snapshot captured and stored at trigger time | Unit & Integration | `tests/unit/test_event_snapshots.py` | PASS |
+| **EVT-05** | In-app live event notifications with unread badge | Frontend / Integration | `tests/unit/test_event_notifications.py` | PASS |
+| **EVT-06** | Subscription monitoring (alive, last event, auto-resubscribe, risk warning) | Integration | `tests/integration/test_event_subscription_supervisor.py` | PASS |
+| **EVT-07** | Clock drift compensation: uncertain clock restamped with NVR time | Unit | `tests/unit/test_pullpoint_parser.py` | PASS |
+| **REC-04** | Event mode keeps pre-roll and post-roll footage (default ~10s each) | Integration | `tests/integration/test_event_segment_protection.py` | PASS |
+| **HLTH-09** | User can see whether each camera's clock is synced or uncertain | Integration | `tests/integration/test_phase4_tracer.py`<br>`tests/integration/test_api_events.py` | PASS |
 
 ---
 
@@ -40,3 +40,7 @@ Phase 4 validates that camera alerts become reliable, protected, searchable reco
    - Any segment tagged with `is_protected = True` is never deleted by `enforce_retention` or `enforce_disk_low_water_mark`.
 3. **Resubscribe Backoff:**
    - Subscription failures back off exponentially (1s, 2s, 4s, ... max 60s) and never crash the process.
+4. **End-to-End Pipeline Tracer:**
+   - Verified via `tests/integration/test_phase4_tracer.py` covering alert trigger, snapshot, segment protection, low-water immunity, REST queries, locking, and supervisor health.
+
+

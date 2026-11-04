@@ -99,3 +99,4 @@ class SegmentProtectionService:
             await session.commit()
 
         return released_ids
+

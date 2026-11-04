@@ -6,6 +6,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from vizenlink_nvr.cli.app import app
+from vizenlink_nvr.db.engine import head_revision
 
 
 def test_cli_status_json(cli: CliRunner, tmp_path: Path) -> None:
@@ -16,8 +17,9 @@ def test_cli_status_json(cli: CliRunner, tmp_path: Path) -> None:
 
     data = json.loads(result.stdout)
     assert data["db_ok"] is True
-    assert data["schema_revision"] == "0004_auth_and_audit"
-    assert data["schema_head"] == "0004_auth_and_audit"
+    expected_head = head_revision()
+    assert data["schema_revision"] == expected_head
+    assert data["schema_head"] == expected_head
     assert data["data_dir"] == str(test_dir)
     assert "site_timezone" in data
 
@@ -26,7 +28,7 @@ def test_cli_status_json(cli: CliRunner, tmp_path: Path) -> None:
     assert result2.exit_code == 0
     data2 = json.loads(result2.stdout)
     assert data2["db_ok"] is True
-    assert data2["schema_revision"] == "0004_auth_and_audit"
+    assert data2["schema_revision"] == expected_head
 
 
 def test_cli_status_human(cli: CliRunner, tmp_path: Path) -> None:

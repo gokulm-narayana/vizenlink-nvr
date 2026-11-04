@@ -17,3 +17,4 @@
 2. **Automated Verification:**
    - `tests/unit/test_event_snapshots.py`: 4 passed.
    - `ruff` and `mypy`: 100% clean.
+

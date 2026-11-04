@@ -45,3 +45,4 @@ class EventSource(Protocol):
     async def unsubscribe(self) -> None:
         """Cleanly terminate subscription with camera."""
         ...
+

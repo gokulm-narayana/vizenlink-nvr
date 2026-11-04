@@ -156,3 +156,4 @@ async def list_events(
     stmt = stmt.limit(limit).offset(offset)
     res = await session.execute(stmt)
     return list(res.scalars().all())
+

@@ -29,3 +29,4 @@
    - `tests/unit/test_event_models.py`: 2 passed.
    - `alembic check`: 0 schema drift.
    - `ruff` and `mypy`: 100% clean.
+

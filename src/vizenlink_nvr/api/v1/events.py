@@ -313,3 +313,4 @@ async def unlock_event(
 
     await db.refresh(event)
     return _to_event_response(event)
+

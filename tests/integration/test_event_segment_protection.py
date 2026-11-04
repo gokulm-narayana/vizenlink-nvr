@@ -159,3 +159,4 @@ async def test_event_segment_protection_and_low_water_immunity(
         assert seg2.is_protected is False
 
     await engine.dispose()
+

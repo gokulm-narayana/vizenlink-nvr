@@ -115,3 +115,4 @@ class EventSnapshotManager:
             return None
 
         return resolved if resolved.is_file() else None
+

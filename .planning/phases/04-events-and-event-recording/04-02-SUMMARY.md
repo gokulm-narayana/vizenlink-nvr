@@ -26,3 +26,4 @@
    - `tests/unit/test_pullpoint_parser.py`: 3 passed.
    - `tests/integration/test_event_subscription_supervisor.py`: 1 passed.
    - `ruff` and `mypy`: 100% clean.
+

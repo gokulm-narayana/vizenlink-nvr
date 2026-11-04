@@ -96,3 +96,4 @@ Cameras in field deployments often suffer from:
 - Web UI:
   - Header badge updates in real time with unread event counter.
   - Events tab lists event cards with snapshot thumbnails, timestamps, and camera badges.
+

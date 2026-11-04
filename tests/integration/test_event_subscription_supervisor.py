@@ -136,3 +136,4 @@ async def test_supervisor_lifecycle_and_reconnect(tmp_path: Path) -> None:
     assert source.unsubscribe_calls >= 1
 
     await engine.dispose()
+

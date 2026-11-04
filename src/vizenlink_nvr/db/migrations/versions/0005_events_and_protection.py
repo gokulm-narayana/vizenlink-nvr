@@ -86,3 +86,4 @@ def downgrade() -> None:
     op.drop_index("ix_events_start_time", table_name="events")
     op.drop_index("ix_events_camera_serial", table_name="events")
     op.drop_table("events")
+

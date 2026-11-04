@@ -87,3 +87,4 @@ Out of this phase:
   - Active unread badge in navigation header displays count of unread events.
   - Event feed displays thumbnail, camera name, relative timestamp, and event badge.
 </decisions>
+

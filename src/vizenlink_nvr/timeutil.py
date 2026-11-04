@@ -23,6 +23,7 @@ __all__ = [
     "format_local",
     "from_epoch_us",
     "local_day_bounds_utc",
+    "parse_iso_utc",
     "to_epoch_us",
     "utc_now",
     "validate_zone",
@@ -139,3 +140,12 @@ def local_day_bounds_utc(day: date, zone: ZoneInfo) -> tuple[datetime, datetime]
     start_utc = _resolve_midnight(day)
     end_utc = _resolve_midnight(day + timedelta(days=1))
     return (start_utc, end_utc)
+
+
+def parse_iso_utc(text: str) -> datetime:
+    """Parse ISO 8601 timestamp string into timezone-aware UTC datetime."""
+    dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+

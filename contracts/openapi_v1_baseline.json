@@ -1377,6 +1377,483 @@
         "title": "MediaTokenResponse",
         "type": "object"
       },
+      "MobileCameraAddRequest": {
+        "description": "Simplified camera onboarding from mobile.",
+        "properties": {
+          "host": {
+            "minLength": 1,
+            "title": "Host",
+            "type": "string"
+          },
+          "https_port": {
+            "default": 443,
+            "title": "Https Port",
+            "type": "integer"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "default": "admin123",
+            "title": "Password",
+            "type": "string"
+          },
+          "serial": {
+            "minLength": 1,
+            "title": "Serial",
+            "type": "string"
+          },
+          "username": {
+            "default": "admin",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "serial",
+          "name",
+          "host"
+        ],
+        "title": "MobileCameraAddRequest",
+        "type": "object"
+      },
+      "MobileCameraItemStatus": {
+        "description": "Per-camera telemetry item.",
+        "properties": {
+          "is_online": {
+            "title": "Is Online",
+            "type": "boolean"
+          },
+          "is_recording": {
+            "title": "Is Recording",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "recording_mode": {
+            "title": "Recording Mode",
+            "type": "string"
+          },
+          "serial": {
+            "title": "Serial",
+            "type": "string"
+          },
+          "storage_used_bytes": {
+            "default": 0,
+            "title": "Storage Used Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "serial",
+          "name",
+          "is_online",
+          "is_recording",
+          "recording_mode"
+        ],
+        "title": "MobileCameraItemStatus",
+        "type": "object"
+      },
+      "MobileLiveStreamResponse": {
+        "description": "Mobile live streaming relay URLs.",
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "hls_url": {
+            "title": "Hls Url",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "rtsp_url": {
+            "title": "Rtsp Url",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "webrtc_url": {
+            "title": "Webrtc Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "profile",
+          "token",
+          "webrtc_url",
+          "hls_url",
+          "rtsp_url"
+        ],
+        "title": "MobileLiveStreamResponse",
+        "type": "object"
+      },
+      "MobilePairQRRequest": {
+        "description": "QR code pairing redemption payload.",
+        "properties": {
+          "device_id": {
+            "minLength": 1,
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_name": {
+            "minLength": 1,
+            "title": "Device Name",
+            "type": "string"
+          },
+          "pairing_code": {
+            "minLength": 1,
+            "title": "Pairing Code",
+            "type": "string"
+          },
+          "platform": {
+            "default": "unknown",
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_code",
+          "device_id",
+          "device_name"
+        ],
+        "title": "MobilePairQRRequest",
+        "type": "object"
+      },
+      "MobilePairRequest": {
+        "description": "Direct credential pairing request payload.",
+        "properties": {
+          "device_id": {
+            "minLength": 1,
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_name": {
+            "minLength": 1,
+            "title": "Device Name",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "platform": {
+            "default": "unknown",
+            "title": "Platform",
+            "type": "string"
+          },
+          "username": {
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "device_id",
+          "device_name"
+        ],
+        "title": "MobilePairRequest",
+        "type": "object"
+      },
+      "MobileQRInitResponse": {
+        "description": "Ephemeral QR pairing initiation response.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "pairing_code": {
+            "title": "Pairing Code",
+            "type": "string"
+          },
+          "qr_payload": {
+            "title": "Qr Payload",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_code",
+          "qr_payload",
+          "expires_at"
+        ],
+        "title": "MobileQRInitResponse",
+        "type": "object"
+      },
+      "MobileRecordingClip": {
+        "description": "Recording timeline segment representation.",
+        "properties": {
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "end_time": {
+            "format": "date-time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "stream_url": {
+            "title": "Stream Url",
+            "type": "string"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "start_time",
+          "end_time",
+          "duration_seconds",
+          "size_bytes",
+          "trigger",
+          "stream_url"
+        ],
+        "title": "MobileRecordingClip",
+        "type": "object"
+      },
+      "MobileRecordingDatesResponse": {
+        "description": "List of calendar dates with recorded footage.",
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "dates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "dates"
+        ],
+        "title": "MobileRecordingDatesResponse",
+        "type": "object"
+      },
+      "MobileRecordingModeUpdateRequest": {
+        "description": "Payload to alter camera recording policy.",
+        "properties": {
+          "mode": {
+            "pattern": "^(continuous|event|scheduled|off)$",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "MobileRecordingModeUpdateRequest",
+        "type": "object"
+      },
+      "MobileRecordingsResponse": {
+        "description": "Recording history clips for a single day.",
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "recordings": {
+            "items": {
+              "$ref": "#/components/schemas/MobileRecordingClip"
+            },
+            "title": "Recordings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "date",
+          "recordings"
+        ],
+        "title": "MobileRecordingsResponse",
+        "type": "object"
+      },
+      "MobileRefreshRequest": {
+        "description": "Token refresh payload.",
+        "properties": {
+          "refresh_token": {
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "MobileRefreshRequest",
+        "type": "object"
+      },
+      "MobileRefreshResponse": {
+        "description": "Token refresh response payload.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in"
+        ],
+        "title": "MobileRefreshResponse",
+        "type": "object"
+      },
+      "MobileStatusResponse": {
+        "description": "Consolidated mobile health and telemetry summary.",
+        "properties": {
+          "cameras": {
+            "items": {
+              "$ref": "#/components/schemas/MobileCameraItemStatus"
+            },
+            "title": "Cameras",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/MobileStorageStats"
+          }
+        },
+        "required": [
+          "status",
+          "storage",
+          "cameras"
+        ],
+        "title": "MobileStatusResponse",
+        "type": "object"
+      },
+      "MobileStorageStats": {
+        "description": "Aggregated disk metrics.",
+        "properties": {
+          "estimated_retention_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Retention Days"
+          },
+          "free_bytes": {
+            "title": "Free Bytes",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "used_bytes": {
+            "title": "Used Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_bytes",
+          "used_bytes",
+          "free_bytes"
+        ],
+        "title": "MobileStorageStats",
+        "type": "object"
+      },
+      "MobileTokenResponse": {
+        "description": "Pairing success token payload.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MobileUserSummary"
+          }
+        },
+        "required": [
+          "device_id",
+          "access_token",
+          "refresh_token",
+          "expires_in",
+          "user"
+        ],
+        "title": "MobileTokenResponse",
+        "type": "object"
+      },
+      "MobileUserSummary": {
+        "description": "Authenticated user info schema.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "role"
+        ],
+        "title": "MobileUserSummary",
+        "type": "object"
+      },
       "OsdUpdateRequest": {
         "description": "Request payload for updating on-screen display overlay.",
         "properties": {
@@ -1426,6 +1903,80 @@
           "token"
         ],
         "title": "OsdUpdateRequest",
+        "type": "object"
+      },
+      "PairedDeviceResponse": {
+        "description": "Paired mobile device representation.",
+        "properties": {
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_name": {
+            "title": "Device Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_revoked": {
+            "title": "Is Revoked",
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "paired_at": {
+            "format": "date-time",
+            "title": "Paired At",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "device_id",
+          "device_name",
+          "platform",
+          "user_id",
+          "paired_at",
+          "last_seen_at",
+          "is_revoked"
+        ],
+        "title": "PairedDeviceResponse",
         "type": "object"
       },
       "PasswordChangeRequest": {
@@ -4867,6 +5418,839 @@
         "summary": "Get Camera Outages",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/mobile/cameras": {
+      "post": {
+        "description": "Onboard a new camera from mobile (Owner only).",
+        "operationId": "add_mobile_camera_api_v1_mobile_cameras_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobileCameraAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add Mobile Camera Api V1 Mobile Cameras Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Mobile Camera",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/cameras/{camera_id}": {
+      "delete": {
+        "description": "Remove a camera from mobile (Owner only).",
+        "operationId": "remove_mobile_camera_api_v1_mobile_cameras__camera_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "camera_id",
+            "required": true,
+            "schema": {
+              "title": "Camera Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove Mobile Camera Api V1 Mobile Cameras  Camera Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Mobile Camera",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/cameras/{camera_id}/live-stream": {
+      "get": {
+        "description": "Retrieve mobile live stream URLs defaulting to lightweight sub stream.",
+        "operationId": "get_mobile_live_stream_api_v1_mobile_cameras__camera_id__live_stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "camera_id",
+            "required": true,
+            "schema": {
+              "title": "Camera Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "default": "sub",
+              "enum": [
+                "main",
+                "sub"
+              ],
+              "title": "Profile",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileLiveStreamResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mobile Live Stream",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/cameras/{camera_id}/recording-dates": {
+      "get": {
+        "description": "Return dates with footage for calendar timeline.",
+        "operationId": "get_mobile_recording_dates_api_v1_mobile_cameras__camera_id__recording_dates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "camera_id",
+            "required": true,
+            "schema": {
+              "title": "Camera Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileRecordingDatesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mobile Recording Dates",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/cameras/{camera_id}/recording-mode": {
+      "put": {
+        "description": "Alter camera recording mode (Operator or Owner only).",
+        "operationId": "update_mobile_recording_mode_api_v1_mobile_cameras__camera_id__recording_mode_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "camera_id",
+            "required": true,
+            "schema": {
+              "title": "Camera Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobileRecordingModeUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Mobile Recording Mode Api V1 Mobile Cameras  Camera Id  Recording Mode Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Mobile Recording Mode",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/cameras/{camera_id}/recordings": {
+      "get": {
+        "description": "Return recorded clips for a specific calendar day.",
+        "operationId": "get_mobile_recordings_api_v1_mobile_cameras__camera_id__recordings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "camera_id",
+            "required": true,
+            "schema": {
+              "title": "Camera Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileRecordingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mobile Recordings",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/devices": {
+      "get": {
+        "description": "List paired mobile devices (all for Owner, self for other roles).",
+        "operationId": "list_paired_devices_api_v1_mobile_devices_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PairedDeviceResponse"
+                  },
+                  "title": "Response List Paired Devices Api V1 Mobile Devices Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Paired Devices",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/devices/{device_id}": {
+      "delete": {
+        "description": "Revoke a paired mobile device, immediately blocking access.",
+        "operationId": "revoke_device_endpoint_api_v1_mobile_devices__device_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Revoke Device Endpoint Api V1 Mobile Devices  Device Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Device Endpoint",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/devices/{device_id}/revoke": {
+      "post": {
+        "description": "Revoke a paired mobile device, immediately blocking access.",
+        "operationId": "revoke_device_endpoint_api_v1_mobile_devices__device_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Revoke Device Endpoint Api V1 Mobile Devices  Device Id  Revoke Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Device Endpoint",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/pair": {
+      "post": {
+        "description": "Enroll mobile device using direct username and password.",
+        "operationId": "pair_device_credentials_api_v1_mobile_pair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilePairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pair Device Credentials",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/pair-qr": {
+      "post": {
+        "description": "Redeem ephemeral QR pairing code from mobile app.",
+        "operationId": "pair_device_qr_api_v1_mobile_pair_qr_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilePairQRRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pair Device Qr",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/qr/init": {
+      "post": {
+        "description": "Generate ephemeral QR pairing code for web UI display.",
+        "operationId": "init_qr_pairing_api_v1_mobile_qr_init_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileQRInitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Init Qr Pairing",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/refresh": {
+      "post": {
+        "description": "Issue a new access token using a valid, unrevoked refresh token.",
+        "operationId": "refresh_mobile_token_api_v1_mobile_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobileRefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileRefreshResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Mobile Token",
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/status": {
+      "get": {
+        "description": "Consolidated recorder status and camera telemetry for mobile dashboard.",
+        "operationId": "get_mobile_status_api_v1_mobile_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mobile Status",
+        "tags": [
+          "mobile"
         ]
       }
     },

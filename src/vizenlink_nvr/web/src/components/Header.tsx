@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ViewTab = "live" | "dashboard";
+export type ViewTab = "live" | "dashboard" | "events";
 export type ViewMode = "simple" | "advanced";
 
 interface HeaderProps {
@@ -11,6 +11,7 @@ interface HeaderProps {
   username?: string;
   role?: string;
   alertCount: number;
+  unreadEventsCount?: number;
   onLogout: () => void;
 }
 
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   username,
   role,
   alertCount,
+  unreadEventsCount = 0,
   onLogout,
 }) => {
   return (
@@ -57,6 +59,38 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             Live Multiview
+          </button>
+          <button
+            onClick={() => onTabChange("events")}
+            style={{
+              background: currentTab === "events" ? "#0f172a" : "transparent",
+              color: currentTab === "events" ? "#38bdf8" : "#94a3b8",
+              border: "1px solid",
+              borderColor: currentTab === "events" ? "#38bdf8" : "transparent",
+              borderRadius: "4px",
+              padding: "6px 12px",
+              cursor: "pointer",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            Events
+            {unreadEventsCount > 0 && (
+              <span
+                style={{
+                  background: "#38bdf8",
+                  color: "#0f172a",
+                  borderRadius: "10px",
+                  padding: "1px 6px",
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                }}
+              >
+                {unreadEventsCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => onTabChange("dashboard")}

@@ -5,6 +5,7 @@ import { LiveGrid, CameraInfo } from "./components/LiveGrid";
 import { Header, ViewMode, ViewTab } from "./components/Header";
 import { AlertsBanner, AlertData } from "./components/AlertsBanner";
 import { Dashboard } from "./components/Dashboard";
+import { EventFeed } from "./components/EventFeed";
 
 interface AuthStatus {
   initialized: boolean;
@@ -26,6 +27,15 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem("nvr_view_mode") as ViewMode) || "simple";
   });
+  const [readEventIds, setReadEventIds] = useState<Set<number>>(() => {
+    try {
+      const stored = localStorage.getItem("nvr_read_events");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [unreadEventsCount, setUnreadEventsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   const checkStatus = async () => {
@@ -34,12 +44,25 @@ export const App: React.FC = () => {
       const data = await res.json();
       setAuthStatus(data);
       if (data.authenticated) {
-        await Promise.all([loadCamerasAndRecording(), loadAlerts()]);
+        await Promise.all([loadCamerasAndRecording(), loadAlerts(), loadUnreadEvents()]);
       }
     } catch {
       setAuthStatus({ initialized: true, authenticated: false });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUnreadEvents = async () => {
+    try {
+      const res = await fetch("/api/v1/events?limit=50");
+      if (res.ok) {
+        const data = await res.json();
+        const unread = data.items.filter((item: { id: number }) => !readEventIds.has(item.id)).length;
+        setUnreadEventsCount(unread);
+      }
+    } catch {
+      // Ignore background fetch failure
     }
   };
 
@@ -87,15 +110,27 @@ export const App: React.FC = () => {
     const interval = setInterval(() => {
       if (authStatus?.authenticated) {
         loadAlerts();
+        loadUnreadEvents();
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [authStatus?.authenticated]);
+  }, [authStatus?.authenticated, readEventIds]);
 
   const handleToggleViewMode = () => {
     const nextMode: ViewMode = viewMode === "simple" ? "advanced" : "simple";
     setViewMode(nextMode);
     localStorage.setItem("nvr_view_mode", nextMode);
+  };
+
+  const handleEventRead = (eventId: number) => {
+    setReadEventIds((prev) => {
+      if (prev.has(eventId)) return prev;
+      const next = new Set(prev);
+      next.add(eventId);
+      localStorage.setItem("nvr_read_events", JSON.stringify(Array.from(next)));
+      return next;
+    });
+    setUnreadEventsCount((prev) => Math.max(0, prev - 1));
   };
 
   const handleLogout = async () => {
@@ -137,17 +172,26 @@ export const App: React.FC = () => {
         username={authStatus?.user?.username}
         role={authStatus?.user?.role}
         alertCount={alerts.length}
+        unreadEventsCount={unreadEventsCount}
         onLogout={handleLogout}
       />
 
       {/* Sticky Operational Alerts Banner */}
       <AlertsBanner alerts={alerts} onDismiss={handleDismissAlert} />
 
-      {/* Main View: Live Multiview Grid or Dashboard */}
+      {/* Main View: Live Multiview Grid, Events Feed, or Dashboard */}
       <main style={{ flex: 1, overflow: "auto" }}>
-        {currentTab === "live" ? (
+        {currentTab === "live" && (
           <LiveGrid cameras={cameras} recordingSerials={recordingSerials} />
-        ) : (
+        )}
+        {currentTab === "events" && (
+          <EventFeed
+            cameras={cameras}
+            readEventIds={readEventIds}
+            onEventRead={handleEventRead}
+          />
+        )}
+        {currentTab === "dashboard" && (
           <Dashboard viewMode={viewMode} recordingCount={recordingSerials.size} />
         )}
       </main>

@@ -321,6 +321,71 @@
         "title": "CameraCreateRequest",
         "type": "object"
       },
+      "CameraHealthResponse": {
+        "description": "Camera health monitoring metrics schema.",
+        "properties": {
+          "clock_sync_status": {
+            "title": "Clock Sync Status",
+            "type": "string"
+          },
+          "firmware_version": {
+            "title": "Firmware Version",
+            "type": "string"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "online": {
+            "title": "Online",
+            "type": "boolean"
+          },
+          "reboot_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reboot Reason"
+          },
+          "serial": {
+            "title": "Serial",
+            "type": "string"
+          },
+          "uptime_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uptime Seconds"
+          }
+        },
+        "required": [
+          "serial",
+          "online",
+          "uptime_seconds",
+          "reboot_reason",
+          "clock_sync_status",
+          "firmware_version",
+          "last_seen"
+        ],
+        "title": "CameraHealthResponse",
+        "type": "object"
+      },
       "CameraOutageResponse": {
         "description": "Camera outage history item.",
         "properties": {
@@ -536,6 +601,98 @@
         "title": "CreateUserRequest",
         "type": "object"
       },
+      "EncoderUpdateRequest": {
+        "description": "Request payload for updating video encoder configuration.",
+        "properties": {
+          "bitrate_limit_kbps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bitrate Limit Kbps"
+          },
+          "encoding": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encoding"
+          },
+          "frame_rate_limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Rate Limit"
+          },
+          "gov_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gov Length"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
+          },
+          "venc_token": {
+            "minLength": 1,
+            "title": "Venc Token",
+            "type": "string"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "venc_token"
+        ],
+        "title": "EncoderUpdateRequest",
+        "type": "object"
+      },
       "EventItemResponse": {
         "description": "Single event item schema.",
         "properties": {
@@ -699,6 +856,26 @@
           "end_time"
         ],
         "title": "ExportClipRequest",
+        "type": "object"
+      },
+      "FactoryResetRequest": {
+        "description": "Request payload for camera factory reset.",
+        "properties": {
+          "confirmation": {
+            "minLength": 1,
+            "title": "Confirmation",
+            "type": "string"
+          },
+          "mode": {
+            "default": "Soft",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation"
+        ],
+        "title": "FactoryResetRequest",
         "type": "object"
       },
       "GalleryDeleteResponse": {
@@ -894,6 +1071,31 @@
         "title": "GalleryListResponse",
         "type": "object"
       },
+      "GenericStatusResponse": {
+        "description": "Standard success response envelope.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "GenericStatusResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -905,6 +1107,179 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IdentityUpdateRequest": {
+        "description": "Request payload for updating device identity and credentials.",
+        "properties": {
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "title": "IdentityUpdateRequest",
+        "type": "object"
+      },
+      "ImagingUpdateRequest": {
+        "description": "Request payload for updating camera imaging and sensor parameters.",
+        "properties": {
+          "anti_flicker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anti Flicker"
+          },
+          "brightness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brightness"
+          },
+          "color_saturation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Saturation"
+          },
+          "contrast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contrast"
+          },
+          "ir_cut_filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ir Cut Filter"
+          },
+          "mirror_flip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mirror Flip"
+          },
+          "night_vision_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Night Vision Type"
+          },
+          "sharpness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpness"
+          },
+          "video_source_token": {
+            "default": "VideoSource_1",
+            "title": "Video Source Token",
+            "type": "string"
+          },
+          "wdr_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wdr Level"
+          },
+          "wdr_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wdr Mode"
+          }
+        },
+        "title": "ImagingUpdateRequest",
         "type": "object"
       },
       "LoginRequest": {
@@ -1000,6 +1375,57 @@
           "path"
         ],
         "title": "MediaTokenResponse",
+        "type": "object"
+      },
+      "OsdUpdateRequest": {
+        "description": "Request payload for updating on-screen display overlay.",
+        "properties": {
+          "date_format": {
+            "default": "YYYY/MM/DD",
+            "title": "Date Format",
+            "type": "string"
+          },
+          "osd_type": {
+            "default": "DateAndTime",
+            "title": "Osd Type",
+            "type": "string"
+          },
+          "plain_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plain Text"
+          },
+          "position": {
+            "default": "UpperLeft",
+            "title": "Position",
+            "type": "string"
+          },
+          "time_format": {
+            "default": "HH:mm:ss",
+            "title": "Time Format",
+            "type": "string"
+          },
+          "token": {
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          },
+          "video_source_token": {
+            "default": "VideoSource_1",
+            "title": "Video Source Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "OsdUpdateRequest",
         "type": "object"
       },
       "PasswordChangeRequest": {
@@ -2829,6 +3255,134 @@
         ]
       }
     },
+    "/api/v1/cameras/{serial}/factory-reset": {
+      "post": {
+        "description": "Trigger camera factory reset (Soft or Hard) with confirmation check (SET-06).",
+        "operationId": "factory_reset_camera_endpoint_api_v1_cameras__serial__factory_reset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FactoryResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Factory Reset Camera Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/health": {
+      "get": {
+        "description": "Retrieve camera health, uptime, and clock sync state (SET-07).",
+        "operationId": "get_camera_health_endpoint_api_v1_cameras__serial__health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Camera Health Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
     "/api/v1/cameras/{serial}/media-token": {
       "post": {
         "description": "Generate a short-lived HMAC-signed media token for stream authorization.",
@@ -2899,6 +3453,65 @@
         ]
       }
     },
+    "/api/v1/cameras/{serial}/reboot": {
+      "post": {
+        "description": "Trigger camera reboot via ONVIF SystemReboot (SET-05).",
+        "operationId": "reboot_camera_endpoint_api_v1_cameras__serial__reboot_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reboot Camera Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
     "/api/v1/cameras/{serial}/reprobe": {
       "post": {
         "description": "Trigger camera reprobe (Operator or Owner only).",
@@ -2957,6 +3570,351 @@
         "summary": "Reprobe Camera Endpoint",
         "tags": [
           "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/settings": {
+      "get": {
+        "description": "Retrieve full capability-gated camera settings and options (SET-01..SET-08).",
+        "operationId": "get_camera_settings_endpoint_api_v1_cameras__serial__settings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Camera Settings Endpoint Api V1 Cameras  Serial  Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Camera Settings Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/settings/encoder": {
+      "put": {
+        "description": "Update video stream encoder settings within validated capability bounds (SET-02, SET-08).",
+        "operationId": "update_encoder_endpoint_api_v1_cameras__serial__settings_encoder_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncoderUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Encoder Endpoint Api V1 Cameras  Serial  Settings Encoder Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Encoder Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/settings/identity": {
+      "put": {
+        "description": "Update camera name, location, timezone, or password (SET-01).",
+        "operationId": "update_identity_endpoint_api_v1_cameras__serial__settings_identity_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Identity Endpoint Api V1 Cameras  Serial  Settings Identity Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Identity Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/settings/imaging": {
+      "put": {
+        "description": "Update Day/Night mode, WDR, ISP parameters, mirror/flip, and anti-flicker (SET-03, SET-08).",
+        "operationId": "update_imaging_endpoint_api_v1_cameras__serial__settings_imaging_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImagingUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Imaging Endpoint Api V1 Cameras  Serial  Settings Imaging Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Imaging Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/settings/osd": {
+      "put": {
+        "description": "Update On-Screen Display (OSD) overlay text and timestamp positioning (SET-04).",
+        "operationId": "update_osd_endpoint_api_v1_cameras__serial__settings_osd_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OsdUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Osd Endpoint Api V1 Cameras  Serial  Settings Osd Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Osd Endpoint",
+        "tags": [
+          "camera-settings"
         ]
       }
     },

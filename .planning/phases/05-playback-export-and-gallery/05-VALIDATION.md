@@ -1,7 +1,7 @@
 # Phase 5: Playback, Export & Gallery - Validation Strategy
 
 **Date:** 2026-11-04  
-**Status:** In Planning  
+**Status:** COMPLETE (12/12 Phase Gate Passed)
 
 ## Validation Strategy Overview
 
@@ -20,19 +20,19 @@ Phase 5 validates that any recorded moment can be found, scrubbed on a timeline,
 
 | Requirement | Description | Test Type | Automated Test Target | Status |
 |:---|:---|:---|:---|:---:|
-| **PLAY-01** | Per-camera 24h timeline with recorded spans, gaps, event markers; seek and zoom | Integration / UI | `tests/integration/test_playback_timeline.py` | Pending |
-| **PLAY-02** | Date picker shows which days have footage | Integration | `tests/integration/test_playback_timeline.py` | Pending |
-| **PLAY-03** | Transport controls: play/pause, ±10s skip, speed, mute, fullscreen | Unit / UI | `tests/unit/test_player_controls.py` | Pending |
-| **PLAY-04** | Playback continues across segment boundaries without seam and skips gaps | Integration | `tests/integration/test_playback_streaming.py` | Pending |
-| **PLAY-05** | Jump from event straight to recording (padded by pre-roll) | Integration | `tests/integration/test_playback_timeline.py` | Pending |
-| **PLAY-06** | Mark in/out on timeline and export an MP4 clip | Integration | `tests/integration/test_clip_export.py` | Pending |
-| **PLAY-07** | Save snapshot from playback frame | Integration | `tests/integration/test_gallery_api.py` | Pending |
-| **PLAY-08** | Timeline distinguishes recording outage gap from retention pruning | Integration | `tests/integration/test_playback_timeline.py` | Pending |
-| **GAL-01** | Browse snapshot gallery filtered by camera, time and user | Integration | `tests/integration/test_gallery_api.py` | Pending |
-| **GAL-02** | Browse, preview, download and delete (with confirmation) clips | Integration | `tests/integration/test_gallery_api.py` | Pending |
-| **GAL-03** | Search recordings by camera, date/time and event type, jump to timeline | Integration | `tests/integration/test_playback_timeline.py` | Pending |
-| **LIVE-07** | Record manual clip from live view into gallery | Integration | `tests/integration/test_gallery_api.py` | Pending |
-| **REC-12** | Lock recordings/segments so retention never deletes them | Integration | `tests/integration/test_playback_timeline.py` | Pending |
+| **PLAY-01** | Per-camera 24h timeline with recorded spans, gaps, event markers; seek and zoom | Integration / UI | `tests/integration/test_playback_timeline.py` | PASS |
+| **PLAY-02** | Date picker shows which days have footage | Integration | `tests/integration/test_playback_timeline.py` | PASS |
+| **PLAY-03** | Transport controls: play/pause, ±10s skip, speed, mute, fullscreen | Unit / UI | `tests/unit/test_player_controls.py` | PASS |
+| **PLAY-04** | Playback continues across segment boundaries without seam and skips gaps | Integration | `tests/integration/test_playback_streaming.py` | PASS |
+| **PLAY-05** | Jump from event straight to recording (padded by pre-roll) | Integration | `tests/integration/test_playback_timeline.py` | PASS |
+| **PLAY-06** | Mark in/out on timeline and export an MP4 clip | Integration | `tests/integration/test_clip_export.py` | PASS |
+| **PLAY-07** | Save snapshot from playback frame | Integration | `tests/integration/test_gallery_api.py` | PASS |
+| **PLAY-08** | Timeline distinguishes recording outage gap from retention pruning | Integration | `tests/integration/test_playback_timeline.py` | PASS |
+| **GAL-01** | Browse snapshot gallery filtered by camera, time and user | Integration | `tests/integration/test_gallery_api.py` | PASS |
+| **GAL-02** | Browse, preview, download and delete (with confirmation) clips | Integration | `tests/integration/test_gallery_api.py` | PASS |
+| **GAL-03** | Search recordings by camera, date/time and event type, jump to timeline | Integration | `tests/integration/test_playback_timeline.py` | PASS |
+| **LIVE-07** | Record manual clip from live view into gallery | Integration | `tests/integration/test_gallery_api.py` | PASS |
+| **REC-12** | Lock recordings/segments so retention never deletes them | Integration | `tests/integration/test_playback_timeline.py` | PASS |
 
 ---
 

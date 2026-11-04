@@ -66,14 +66,14 @@ async def _resolve_storage_root(request: Request, db: AsyncSession) -> Path:
 
 @gallery_router.get("", response_model=GalleryListResponse)
 async def list_gallery_items(
+    user: CurrentUser,
+    db: DbSession,
     camera_serial: str | None = None,
     item_type: str | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    user: CurrentUser = None,
-    db: DbSession = None,
 ) -> GalleryListResponse:
     """List gallery snapshots and video clips with pagination and filters (GAL-01)."""
     # Enforce viewer camera permissions (AUTH-05)

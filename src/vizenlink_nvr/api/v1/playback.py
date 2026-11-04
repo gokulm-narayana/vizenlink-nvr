@@ -233,10 +233,10 @@ async def get_timeline(
 @playback_router.get("/days", response_model=CalendarDaysResponse)
 async def get_recorded_days(
     camera_serial: str,
+    user: CurrentUser,
+    db: DbSession,
     year: int = Query(..., ge=2020, le=2050),
     month: int = Query(..., ge=1, le=12),
-    user: CurrentUser = None,
-    db: DbSession = None,
 ) -> CalendarDaysResponse:
     """Retrieve days containing recorded video for a given camera and month."""
     _verify_camera_access(user, camera_serial)
@@ -258,11 +258,11 @@ async def get_recorded_days(
 @playback_router.get("/search", response_model=list[SearchResultItem])
 async def search_recordings(
     camera_serial: str,
+    user: CurrentUser,
+    db: DbSession,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     event_type: str | None = None,
-    user: CurrentUser = None,
-    db: DbSession = None,
 ) -> list[SearchResultItem]:
     """Search recordings by event occurrences and timeline intervals (GAL-03)."""
     _verify_camera_access(user, camera_serial)

@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 05
-current_phase_name: Playback, Export & Gallery
+current_phase: 06
+current_phase_name: Camera Settings
 status: ready
-stopped_at: Phase 04 complete (7 of 7 plans verified and 11/11 phase gate passed); ready for Phase 05
-last_updated: "2026-11-04T07:58:00.000Z"
+stopped_at: Phase 05 complete (8 of 8 plans verified and 12/12 phase gate passed); ready for Phase 06
+last_updated: "2026-11-04T09:23:00.000Z"
 last_activity: 2026-11-04
-last_activity_desc: Phase 04 complete (Plan 04-07: Phase 4 end-to-end tracer, 11/11 phase gate passed)
+last_activity_desc: Phase 05 complete (Plan 05-08: Phase 5 tracer, 12/12 phase gate passed)
 state_head: HEAD
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 54
-  completed_plans: 54
+  completed_phases: 5
+  total_plans: 62
+  completed_plans: 62
   percent: 100
 ---
 
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-26)
 
 **Core value:** Never miss footage: every added camera records reliably 24/7 (plus events), and that footage is always findable on a timeline from both the web UI and the mobile app.
-**Current focus:** Phase 05 — Playback, Export & Gallery
+**Current focus:** Phase 06 — Camera Settings
 
 ## Current Position
 
-Phase: 04 (Events & Event Recording) — COMPLETED
-Plans: 7 of 7 complete (100% Phase 04 complete)
-Status: Ready for Phase 05 planning
-Last activity: 2026-11-04 — Plan 04-07 complete (Phase 4 tracer, 11/11 phase gate passed 100% green)
+Phase: 05 (Playback, Export & Gallery) — COMPLETED
+Plans: 8 of 8 complete (100% Phase 05 complete)
+Status: Ready for Phase 06 planning
+Last activity: 2026-11-04 — Plan 05-08 complete (Phase 5 tracer, 12/12 phase gate passed 100% green)
 
-Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100% (Phase 04 complete)
+Progress: [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100% (Phase 05 complete)
 
 ## Accumulated Context
 
@@ -49,9 +49,13 @@ Decisions are logged in PROJECT.md Key Decisions table and Phase Contexts:
 - [D-47]: `EventSnapshotManager` enforces disk path layout (`events/{serial}/{YYYY}/{MM}/{DD}/{id}.jpg`) with 0o640 permissions, JPEG validation, and fallback tiny JPEG.
 - [D-48]: `SegmentProtectionService` tags overlapping segments with `is_protected = True`, granting absolute immunity against retention janitor and low-water pruning (REC-04).
 - [D-49]: Event clock drift evaluation restamps timestamps with NVR UTC time when camera drift exceeds 5 seconds (EVT-07, HLTH-09).
+- [D-50]: Gallery data model with `gallery_items` table (migration 0006) capturing snapshots, manual clips, and exported clips with foreign keys and cascade rules.
+- [D-51]: RangeFileResponse HTTP 206 Partial Content byte-range streaming for fMP4 video playback, with MediaMTX auth webhook supporting `action in ("read", "playback")`.
+- [D-52]: Lossless MP4 clip exporter combining ISOBMFF fragment boxes without CPU-intensive re-encoding, utilizing atomic temp-then-rename and POSIX 0o640 permissions.
+- [D-53]: React 24h interactive playback timeline with zoom (24h/12h/4h/1h), visual outage and event indications, gap skipping without freeze, and unified media gallery with preview modals and safety-confirmed deletion.
 
 ## Session Continuity
 
 Last session: 2026-11-04
-Stopped at: Phase 04 complete; ready for Phase 05 planning
+Stopped at: Phase 05 complete; ready for Phase 06 planning
 Resume file: .planning/ROADMAP.md

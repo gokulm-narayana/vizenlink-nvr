@@ -311,6 +311,18 @@ class User(Base):
         "GalleryItem",
         back_populates="user",
     )
+    paired_devices: Mapped[list["PairedDevice"]] = relationship(
+        "PairedDevice",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    qr_pairing_sessions: Mapped[list["QRPairingSession"]] = relationship(
+        "QRPairingSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -501,6 +513,55 @@ class GalleryItem(Base):
         Index("ix_gallery_items_camera_captured", "camera_serial", "captured_at"),
         Index("ix_gallery_items_type", "item_type"),
     )
+
+
+class PairedDevice(Base):
+    """Registered mobile device paired to an NVR user account."""
+
+    __tablename__ = "paired_devices"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    device_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    device_name: Mapped[str] = mapped_column(Text, nullable=False)
+    platform: Mapped[str] = mapped_column(Text, nullable=False, default="unknown")
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    access_token: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    refresh_token: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    paired_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+    last_seen_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+    access_token_expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    refresh_token_expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    is_revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="paired_devices")
+
+
+class QRPairingSession(Base):
+    """Ephemeral pairing session for mobile QR code enrollment."""
+
+    __tablename__ = "qr_pairing_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pairing_code: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    claimed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    claimed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="qr_pairing_sessions")
+
 
 
 

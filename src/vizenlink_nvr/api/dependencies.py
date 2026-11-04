@@ -45,10 +45,19 @@ async def get_current_user_optional(
         return None
 
     result = await SessionManager.validate_session(db, token)
-    if result is None:
-        return None
-    _, user = result
-    return user
+    if result is not None:
+        _, user = result
+        return user
+
+    # Check mobile device paired bearer token
+    from vizenlink_nvr.services.mobile_auth import MobileAuthService
+
+    mobile_res = await MobileAuthService.validate_mobile_token(db, token)
+    if mobile_res is not None:
+        _, user = mobile_res
+        return user
+
+    return None
 
 
 CurrentUserOptional = Annotated[User | None, Depends(get_current_user_optional)]

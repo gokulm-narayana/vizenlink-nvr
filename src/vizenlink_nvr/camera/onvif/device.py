@@ -327,3 +327,85 @@ class OnvifDeviceClient:
                 kind=FailureKind.BAD_RESPONSE,
                 reason=f"Failed to parse GetServices response: {exc}",
             )
+
+    async def system_reboot(
+        self,
+        timeout: float = 8.0,
+    ) -> CameraResult[str]:
+        """Request device reboot via ONVIF SystemReboot (SET-05)."""
+        body = '<tds:SystemReboot xmlns:tds="http://www.onvif.org/ver10/device/wsdl"/>'
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+
+        try:
+            root = parse_xml(res.value)
+            msg = find_text(root, "Message") or "Rebooting"
+            return Success(msg)
+        except Exception as exc:
+            return Failure(
+                kind=FailureKind.BAD_RESPONSE,
+                reason=f"Failed to parse SystemReboot response: {exc}",
+            )
+
+    async def set_system_factory_default(
+        self,
+        mode: str = "Soft",
+        timeout: float = 8.0,
+    ) -> CameraResult[bool]:
+        """Request factory reset via ONVIF SetSystemFactoryDefault (SET-06).
+
+        mode: "Soft" (erases user configuration, retains network)
+              "Hard" (erases all configuration including network, re-entering AP mode)
+        """
+        valid_mode = "Hard" if mode.lower() == "hard" else "Soft"
+        body = (
+            '<tds:SetSystemFactoryDefault xmlns:tds="http://www.onvif.org/ver10/device/wsdl">'
+            f"<tds:FactoryDefault>{valid_mode}</tds:FactoryDefault>"
+            "</tds:SetSystemFactoryDefault>"
+        )
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+        return Success(True)
+
+    async def set_system_date_and_time(
+        self,
+        tz: str,
+        timeout: float = 8.0,
+    ) -> CameraResult[bool]:
+        """Update camera system timezone via ONVIF SetSystemDateAndTime (SET-01)."""
+        body = (
+            '<tds:SetSystemDateAndTime xmlns:tds="http://www.onvif.org/ver10/device/wsdl">'
+            "<tds:DateTimeType>NTP</tds:DateTimeType>"
+            "<tds:DaylightSavings>true</tds:DaylightSavings>"
+            "<tds:TimeZone>"
+            f'<tt:TZ xmlns:tt="http://www.onvif.org/ver10/schema">{xml_escape(tz)}</tt:TZ>'
+            "</tds:TimeZone>"
+            "</tds:SetSystemDateAndTime>"
+        )
+        res = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            body,
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if isinstance(res, (Failure, Timeout)):
+            return res
+        return Success(True)

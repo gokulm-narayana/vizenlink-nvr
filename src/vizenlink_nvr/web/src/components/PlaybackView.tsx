@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { TimelineCanvas, ZoomLevel, TimelineSegment, TimelineOutage, TimelineEvent } from "./TimelineCanvas";
 import { TransportBar } from "./TransportBar";
+import { ClipExportModal } from "./ClipExportModal";
 
 export interface CameraOption {
   serial: string;
@@ -56,6 +57,7 @@ export const PlaybackView: React.FC<PlaybackViewProps> = ({
   // In / Out markers for export
   const [inMarker, setInMarker] = useState<Date | null>(null);
   const [outMarker, setOutMarker] = useState<Date | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Export clip modal state
   const [isExporting, setIsExporting] = useState(false);
@@ -565,10 +567,7 @@ export const PlaybackView: React.FC<PlaybackViewProps> = ({
         onToggleMute={handleToggleMute}
         onToggleFullscreen={handleToggleFullscreen}
         onTakeSnapshot={handleTakeSnapshot}
-        onOpenExport={() => {
-          if (!inMarker) setInMarker(new Date(currentTime.getTime() - 60000));
-          if (!outMarker) setOutMarker(currentTime);
-        }}
+        onOpenExport={() => setIsExportModalOpen(true)}
         currentTimeFormatted={`${selectedDate} ${currentTimeFormatted}`}
         hasActiveSegment={activeSegment !== null}
       />
@@ -676,6 +675,21 @@ export const PlaybackView: React.FC<PlaybackViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Full Clip Export Dialog */}
+      <ClipExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        cameraSerial={selectedSerial}
+        cameraName={cameras.find((c) => c.serial === selectedSerial)?.name}
+        initialStartTime={inMarker || new Date(currentTime.getTime() - 60000)}
+        initialEndTime={outMarker || currentTime}
+        onExportSuccess={() => {
+          setInMarker(null);
+          setOutMarker(null);
+        }}
+        onNavigateToGallery={onOpenGallery}
+      />
     </div>
   );
 };

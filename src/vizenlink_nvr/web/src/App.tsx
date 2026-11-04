@@ -7,6 +7,7 @@ import { AlertsBanner, AlertData } from "./components/AlertsBanner";
 import { Dashboard } from "./components/Dashboard";
 import { EventFeed } from "./components/EventFeed";
 import { PlaybackView } from "./components/PlaybackView";
+import { GalleryView } from "./components/GalleryView";
 
 interface AuthStatus {
   initialized: boolean;
@@ -209,6 +210,13 @@ export const App: React.FC = () => {
             initialTimestamp={playbackJumpTarget?.timestamp}
             onClearInitialJump={() => setPlaybackJumpTarget(null)}
             onOpenGallery={() => setCurrentTab("gallery")}
+          />
+        )}
+        {currentTab === "gallery" && (
+          <GalleryView
+            cameras={cameras}
+            userRole={authStatus?.user?.role}
+            onJumpToPlayback={handleJumpToPlayback}
           />
         )}
         {currentTab === "dashboard" && (

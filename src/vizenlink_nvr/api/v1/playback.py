@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -16,9 +19,12 @@ from vizenlink_nvr.api.dependencies import (
     RequireOperator,
 )
 from vizenlink_nvr.db.models import Segment, StorageSettings
+from vizenlink_nvr.media.clip_exporter import ClipExporter
 from vizenlink_nvr.media.playback_streamer import RangeFileResponse
 from vizenlink_nvr.services.audit import AuditService
+from vizenlink_nvr.services.gallery import GalleryService
 from vizenlink_nvr.services.timeline import TimelineService
+from vizenlink_nvr.timeutil import utc_now
 
 playback_router = APIRouter(prefix="/playback", tags=["playback"])
 
@@ -77,6 +83,33 @@ class SearchResultItem(BaseModel):
     timestamp: datetime
     snapshot_path: str | None = None
     is_locked: bool
+
+
+class ExportClipRequest(BaseModel):
+    camera_serial: str
+    start_time: datetime
+    end_time: datetime
+    title: str | None = None
+
+
+class SaveSnapshotRequest(BaseModel):
+    camera_serial: str
+    image_base64: str
+    title: str | None = None
+    captured_at: datetime | None = None
+
+
+class GalleryItemModel(BaseModel):
+    id: int
+    camera_serial: str
+    item_type: str
+    title: str
+    file_path: str
+    file_size_bytes: int
+    duration_seconds: float | None = None
+    captured_at: datetime
+    created_at: datetime
+    user_id: int | None = None
 
 
 def _verify_camera_access(user: CurrentUser, camera_serial: str) -> None:
@@ -335,4 +368,215 @@ async def unlock_segment(
         file_size_bytes=seg.file_size_bytes,
         is_protected=seg.is_protected,
         protection_reason=seg.protection_reason,
+    )
+
+
+@playback_router.post("/export", response_model=GalleryItemModel)
+async def export_clip(
+    payload: ExportClipRequest,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> GalleryItemModel:
+    """Export an MP4 video clip from recording segments (PLAY-06)."""
+    _verify_camera_access(user, payload.camera_serial)
+
+    if payload.end_time <= payload.start_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_time must be greater than start_time",
+        )
+
+    # Find overlapping segments
+    stmt = (
+        select(Segment)
+        .where(
+            Segment.camera_serial == payload.camera_serial,
+            Segment.end_time > payload.start_time,
+            Segment.start_time < payload.end_time,
+        )
+        .order_by(Segment.start_time.asc())
+    )
+    res = await db.execute(stmt)
+    segments = list(res.scalars().all())
+
+    if not segments:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No recording segments found in the specified time range",
+        )
+
+    storage_root = await _resolve_storage_root(request, db)
+    segment_paths: list[Path] = []
+    for s in segments:
+        p = Path(s.file_path)
+        if not p.is_absolute():
+            p = storage_root / p
+        if p.exists() and p.is_file():
+            segment_paths.append(p)
+
+    if not segment_paths:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recording segment files were not found on disk",
+        )
+
+    start_str = payload.start_time.strftime("%Y%m%d_%H%M%S")
+    filename = f"clip_{payload.camera_serial}_{start_str}_{uuid.uuid4().hex[:6]}.mp4"
+    rel_path = GalleryService.generate_relative_path(
+        camera_serial=payload.camera_serial,
+        item_type="export_clip",
+        captured_at=payload.start_time,
+        filename=filename,
+    )
+    abs_output = storage_root / rel_path
+
+    try:
+        ClipExporter.export_fmp4_clip(segment_paths, abs_output)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to export clip: {exc}",
+        ) from exc
+
+    file_size = abs_output.stat().st_size
+    duration = (payload.end_time - payload.start_time).total_seconds()
+    title = payload.title or f"Export {payload.camera_serial} {payload.start_time.isoformat()}"
+
+    item = await GalleryService.create_item(
+        session=db,
+        camera_serial=payload.camera_serial,
+        item_type="export_clip",
+        title=title,
+        file_path=rel_path,
+        file_size_bytes=file_size,
+        duration_seconds=duration,
+        captured_at=payload.start_time,
+        user_id=user.id,
+        commit=True,
+    )
+
+    await AuditService.record_event(
+        session=db,
+        action="gallery.export_clip",
+        resource_type="gallery_item",
+        resource_id=str(item.id),
+        actor_id=user.id,
+        actor_username=user.username,
+        details={
+            "camera_serial": payload.camera_serial,
+            "start_time": payload.start_time.isoformat(),
+            "end_time": payload.end_time.isoformat(),
+            "file_size_bytes": file_size,
+            "file_path": rel_path,
+        },
+        commit=True,
+    )
+
+    return GalleryItemModel(
+        id=item.id,
+        camera_serial=item.camera_serial,
+        item_type=item.item_type,
+        title=item.title,
+        file_path=item.file_path,
+        file_size_bytes=item.file_size_bytes,
+        duration_seconds=item.duration_seconds,
+        captured_at=item.captured_at,
+        created_at=item.created_at,
+        user_id=item.user_id,
+    )
+
+
+@playback_router.post("/snapshot", response_model=GalleryItemModel)
+async def save_snapshot(
+    payload: SaveSnapshotRequest,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> GalleryItemModel:
+    """Save a snapshot JPEG from live view or playback into the media gallery (PLAY-07, LIVE-07)."""
+    _verify_camera_access(user, payload.camera_serial)
+
+    raw_b64 = payload.image_base64
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(raw_b64)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid base64 encoded image data",
+        ) from exc
+
+    if len(img_bytes) < 3 or img_bytes[:3] != b"\xff\xd8\xff":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provided image data is not a valid JPEG",
+        )
+
+    captured_at = payload.captured_at or utc_now()
+    time_str = captured_at.strftime("%Y%m%d_%H%M%S")
+    filename = f"snap_{payload.camera_serial}_{time_str}_{uuid.uuid4().hex[:6]}.jpg"
+
+    rel_path = GalleryService.generate_relative_path(
+        camera_serial=payload.camera_serial,
+        item_type="snapshot",
+        captured_at=captured_at,
+        filename=filename,
+    )
+    storage_root = await _resolve_storage_root(request, db)
+    abs_output = storage_root / rel_path
+    abs_output.parent.mkdir(parents=True, exist_ok=True)
+
+    tmp_output = abs_output.with_name(f"{abs_output.name}.tmp_{uuid.uuid4().hex[:8]}")
+    try:
+        tmp_output.write_bytes(img_bytes)
+        if os.name == "posix":
+            os.chmod(tmp_output, 0o640)
+        tmp_output.replace(abs_output)
+    finally:
+        if tmp_output.exists():
+            tmp_output.unlink(missing_ok=True)
+
+    title = payload.title or f"Snapshot {payload.camera_serial} {captured_at.isoformat()}"
+    item = await GalleryService.create_item(
+        session=db,
+        camera_serial=payload.camera_serial,
+        item_type="snapshot",
+        title=title,
+        file_path=rel_path,
+        file_size_bytes=len(img_bytes),
+        captured_at=captured_at,
+        user_id=user.id,
+        commit=True,
+    )
+
+    await AuditService.record_event(
+        session=db,
+        action="gallery.save_snapshot",
+        resource_type="gallery_item",
+        resource_id=str(item.id),
+        actor_id=user.id,
+        actor_username=user.username,
+        details={
+            "camera_serial": payload.camera_serial,
+            "captured_at": captured_at.isoformat(),
+            "file_size_bytes": len(img_bytes),
+            "file_path": rel_path,
+        },
+        commit=True,
+    )
+
+    return GalleryItemModel(
+        id=item.id,
+        camera_serial=item.camera_serial,
+        item_type=item.item_type,
+        title=item.title,
+        file_path=item.file_path,
+        file_size_bytes=item.file_size_bytes,
+        duration_seconds=item.duration_seconds,
+        captured_at=item.captured_at,
+        created_at=item.created_at,
+        user_id=item.user_id,
     )

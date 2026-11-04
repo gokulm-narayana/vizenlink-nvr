@@ -665,6 +665,114 @@
         "title": "EventListResponse",
         "type": "object"
       },
+      "ExportClipRequest": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "end_time": {
+            "format": "date-time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "start_time",
+          "end_time"
+        ],
+        "title": "ExportClipRequest",
+        "type": "object"
+      },
+      "GalleryItemModel": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "file_size_bytes": {
+            "title": "File Size Bytes",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_type": {
+            "title": "Item Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "id",
+          "camera_serial",
+          "item_type",
+          "title",
+          "file_path",
+          "file_size_bytes",
+          "captured_at",
+          "created_at"
+        ],
+        "title": "GalleryItemModel",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -918,6 +1026,47 @@
           "new_password"
         ],
         "title": "ResetPasswordRequest",
+        "type": "object"
+      },
+      "SaveSnapshotRequest": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "image_base64": {
+            "title": "Image Base64",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "image_base64"
+        ],
+        "title": "SaveSnapshotRequest",
         "type": "object"
       },
       "SearchResultItem": {
@@ -3411,6 +3560,66 @@
         ]
       }
     },
+    "/api/v1/playback/export": {
+      "post": {
+        "description": "Export an MP4 video clip from recording segments (PLAY-06).",
+        "operationId": "export_clip_api_v1_playback_export_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportClipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GalleryItemModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Clip",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
     "/api/v1/playback/search": {
       "get": {
         "description": "Search recordings by event occurrences and timeline intervals (GAL-03).",
@@ -3694,6 +3903,66 @@
           }
         },
         "summary": "Unlock Segment",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
+    "/api/v1/playback/snapshot": {
+      "post": {
+        "description": "Save a snapshot JPEG from live view or playback into the media gallery (PLAY-07, LIVE-07).",
+        "operationId": "save_snapshot_api_v1_playback_snapshot_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GalleryItemModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Snapshot",
         "tags": [
           "playback"
         ]

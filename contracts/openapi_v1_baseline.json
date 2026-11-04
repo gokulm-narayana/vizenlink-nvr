@@ -3524,6 +3524,63 @@
         ]
       }
     },
+    "/api/v1/playback/segment/{segment_id}": {
+      "get": {
+        "description": "Stream fMP4 video segment with HTTP 206 Byte-Range seeking support (PLAY-03, PLAY-04).",
+        "operationId": "stream_segment_api_v1_playback_segment__segment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "title": "Segment Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Segment",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
     "/api/v1/playback/segments/{segment_id}/lock": {
       "post": {
         "description": "Lock a recording segment against retention and low-water pruning (REC-12).",

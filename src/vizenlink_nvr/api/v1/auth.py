@@ -379,8 +379,8 @@ async def mediamtx_auth_webhook(
             )
         return {"status": "ok"}
 
-    # Case 2: Streaming read
-    if payload.action == "read":
+    # Case 2: Streaming read or recorded playback
+    if payload.action in ("read", "playback"):
         # Parse query string
         params = urllib.parse.parse_qs(payload.query)
         token_list = params.get("token")

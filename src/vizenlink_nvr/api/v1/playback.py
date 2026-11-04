@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.api.dependencies import (
     CurrentUser,
     DbSession,
     RequireOperator,
 )
-from vizenlink_nvr.db.models import Segment
+from vizenlink_nvr.db.models import Segment, StorageSettings
+from vizenlink_nvr.media.playback_streamer import RangeFileResponse
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.timeline import TimelineService
 
@@ -84,6 +88,51 @@ def _verify_camera_access(user: CurrentUser, camera_serial: str) -> None:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied to camera '{camera_serial}'",
             )
+
+
+async def _resolve_storage_root(request: Request, db: AsyncSession) -> Path:
+    """Resolve configured storage root path."""
+    stmt = select(StorageSettings.storage_path).where(StorageSettings.id == 1)
+    res = await db.execute(stmt)
+    path_str = res.scalar_one_or_none()
+    if path_str:
+        return Path(path_str)
+    runtime = getattr(request.app.state, "runtime", None)
+    if runtime is not None and getattr(runtime, "settings", None) is not None:
+        return Path(runtime.settings.data_dir / "recordings")
+    return Path("/var/lib/vizenlink-nvr/recordings")
+
+
+@playback_router.get("/segment/{segment_id}")
+async def stream_segment(
+    segment_id: int,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> Response:
+    """Stream fMP4 video segment with HTTP 206 Byte-Range seeking support (PLAY-03, PLAY-04)."""
+    seg = await db.get(Segment, segment_id)
+    if seg is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Segment {segment_id} not found",
+        )
+
+    _verify_camera_access(user, seg.camera_serial)
+
+    file_path = Path(seg.file_path)
+    if not file_path.is_absolute():
+        storage_root = await _resolve_storage_root(request, db)
+        file_path = storage_root / file_path
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Segment file not found on disk: {seg.file_path}",
+        )
+
+    range_header = request.headers.get("Range")
+    return RangeFileResponse(file_path, range_header=range_header, media_type="video/mp4")
 
 
 @playback_router.get("/timeline", response_model=TimelineResponse)

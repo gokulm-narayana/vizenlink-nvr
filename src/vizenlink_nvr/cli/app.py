@@ -11,6 +11,7 @@ from vizenlink_nvr.cli import (  # noqa: F401
     cameras_registry,
     cameras_scan,
 )
+from vizenlink_nvr.cli.backup_cmd import backup_app
 from vizenlink_nvr.cli.cameras import cameras_app
 from vizenlink_nvr.cli.mediamtx_cmd import mediamtx_app
 from vizenlink_nvr.cli.options import DataDirOpt, JsonOpt
@@ -35,6 +36,7 @@ app.add_typer(mediamtx_app, name="mediamtx")
 app.add_typer(storage_app, name="storage")
 app.add_typer(recording_app, name="recording")
 app.add_typer(service_app, name="service")
+app.add_typer(backup_app, name="backup")
 
 
 def _render_status_human(report: StatusReport) -> None:

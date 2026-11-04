@@ -160,3 +160,4 @@ class GalleryService:
         items = list(res.scalars().all())
 
         return items, total_count
+

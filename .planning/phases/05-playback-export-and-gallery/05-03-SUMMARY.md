@@ -21,3 +21,4 @@
 - `src/vizenlink_nvr/api/v1/auth.py`
 - `contracts/openapi_v1_baseline.json`
 - `tests/integration/test_playback_streaming.py`
+

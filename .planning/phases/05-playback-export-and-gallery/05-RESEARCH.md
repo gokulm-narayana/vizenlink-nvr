@@ -69,3 +69,4 @@
    - Days with available recordings are highlighted with a badge/dot.
 3. **Gallery:**
    - Grid layout with thumbnails, file size, duration, timestamp, and actions (Download, Delete, Preview).
+

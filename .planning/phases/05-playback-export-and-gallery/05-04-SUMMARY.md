@@ -31,3 +31,4 @@ Implemented the lossless MP4 clip export engine (`ClipExporter`) using stream co
 - `uv run pytest tests/integration/test_clip_export.py -v`: 4 passed in 0.48s.
 - `uv run python tools/check_api_breaking_changes.py`: Success: OpenAPI schema is backward-compatible with baseline.
 - `uv run pytest -q`: 406 passed, 1 skipped.
+

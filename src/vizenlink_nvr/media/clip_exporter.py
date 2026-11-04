@@ -95,3 +95,4 @@ class ClipExporter:
         finally:
             if tmp_output.exists():
                 tmp_output.unlink(missing_ok=True)
+

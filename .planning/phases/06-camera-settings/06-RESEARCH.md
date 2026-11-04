@@ -50,3 +50,4 @@
   - ONVIF Device service `SetSystemFactoryDefault`:
     - `Soft`: erases user configuration (imaging, names, OSD, etc.) while preserving network setup.
     - `Hard`: erases all configuration including network credentials (reverts to AP mode). Requires double-confirmation dialog in UI and Operator/Owner role.
+

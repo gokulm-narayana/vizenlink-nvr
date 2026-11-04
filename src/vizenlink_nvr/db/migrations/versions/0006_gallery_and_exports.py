@@ -55,3 +55,4 @@ def downgrade() -> None:
     op.drop_index("ix_gallery_items_type", table_name="gallery_items")
     op.drop_index("ix_gallery_items_camera_captured", table_name="gallery_items")
     op.drop_table("gallery_items")
+

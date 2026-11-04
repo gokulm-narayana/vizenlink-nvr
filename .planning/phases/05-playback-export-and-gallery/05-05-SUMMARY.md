@@ -25,3 +25,4 @@ Implemented the Gallery REST API router (`/api/v1/gallery`), allowing querying s
 - `uv run pytest tests/integration/test_gallery_api.py -v`: 3 passed in 0.79s.
 - `uv run python tools/check_api_breaking_changes.py`: Success: OpenAPI schema is backward-compatible with baseline.
 - `uv run ruff check src/vizenlink_nvr/api/v1/gallery.py src/vizenlink_nvr/api/app.py tests/integration/test_gallery_api.py`: All checks passed.
+

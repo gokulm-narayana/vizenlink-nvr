@@ -22,3 +22,4 @@ Phase 06 enables complete configuration and management of cameras connected to t
    - Reboot requires confirmation; Factory Reset requires double confirmation (mode selection, then explicit destructive warning) and is restricted to `owner` and `operator` (`RequireOperator`).
 4. **Audit Trail Invariant:**
    - Every modification to camera settings (identity, encoder, imaging, OSD, password, reboot, reset) writes an immutable record to `audit_logs` table (`AUTH-04`).
+

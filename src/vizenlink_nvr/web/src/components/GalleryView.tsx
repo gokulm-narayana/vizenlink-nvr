@@ -657,3 +657,4 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
     </div>
   );
 };
+

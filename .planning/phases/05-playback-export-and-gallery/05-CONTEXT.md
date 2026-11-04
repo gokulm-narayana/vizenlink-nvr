@@ -49,3 +49,4 @@
    - All clip exports, clip deletions, and segment locks are permanently recorded in `audit_logs`.
 3. **Safe File Operations:**
    - Gallery file paths are strictly sandboxed under the NVR storage root (`gallery/clips/...` and `gallery/snapshots/...`). Directory traversal is strictly prevented.
+

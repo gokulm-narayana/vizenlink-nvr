@@ -32,3 +32,4 @@ Implemented the business service `CameraSettingsService` and REST API endpoints 
 - `uv run python tools/check_api_breaking_changes.py`: Success: OpenAPI schema is backward-compatible with baseline.
 - `uv run ruff check src/vizenlink_nvr/services/camera_settings.py src/vizenlink_nvr/api/v1/camera_settings.py src/vizenlink_nvr/api/app.py tests/integration/test_camera_settings_api.py`: All checks passed.
 - `uv run mypy src/vizenlink_nvr/services/camera_settings.py src/vizenlink_nvr/api/v1/camera_settings.py src/vizenlink_nvr/api/app.py`: Success: no issues found.
+

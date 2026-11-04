@@ -20,3 +20,4 @@
 - `src/vizenlink_nvr/db/models.py`
 - `src/vizenlink_nvr/services/gallery.py`
 - `tests/unit/test_gallery_models.py`
+

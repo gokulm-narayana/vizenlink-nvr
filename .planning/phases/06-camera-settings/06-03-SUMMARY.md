@@ -27,3 +27,4 @@ Implemented the unified React UI for camera configuration (`CameraSettingsView.t
 - `cd src/vizenlink_nvr/web && npm run build`: 0 TypeScript errors, production build succeeded.
 - `uv run pytest tests/unit/test_camera_settings_ui.py -v`: 5 passed in 0.03s.
 - `uv run ruff check tests/unit/test_camera_settings_ui.py`: All checks passed.
+

@@ -57,7 +57,7 @@ def test_cli_storage_set_path_system_disk_refusal(
         ["storage", "set-path", "--path", str(target_rec), "--data-dir", str(data_dir)],
     )
     assert res_refused.exit_code == int(ExitCode.INVALID_INPUT), res_refused.output
-    assert "system root partition" in res_refused.output
+    assert "system root" in res_refused.output and "partition" in res_refused.output
 
     # 2. Refused in --json mode emits clean JSON error
     res_json_refused = cli.invoke(

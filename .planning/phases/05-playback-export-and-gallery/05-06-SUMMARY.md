@@ -34,3 +34,4 @@ Implemented the interactive 24-hour visual playback timeline, HTML5 video stream
 - `cd src/vizenlink_nvr/web && npm run build`: Compiled production bundle in 262ms with 0 errors.
 - `uv run pytest tests/unit/test_player_controls.py -v`: 5 passed in 0.02s.
 - `uv run ruff check tests/unit/test_player_controls.py`: All checks passed.
+

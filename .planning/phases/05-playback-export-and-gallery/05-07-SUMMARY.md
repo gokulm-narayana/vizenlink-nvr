@@ -26,3 +26,4 @@ Implemented the React UI Media Gallery view (`GalleryView`), media preview modal
 ### Verification
 - `cd src/vizenlink_nvr/web && npm run build`: Compiled production bundle in 254ms with 0 TypeScript errors.
 - Verified responsive layout and empty states for all filter permutations.
+

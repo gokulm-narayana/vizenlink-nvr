@@ -487,3 +487,4 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     </div>
   );
 };
+

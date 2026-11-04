@@ -16,8 +16,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Headless Recording Core** - 24/7 fMP4 recording with reconciler, segment index, retention janitor, gap watchdog and storage guard
 - [x] **Phase 3: Secure API, Auth & Live View** - First LAN exposure: accounts and roles, media auth, `/api/v1`, React web app, live grid, health overview
 - [x] **Phase 4: Events & Event Recording** - Camera events ingested, protecting footage around them, listed, filtered and notified
-- [ ] **Phase 5: Playback, Export & Gallery** - Timeline playback, event jump, clip export, snapshots, gallery and recordings search
-- [ ] **Phase 6: Camera Settings** - Capability-gated camera configuration that behaves exactly like `camera_api`
+- [x] **Phase 5: Playback, Export & Gallery** - Timeline playback, event jump, clip export, snapshots, gallery and recordings search
+- [x] **Phase 6: Camera Settings** - Capability-gated camera configuration that behaves exactly like `camera_api`
 - [ ] **Phase 7: Mobile LAN Integration** - Mobile app finds, pairs with and uses the NVR for live, recordings, health and management
 - [ ] **Phase 8: Cross-Platform Packaging & Soak** - Installable service on every target platform, proven by a 16-camera soak
 
@@ -176,13 +176,13 @@ Plans:
   3. Settings screens show only the options the camera's capability flags support, with values and validation following `camera_api` semantics, so the same camera behaves identically from the NVR and the mobile app
   4. User can reboot a camera and watch it go offline and come back with recording resumed; only Owner/Admin can factory-reset a camera, and only after a double confirmation
   5. User can view camera health: uptime, last reboot reason, clock sync status and firmware
-**Plans**: 4 plans (ready for execution)
+**Plans**: 4 plans (completed)
 
 Plans:
-- [ ] 06-01-PLAN.md — Camera settings core clients and models (wave 1)
-- [ ] 06-02-PLAN.md — Camera settings service, REST API, and OpenAPI baseline (wave 2)
-- [ ] 06-03-PLAN.md — React UI camera settings view and confirmation dialogs (wave 3)
-- [ ] 06-04-PLAN.md — Phase 6 end-to-end pipeline tracer and 13-step phase gate verification (wave 4)
+- [x] 06-01-PLAN.md — Camera settings core clients and models (wave 1)
+- [x] 06-02-PLAN.md — Camera settings service, REST API, and OpenAPI baseline (wave 2)
+- [x] 06-03-PLAN.md — React UI camera settings view and confirmation dialogs (wave 3)
+- [x] 06-04-PLAN.md — Phase 6 end-to-end pipeline tracer and 13-step phase gate verification (wave 4)
 **UI hint**: yes
 **Research**: Completed (see .planning/phases/06-camera-settings/06-RESEARCH.md).
 
@@ -236,11 +236,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Ph
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundations & Camera Onboarding | 0/31 | Planned | - |
-| 2. Headless Recording Core | 0/TBD | Not started | - |
-| 3. Secure API, Auth & Live View | 0/TBD | Not started | - |
-| 4. Events & Event Recording | 0/TBD | Not started | - |
-| 5. Playback, Export & Gallery | 0/TBD | Not started | - |
-| 6. Camera Settings | 0/TBD | Not started | - |
-| 7. Mobile LAN Integration | 0/TBD | Not started | - |
+| 1. Foundations & Camera Onboarding | 31/31 | Completed | 2026-11-04 |
+| 2. Headless Recording Core | 8/8 | Completed | 2026-11-04 |
+| 3. Secure API, Auth & Live View | 7/7 | Completed | 2026-11-04 |
+| 4. Events & Event Recording | 7/7 | Completed | 2026-11-04 |
+| 5. Playback, Export & Gallery | 8/8 | Completed | 2026-11-04 |
+| 6. Camera Settings | 4/4 | Completed | 2026-11-04 |
+| 7. Mobile LAN Integration | 0/TBD | In progress | - |
 | 8. Cross-Platform Packaging & Soak | 0/TBD | Not started | - |

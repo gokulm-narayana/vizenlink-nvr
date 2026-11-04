@@ -27,3 +27,4 @@ Implemented the protocol clients and dataclasses for camera settings across ONVI
 - `uv run pytest tests/unit/test_camera_settings_clients.py -v`: 14 passed in 0.04s.
 - `uv run ruff check src/vizenlink_nvr/camera tests/unit/test_camera_settings_clients.py`: All checks passed.
 - `uv run mypy src/vizenlink_nvr/camera/onvif/device.py src/vizenlink_nvr/camera/onvif/imaging.py src/vizenlink_nvr/camera/onvif/media2.py src/vizenlink_nvr/camera/nuraeye/settings.py`: Success: no issues found.
+

@@ -21,6 +21,7 @@ interface EventCardProps {
   isRead?: boolean;
   onSelect?: (event: EventData) => void;
   onLockToggle?: (eventId: number, newLocked: boolean) => Promise<void>;
+  onJumpToPlayback?: (cameraSerial: string, timestamp: string) => void;
 }
 
 const EVENT_TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -37,6 +38,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   isRead = false,
   onSelect,
   onLockToggle,
+  onJumpToPlayback,
 }) => {
   const [imgError, setImgError] = useState(false);
   const [locking, setLocking] = useState(false);
@@ -198,31 +200,60 @@ export const EventCard: React.FC<EventCardProps> = ({
           )}
         </div>
 
-        {/* Lock/Unlock Button */}
-        {onLockToggle && (
-          <button
-            onClick={handleLockClick}
-            disabled={locking}
-            style={{
-              marginTop: "4px",
-              background: event.is_locked ? "#334155" : "#1e3a8a",
-              color: event.is_locked ? "#94a3b8" : "#93c5fd",
-              border: "1px solid",
-              borderColor: event.is_locked ? "#475569" : "#3b82f6",
-              borderRadius: "4px",
-              padding: "5px 10px",
-              fontSize: "12px",
-              fontWeight: 500,
-              cursor: locking ? "wait" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-            }}
-          >
-            {event.is_locked ? "🔓 Unlock Footage" : "🔒 Protect & Lock"}
-          </button>
-        )}
+        {/* Action Buttons: Lock & Playback */}
+        <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+          {onJumpToPlayback && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onJumpToPlayback(event.camera_serial, event.start_time);
+              }}
+              style={{
+                flex: 1,
+                background: "#0284c7",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "4px",
+                padding: "5px 10px",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+              }}
+              title="Jump to footage in 24h timeline"
+            >
+              ▶ Playback
+            </button>
+          )}
+
+          {onLockToggle && (
+            <button
+              onClick={handleLockClick}
+              disabled={locking}
+              style={{
+                flex: 1,
+                background: event.is_locked ? "#334155" : "#1e3a8a",
+                color: event.is_locked ? "#94a3b8" : "#93c5fd",
+                border: "1px solid",
+                borderColor: event.is_locked ? "#475569" : "#3b82f6",
+                borderRadius: "4px",
+                padding: "5px 8px",
+                fontSize: "12px",
+                fontWeight: 500,
+                cursor: locking ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+              }}
+            >
+              {event.is_locked ? "🔓 Unlock" : "🔒 Protect"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ViewTab = "live" | "dashboard" | "events";
+export type ViewTab = "live" | "dashboard" | "events" | "playback" | "gallery";
 export type ViewMode = "simple" | "advanced";
 
 interface HeaderProps {
@@ -59,6 +59,36 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             Live Multiview
+          </button>
+          <button
+            onClick={() => onTabChange("playback")}
+            style={{
+              background: currentTab === "playback" ? "#0f172a" : "transparent",
+              color: currentTab === "playback" ? "#38bdf8" : "#94a3b8",
+              border: "1px solid",
+              borderColor: currentTab === "playback" ? "#38bdf8" : "transparent",
+              borderRadius: "4px",
+              padding: "6px 12px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Playback
+          </button>
+          <button
+            onClick={() => onTabChange("gallery")}
+            style={{
+              background: currentTab === "gallery" ? "#0f172a" : "transparent",
+              color: currentTab === "gallery" ? "#38bdf8" : "#94a3b8",
+              border: "1px solid",
+              borderColor: currentTab === "gallery" ? "#38bdf8" : "transparent",
+              borderRadius: "4px",
+              padding: "6px 12px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Gallery
           </button>
           <button
             onClick={() => onTabChange("events")}

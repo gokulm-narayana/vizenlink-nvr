@@ -6,6 +6,7 @@ import { Header, ViewMode, ViewTab } from "./components/Header";
 import { AlertsBanner, AlertData } from "./components/AlertsBanner";
 import { Dashboard } from "./components/Dashboard";
 import { EventFeed } from "./components/EventFeed";
+import { PlaybackView } from "./components/PlaybackView";
 
 interface AuthStatus {
   initialized: boolean;
@@ -36,6 +37,10 @@ export const App: React.FC = () => {
     }
   });
   const [unreadEventsCount, setUnreadEventsCount] = useState<number>(0);
+  const [playbackJumpTarget, setPlaybackJumpTarget] = useState<{
+    cameraSerial: string;
+    timestamp: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const checkStatus = async () => {
@@ -145,6 +150,11 @@ export const App: React.FC = () => {
     setAlerts((prev) => prev.filter((a) => a.id !== alertId));
   };
 
+  const handleJumpToPlayback = (cameraSerial: string, timestamp: string) => {
+    setPlaybackJumpTarget({ cameraSerial, timestamp });
+    setCurrentTab("playback");
+  };
+
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
@@ -189,6 +199,16 @@ export const App: React.FC = () => {
             cameras={cameras}
             readEventIds={readEventIds}
             onEventRead={handleEventRead}
+            onJumpToPlayback={handleJumpToPlayback}
+          />
+        )}
+        {currentTab === "playback" && (
+          <PlaybackView
+            cameras={cameras}
+            initialCameraSerial={playbackJumpTarget?.cameraSerial}
+            initialTimestamp={playbackJumpTarget?.timestamp}
+            onClearInitialJump={() => setPlaybackJumpTarget(null)}
+            onOpenGallery={() => setCurrentTab("gallery")}
           />
         )}
         {currentTab === "dashboard" && (

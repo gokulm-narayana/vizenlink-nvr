@@ -10,12 +10,14 @@ interface EventFeedProps {
   cameras: CameraItem[];
   onEventRead?: (eventId: number) => void;
   readEventIds: Set<number>;
+  onJumpToPlayback?: (cameraSerial: string, timestamp: string) => void;
 }
 
 export const EventFeed: React.FC<EventFeedProps> = ({
   cameras,
   onEventRead,
   readEventIds,
+  onJumpToPlayback,
 }) => {
   const [events, setEvents] = useState<EventData[]>([]);
   const [total, setTotal] = useState(0);
@@ -281,6 +283,7 @@ export const EventFeed: React.FC<EventFeedProps> = ({
             isRead={readEventIds.has(evt.id)}
             onSelect={(e) => onEventRead && onEventRead(e.id)}
             onLockToggle={handleLockToggle}
+            onJumpToPlayback={onJumpToPlayback}
           />
         ))}
       </div>

@@ -16,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from vizenlink_nvr.db.types import UtcDateTime
+from vizenlink_nvr.timeutil import utc_now
 
 
 class Base(DeclarativeBase):
@@ -102,6 +103,19 @@ class Camera(Base):
     outages: Mapped[list["CameraOutage"]] = relationship(
         "CameraOutage",
         back_populates="camera",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    events: Mapped[list["Event"]] = relationship(
+        "Event",
+        back_populates="camera",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    subscription: Mapped["EventSubscription | None"] = relationship(
+        "EventSubscription",
+        back_populates="camera",
+        uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
@@ -199,7 +213,9 @@ class RecordingSettings(Base):
     audio_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     retention_max_gb: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    pre_roll_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    post_roll_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
 
     camera: Mapped["Camera"] = relationship("Camera", back_populates="recording_settings")
@@ -233,7 +249,7 @@ class Segment(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
     is_protected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     protection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
 
     camera: Mapped["Camera"] = relationship("Camera", back_populates="segments")
 
@@ -254,7 +270,7 @@ class StorageSettings(Base):
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     allow_system_disk: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     reserve_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=10 * 1024 * 1024 * 1024)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
 
 
@@ -269,7 +285,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(Text, nullable=False, default="viewer")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     cognito_sub: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
 
     permissions: Mapped[list["UserCameraPermission"]] = relationship(
@@ -311,7 +327,7 @@ class UserCameraPermission(Base):
         nullable=False,
         index=True,
     )
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
 
     user: Mapped["User"] = relationship("User", back_populates="permissions")
     camera: Mapped["Camera"] = relationship("Camera", back_populates="user_permissions")
@@ -333,7 +349,7 @@ class Session(Base):
         nullable=False,
         index=True,
     )
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
     last_active_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -376,5 +392,67 @@ class CameraOutage(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     camera: Mapped["Camera"] = relationship("Camera", back_populates="outages")
+
+
+class Event(Base):
+    """Camera trigger event record."""
+
+    __tablename__ = "events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_type: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    source: Mapped[str] = mapped_column(Text, nullable=False, default="onvif_pullpoint")
+    start_time: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    end_time: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    snapshot_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    clock_sync_state: Mapped[str] = mapped_column(Text, nullable=False, default="synced")
+    raw_topic: Mapped[str | None] = mapped_column(Text, nullable=True)
+    details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="events")
+
+    __table_args__ = (
+        CheckConstraint(
+            "clock_sync_state IN ('synced', 'uncertain', 'drift_detected')",
+            name="ck_event_clock_sync_state",
+        ),
+    )
+
+
+class EventSubscription(Base):
+    """Camera event subscription state and health metrics."""
+
+    __tablename__ = "event_subscriptions"
+
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    state: Mapped[str] = mapped_column(Text, nullable=False, default="idle")
+    subscription_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_event_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    last_renewed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    error_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    clock_drift_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="subscription")
+
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('idle', 'subscribing', 'active', 'reconnecting', 'failed')",
+            name="ck_event_subscription_state",
+        ),
+    )
+
 
 

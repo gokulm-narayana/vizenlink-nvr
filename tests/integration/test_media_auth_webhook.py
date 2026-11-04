@@ -147,8 +147,7 @@ async def test_mediamtx_api_control_auth(async_app_client) -> None:
             "action": "api",
         },
     )
-    # Since ASGI testclient client.host is 'testclient' (loopback),
-    # simulate external by overriding payload and header
+    # Since ASGI testclient client.host is 'testclient' (loopback), simulate external by overriding payload and header
     assert res_external.status_code in (200, 403)
 
 

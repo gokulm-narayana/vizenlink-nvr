@@ -27,3 +27,4 @@
 - `tests/integration/test_migrations.py`
 - `tests/integration/test_media_auth_webhook.py`
 - `.planning/phases/04-events-and-event-recording/04-VALIDATION.md`
+

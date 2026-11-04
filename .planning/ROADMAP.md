@@ -152,18 +152,19 @@ Plans:
   3. User can jump from an event straight to its recording (padded by pre-roll), mark in/out to export an MP4 clip, save a snapshot from a playback frame, record a manual clip from live view (start/stop, auto-stop at max duration), and lock recordings or events so retention never deletes them
   4. User can browse the snapshot gallery filtered by camera, time and user, and browse, preview, download and delete (with confirmation) manual and exported clips
   5. User can search recordings by camera, date/time and event type and land on the matching spot in the timeline
-**Plans**: 7 plans (completed)
+**Plans**: 8 plans (ready for execution)
 
 Plans:
-- [x] 04-01-PLAN.md — Schema migration 0005, Event models, EventService, and pre/post-roll configuration (wave 1)
-- [x] 04-02-PLAN.md — ONVIF PullPoint subscription engine, event parsing, clock drift normalization, and supervisor (wave 2)
-- [x] 04-03-PLAN.md — Event snapshot manager, storage layout, tiny JPEG fallback, and path traversal guards (wave 3)
-- [x] 04-04-PLAN.md — Pre-roll / post-roll segment protection and retention janitor pruning immunity (wave 4)
-- [x] 04-05-PLAN.md — Events REST API, RBAC camera scoping, event locking, and OpenAPI baseline (wave 5)
-- [x] 04-06-PLAN.md — React UI event feed, filters, cards, and real-time unread notification badge (wave 6)
-- [x] 04-07-PLAN.md — Phase 4 end-to-end pipeline tracer and 11-step phase gate verification (wave 7)
+- [ ] 05-01-PLAN.md — Database migration 0006, GalleryItem model, and GalleryService (wave 1)
+- [ ] 05-02-PLAN.md — Timeline & calendar index API, outage/event overlay, and segment locking (wave 2)
+- [ ] 05-03-PLAN.md — Playback video streaming service with HTTP byte-range seeking (wave 3)
+- [ ] 05-04-PLAN.md — MP4 clip export engine and snapshot capture service (wave 4)
+- [ ] 05-05-PLAN.md — Gallery REST API, download, deletion, RBAC, and OpenAPI baseline (wave 5)
+- [ ] 05-06-PLAN.md — React UI 24h playback timeline and transport controls (wave 6)
+- [ ] 05-07-PLAN.md — React UI media gallery and clip export modal (wave 7)
+- [ ] 05-08-PLAN.md — Phase 5 end-to-end pipeline tracer and 12-step phase gate verification (wave 8)
 **UI hint**: yes
-**Research**: Needed (builds on the Phase 2 playback spike): seeking without range support; Safari/iOS fMP4 playback; MP4 export via MediaMTX `/get?format=mp4` with temp-then-rename; self-built HLS VOD as fallback if `/get` across gaps proves unworkable.
+**Research**: Completed (see .planning/phases/05-playback-export-and-gallery/05-RESEARCH.md).
 
 ### Phase 6: Camera Settings
 **Goal**: Users configure each camera from the NVR exactly as the mobile app would, seeing only the options that camera actually supports
@@ -175,16 +176,7 @@ Plans:
   3. Settings screens show only the options the camera's capability flags support, with values and validation following `camera_api` semantics, so the same camera behaves identically from the NVR and the mobile app
   4. User can reboot a camera and watch it go offline and come back with recording resumed; only Owner/Admin can factory-reset a camera, and only after a double confirmation
   5. User can view camera health: uptime, last reboot reason, clock sync status and firmware
-**Plans**: 7 plans (completed)
-
-Plans:
-- [x] 04-01-PLAN.md — Schema migration 0005, Event models, EventService, and pre/post-roll configuration (wave 1)
-- [x] 04-02-PLAN.md — ONVIF PullPoint subscription engine, event parsing, clock drift normalization, and supervisor (wave 2)
-- [x] 04-03-PLAN.md — Event snapshot manager, storage layout, tiny JPEG fallback, and path traversal guards (wave 3)
-- [x] 04-04-PLAN.md — Pre-roll / post-roll segment protection and retention janitor pruning immunity (wave 4)
-- [x] 04-05-PLAN.md — Events REST API, RBAC camera scoping, event locking, and OpenAPI baseline (wave 5)
-- [x] 04-06-PLAN.md — React UI event feed, filters, cards, and real-time unread notification badge (wave 6)
-- [x] 04-07-PLAN.md — Phase 4 end-to-end pipeline tracer and 11-step phase gate verification (wave 7)
+**Plans**: TBD
 **UI hint**: yes
 **Research**: Standard pattern (`SETTINGS_API_GUIDE`); skip the research phase.
 

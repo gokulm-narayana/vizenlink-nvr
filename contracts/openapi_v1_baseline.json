@@ -191,6 +191,37 @@
         "title": "AuthStatusResponse",
         "type": "object"
       },
+      "CalendarDaysResponse": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "days": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "month": {
+            "title": "Month",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "year",
+          "month",
+          "days"
+        ],
+        "title": "CalendarDaysResponse",
+        "type": "object"
+      },
       "CameraCreateRequest": {
         "description": "Input payload for onboarding a new camera.",
         "properties": {
@@ -889,6 +920,51 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "SearchResultItem": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "is_locked": {
+            "title": "Is Locked",
+            "type": "boolean"
+          },
+          "snapshot_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Path"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "camera_serial",
+          "event_type",
+          "timestamp",
+          "is_locked"
+        ],
+        "title": "SearchResultItem",
+        "type": "object"
+      },
       "SetupRequest": {
         "properties": {
           "allow_system_disk": {
@@ -1318,6 +1394,231 @@
           "storage_ok"
         ],
         "title": "SystemHealthResponse",
+        "type": "object"
+      },
+      "TimelineEventModel": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_locked": {
+            "title": "Is Locked",
+            "type": "boolean"
+          },
+          "snapshot_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Path"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "camera_serial",
+          "event_type",
+          "start_time",
+          "is_locked"
+        ],
+        "title": "TimelineEventModel",
+        "type": "object"
+      },
+      "TimelineOutageModel": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "camera_serial",
+          "started_at"
+        ],
+        "title": "TimelineOutageModel",
+        "type": "object"
+      },
+      "TimelineResponse": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "end_time": {
+            "format": "date-time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEventModel"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "outages": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineOutageModel"
+            },
+            "title": "Outages",
+            "type": "array"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineSegmentModel"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "start_time",
+          "end_time",
+          "segments",
+          "outages",
+          "events"
+        ],
+        "title": "TimelineResponse",
+        "type": "object"
+      },
+      "TimelineSegmentModel": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "end_time": {
+            "format": "date-time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "file_size_bytes": {
+            "title": "File Size Bytes",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_protected": {
+            "title": "Is Protected",
+            "type": "boolean"
+          },
+          "protection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protection Reason"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "stream_type": {
+            "title": "Stream Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "camera_serial",
+          "stream_type",
+          "start_time",
+          "end_time",
+          "duration_seconds",
+          "file_size_bytes",
+          "is_protected"
+        ],
+        "title": "TimelineSegmentModel",
         "type": "object"
       },
       "UpdateUserRequest": {
@@ -3026,6 +3327,397 @@
         "summary": "Get Camera Outages",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/playback/days": {
+      "get": {
+        "description": "Retrieve days containing recorded video for a given camera and month.",
+        "operationId": "get_recorded_days_api_v1_playback_days_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "camera_serial",
+            "required": true,
+            "schema": {
+              "title": "Camera Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "maximum": 2050,
+              "minimum": 2020,
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Month",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarDaysResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Recorded Days",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
+    "/api/v1/playback/search": {
+      "get": {
+        "description": "Search recordings by event occurrences and timeline intervals (GAL-03).",
+        "operationId": "search_recordings_api_v1_playback_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "camera_serial",
+            "required": true,
+            "schema": {
+              "title": "Camera Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SearchResultItem"
+                  },
+                  "title": "Response Search Recordings Api V1 Playback Search Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Recordings",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
+    "/api/v1/playback/segments/{segment_id}/lock": {
+      "post": {
+        "description": "Lock a recording segment against retention and low-water pruning (REC-12).",
+        "operationId": "lock_segment_api_v1_playback_segments__segment_id__lock_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "title": "Segment Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineSegmentModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lock Segment",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
+    "/api/v1/playback/segments/{segment_id}/unlock": {
+      "post": {
+        "description": "Unlock a recording segment, allowing retention pruning (REC-12).",
+        "operationId": "unlock_segment_api_v1_playback_segments__segment_id__unlock_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "title": "Segment Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineSegmentModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unlock Segment",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
+    "/api/v1/playback/timeline": {
+      "get": {
+        "description": "Retrieve segments, camera outages, and events across a 24-hour timeline.",
+        "operationId": "get_timeline_api_v1_playback_timeline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "camera_serial",
+            "required": true,
+            "schema": {
+              "title": "Camera Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_time",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start Time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_time",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "End Time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Timeline",
+        "tags": [
+          "playback"
         ]
       }
     },

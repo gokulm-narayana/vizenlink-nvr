@@ -8,6 +8,7 @@ import { Dashboard } from "./components/Dashboard";
 import { EventFeed } from "./components/EventFeed";
 import { PlaybackView } from "./components/PlaybackView";
 import { GalleryView } from "./components/GalleryView";
+import { CameraSettingsView } from "./components/CameraSettingsView";
 
 interface AuthStatus {
   initialized: boolean;
@@ -217,6 +218,12 @@ export const App: React.FC = () => {
             cameras={cameras}
             userRole={authStatus?.user?.role}
             onJumpToPlayback={handleJumpToPlayback}
+          />
+        )}
+        {currentTab === "settings" && (
+          <CameraSettingsView
+            cameras={cameras}
+            userRole={authStatus?.user?.role}
           />
         )}
         {currentTab === "dashboard" && (

@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ViewTab = "live" | "dashboard" | "events" | "playback" | "gallery";
+export type ViewTab = "live" | "dashboard" | "events" | "playback" | "gallery" | "settings";
 export type ViewMode = "simple" | "advanced";
 
 interface HeaderProps {
@@ -89,6 +89,21 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             Gallery
+          </button>
+          <button
+            onClick={() => onTabChange("settings")}
+            style={{
+              background: currentTab === "settings" ? "#0f172a" : "transparent",
+              color: currentTab === "settings" ? "#38bdf8" : "#94a3b8",
+              border: "1px solid",
+              borderColor: currentTab === "settings" ? "#38bdf8" : "transparent",
+              borderRadius: "4px",
+              padding: "6px 12px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Settings
           </button>
           <button
             onClick={() => onTabChange("events")}

@@ -1,0 +1,2450 @@
+{
+  "components": {
+    "schemas": {
+      "AuthStatusResponse": {
+        "properties": {
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "initialized": {
+            "title": "Initialized",
+            "type": "boolean"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "initialized",
+          "authenticated"
+        ],
+        "title": "AuthStatusResponse",
+        "type": "object"
+      },
+      "CameraCreateRequest": {
+        "description": "Input payload for onboarding a new camera.",
+        "properties": {
+          "camera_id_check": {
+            "default": true,
+            "title": "Camera Id Check",
+            "type": "boolean"
+          },
+          "capabilities_raw": {
+            "default": "{}",
+            "title": "Capabilities Raw",
+            "type": "string"
+          },
+          "firmware_version": {
+            "default": "1.0",
+            "title": "Firmware Version",
+            "type": "string"
+          },
+          "group_tag": {
+            "default": "default",
+            "title": "Group Tag",
+            "type": "string"
+          },
+          "hardware_id": {
+            "default": "rev1",
+            "title": "Hardware Id",
+            "type": "string"
+          },
+          "host": {
+            "minLength": 1,
+            "title": "Host",
+            "type": "string"
+          },
+          "https_port": {
+            "default": 443,
+            "title": "Https Port",
+            "type": "integer"
+          },
+          "location": {
+            "default": "Default",
+            "title": "Location",
+            "type": "string"
+          },
+          "mac": {
+            "default": "00:00:00:00:00:00",
+            "title": "Mac",
+            "type": "string"
+          },
+          "manufacturer": {
+            "default": "Generic",
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "model": {
+            "default": "Generic",
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "default": "Camera",
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "default": "admin123",
+            "title": "Password",
+            "type": "string"
+          },
+          "serial": {
+            "minLength": 1,
+            "title": "Serial",
+            "type": "string"
+          },
+          "streams": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StreamInput"
+            },
+            "title": "Streams",
+            "type": "array"
+          },
+          "tls_fingerprint_sha256": {
+            "default": "",
+            "title": "Tls Fingerprint Sha256",
+            "type": "string"
+          },
+          "username": {
+            "default": "admin",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "serial",
+          "host"
+        ],
+        "title": "CameraCreateRequest",
+        "type": "object"
+      },
+      "CameraView": {
+        "description": "Safe view model for camera details without secret credentials.",
+        "properties": {
+          "added_at": {
+            "format": "date-time",
+            "title": "Added At",
+            "type": "string"
+          },
+          "camera_id_check": {
+            "title": "Camera Id Check",
+            "type": "boolean"
+          },
+          "firmware_version": {
+            "title": "Firmware Version",
+            "type": "string"
+          },
+          "group_tag": {
+            "title": "Group Tag",
+            "type": "string"
+          },
+          "hardware_id": {
+            "title": "Hardware Id",
+            "type": "string"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "host_updated_at": {
+            "format": "date-time",
+            "title": "Host Updated At",
+            "type": "string"
+          },
+          "https_port": {
+            "title": "Https Port",
+            "type": "integer"
+          },
+          "identity_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Synced At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "mac": {
+            "title": "Mac",
+            "type": "string"
+          },
+          "manufacturer": {
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "serial": {
+            "title": "Serial",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "streams": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StreamView"
+            },
+            "title": "Streams",
+            "type": "array"
+          },
+          "tls_fingerprint_sha256": {
+            "title": "Tls Fingerprint Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "serial",
+          "host",
+          "https_port",
+          "mac",
+          "name",
+          "location",
+          "group_tag",
+          "manufacturer",
+          "model",
+          "firmware_version",
+          "hardware_id",
+          "tls_fingerprint_sha256",
+          "camera_id_check",
+          "state",
+          "added_at",
+          "host_updated_at",
+          "identity_synced_at",
+          "last_error"
+        ],
+        "title": "CameraView",
+        "type": "object"
+      },
+      "CreateUserRequest": {
+        "properties": {
+          "password": {
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "role": {
+            "default": "viewer",
+            "title": "Role",
+            "type": "string"
+          },
+          "username": {
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "CreateUserRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "password": {
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "MediaMtxAuthRequest": {
+        "properties": {
+          "action": {
+            "default": "",
+            "title": "Action",
+            "type": "string"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "ip": {
+            "default": "",
+            "title": "Ip",
+            "type": "string"
+          },
+          "password": {
+            "default": "",
+            "title": "Password",
+            "type": "string"
+          },
+          "path": {
+            "default": "",
+            "title": "Path",
+            "type": "string"
+          },
+          "protocol": {
+            "default": "",
+            "title": "Protocol",
+            "type": "string"
+          },
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          },
+          "user": {
+            "default": "",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "title": "MediaMtxAuthRequest",
+        "type": "object"
+      },
+      "MediaTokenResponse": {
+        "description": "Media token response schema.",
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "stream": {
+            "title": "Stream",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "expires_in",
+          "stream",
+          "path"
+        ],
+        "title": "MediaTokenResponse",
+        "type": "object"
+      },
+      "PasswordChangeRequest": {
+        "properties": {
+          "current_password": {
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeRequest",
+        "type": "object"
+      },
+      "RecordingSettingsUpdate": {
+        "description": "Payload for updating per-camera recording settings.",
+        "properties": {
+          "audio_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Enabled"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "retention_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Days"
+          },
+          "retention_max_gb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Max Gb"
+          },
+          "schedule_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Json"
+          }
+        },
+        "title": "RecordingSettingsUpdate",
+        "type": "object"
+      },
+      "RecordingStatusItem": {
+        "description": "Recording status and policy schema for a camera.",
+        "properties": {
+          "audio_enabled": {
+            "title": "Audio Enabled",
+            "type": "boolean"
+          },
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "retention_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Days"
+          },
+          "retention_max_gb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Max Gb"
+          },
+          "schedule_json": {
+            "title": "Schedule Json",
+            "type": "string"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "mode",
+          "schedule_json",
+          "audio_enabled"
+        ],
+        "title": "RecordingStatusItem",
+        "type": "object"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "new_password": {
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest",
+        "type": "object"
+      },
+      "SetupRequest": {
+        "properties": {
+          "allow_system_disk": {
+            "default": false,
+            "title": "Allow System Disk",
+            "type": "boolean"
+          },
+          "owner_password": {
+            "minLength": 8,
+            "title": "Owner Password",
+            "type": "string"
+          },
+          "owner_username": {
+            "minLength": 1,
+            "title": "Owner Username",
+            "type": "string"
+          },
+          "storage_path": {
+            "minLength": 1,
+            "title": "Storage Path",
+            "type": "string"
+          },
+          "timezone": {
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_username",
+          "owner_password",
+          "timezone",
+          "storage_path"
+        ],
+        "title": "SetupRequest",
+        "type": "object"
+      },
+      "StoragePathUpdateRequest": {
+        "description": "Input payload to update the active storage path.",
+        "properties": {
+          "allow_system_disk": {
+            "default": false,
+            "title": "Allow System Disk",
+            "type": "boolean"
+          },
+          "reserve_bytes": {
+            "default": 10737418240,
+            "title": "Reserve Bytes",
+            "type": "integer"
+          },
+          "storage_path": {
+            "minLength": 1,
+            "title": "Storage Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storage_path"
+        ],
+        "title": "StoragePathUpdateRequest",
+        "type": "object"
+      },
+      "StorageStatusResponse": {
+        "description": "Storage volume status and health configuration.",
+        "properties": {
+          "allow_system_disk": {
+            "title": "Allow System Disk",
+            "type": "boolean"
+          },
+          "estimated_retention_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Retention Days"
+          },
+          "health_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Reason"
+          },
+          "health_state": {
+            "title": "Health State",
+            "type": "string"
+          },
+          "reserve_bytes": {
+            "title": "Reserve Bytes",
+            "type": "integer"
+          },
+          "storage_path": {
+            "title": "Storage Path",
+            "type": "string"
+          },
+          "telemetry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StorageTelemetryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "storage_path",
+          "allow_system_disk",
+          "reserve_bytes",
+          "health_state"
+        ],
+        "title": "StorageStatusResponse",
+        "type": "object"
+      },
+      "StorageTelemetryResponse": {
+        "description": "Disk space metrics.",
+        "properties": {
+          "free_bytes": {
+            "title": "Free Bytes",
+            "type": "integer"
+          },
+          "reserve_bytes": {
+            "title": "Reserve Bytes",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "used_bytes": {
+            "title": "Used Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_bytes",
+          "used_bytes",
+          "free_bytes",
+          "reserve_bytes"
+        ],
+        "title": "StorageTelemetryResponse",
+        "type": "object"
+      },
+      "StreamInput": {
+        "description": "Input payload for stream profile.",
+        "properties": {
+          "codec": {
+            "default": "H264",
+            "title": "Codec",
+            "type": "string"
+          },
+          "height": {
+            "default": 1080,
+            "title": "Height",
+            "type": "integer"
+          },
+          "path": {
+            "default": "/stream1",
+            "title": "Path",
+            "type": "string"
+          },
+          "port": {
+            "default": 554,
+            "title": "Port",
+            "type": "integer"
+          },
+          "profile_name": {
+            "default": "MainStream",
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "profile_token": {
+            "default": "Profile_1",
+            "title": "Profile Token",
+            "type": "string"
+          },
+          "role": {
+            "default": "main",
+            "title": "Role",
+            "type": "string"
+          },
+          "scheme": {
+            "default": "rtsp",
+            "title": "Scheme",
+            "type": "string"
+          },
+          "source": {
+            "default": "onvif_fallback",
+            "title": "Source",
+            "type": "string"
+          },
+          "sub_is_main": {
+            "default": false,
+            "title": "Sub Is Main",
+            "type": "boolean"
+          },
+          "transport": {
+            "default": "tcp",
+            "title": "Transport",
+            "type": "string"
+          },
+          "venc_token": {
+            "default": "VideoEncoder_1",
+            "title": "Venc Token",
+            "type": "string"
+          },
+          "width": {
+            "default": 1920,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "title": "StreamInput",
+        "type": "object"
+      },
+      "StreamView": {
+        "description": "View model for camera video stream (main or sub).",
+        "properties": {
+          "codec": {
+            "title": "Codec",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "port": {
+            "title": "Port",
+            "type": "integer"
+          },
+          "probed_at": {
+            "format": "date-time",
+            "title": "Probed At",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "profile_token": {
+            "title": "Profile Token",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "scheme": {
+            "title": "Scheme",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sub_is_main": {
+            "title": "Sub Is Main",
+            "type": "boolean"
+          },
+          "transport": {
+            "title": "Transport",
+            "type": "string"
+          },
+          "venc_token": {
+            "title": "Venc Token",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "role",
+          "profile_token",
+          "profile_name",
+          "venc_token",
+          "codec",
+          "width",
+          "height",
+          "transport",
+          "scheme",
+          "port",
+          "path",
+          "source",
+          "sub_is_main",
+          "probed_at"
+        ],
+        "title": "StreamView",
+        "type": "object"
+      },
+      "SystemHealthResponse": {
+        "description": "Recorder health response schema.",
+        "properties": {
+          "active_cameras": {
+            "default": 0,
+            "title": "Active Cameras",
+            "type": "integer"
+          },
+          "db_ok": {
+            "title": "Db Ok",
+            "type": "boolean"
+          },
+          "details": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Details",
+            "type": "object"
+          },
+          "mediamtx_ok": {
+            "title": "Mediamtx Ok",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_ok": {
+            "title": "Storage Ok",
+            "type": "boolean"
+          },
+          "total_cameras": {
+            "default": 0,
+            "title": "Total Cameras",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "db_ok",
+          "mediamtx_ok",
+          "storage_ok"
+        ],
+        "title": "SystemHealthResponse",
+        "type": "object"
+      },
+      "UpdateUserRequest": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "title": "UpdateUserRequest",
+        "type": "object"
+      },
+      "UserDetailResponse": {
+        "properties": {
+          "cognito_sub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cognito Sub"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "permissions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UserDetailResponse",
+        "type": "object"
+      },
+      "UserResponse": {
+        "properties": {
+          "cognito_sub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cognito Sub"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "permissions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "VizenLink Network Video Recorder REST API",
+    "title": "VizenLink NVR API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Authenticate user with local account credentials, rate-limiting repeated failures.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Login Api V1 Auth Login Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Invalidate current session and clear session cookie.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Logout Api V1 Auth Logout Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Return authenticated caller's profile and permitted cameras.",
+        "operationId": "get_me_api_v1_auth_me_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/mediamtx": {
+      "post": {
+        "description": "MediaMTX HTTP authentication webhook (authMethod: http).\n\nVerifies internal API control calls and ephemeral signed media tokens for stream reads.",
+        "operationId": "mediamtx_auth_webhook_api_v1_auth_mediamtx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaMtxAuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Mediamtx Auth Webhook Api V1 Auth Mediamtx Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mediamtx Auth Webhook",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "description": "Change authenticated user's password.",
+        "operationId": "change_password_api_v1_auth_password_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Change Password Api V1 Auth Password Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/setup": {
+      "post": {
+        "description": "Execute first-run setup wizard: create owner account, set timezone and storage path.",
+        "operationId": "setup_nvr_api_v1_auth_setup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Setup Nvr Api V1 Auth Setup Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Nvr",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/status": {
+      "get": {
+        "description": "Return whether first-run setup is complete and current authentication status.",
+        "operationId": "get_auth_status_api_v1_auth_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Auth Status",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/cameras": {
+      "get": {
+        "description": "List cameras. Viewers only see their assigned cameras (AUTH-05).",
+        "operationId": "list_cameras_endpoint_api_v1_cameras_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CameraView"
+                  },
+                  "title": "Response List Cameras Endpoint Api V1 Cameras Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cameras Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      },
+      "post": {
+        "description": "Onboard a new camera into the registry (Operator or Owner only).",
+        "operationId": "add_camera_endpoint_api_v1_cameras_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CameraCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Camera Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}": {
+      "delete": {
+        "description": "Remove camera with explicit keep/delete recordings choice (Owner only).",
+        "operationId": "remove_camera_endpoint_api_v1_cameras__serial__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "keep_recordings",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Keep Recordings",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove Camera Endpoint Api V1 Cameras  Serial  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Camera Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      },
+      "get": {
+        "description": "Fetch camera details by serial. Enforces viewer access check.",
+        "operationId": "get_camera_endpoint_api_v1_cameras__serial__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Camera Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/media-token": {
+      "post": {
+        "description": "Generate a short-lived HMAC-signed media token for stream authorization.",
+        "operationId": "generate_camera_media_token_api_v1_cameras__serial__media_token_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "sub",
+              "pattern": "^(main|sub)$",
+              "title": "Stream",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Camera Media Token",
+        "tags": [
+          "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/reprobe": {
+      "post": {
+        "description": "Trigger camera reprobe (Operator or Owner only).",
+        "operationId": "reprobe_camera_endpoint_api_v1_cameras__serial__reprobe_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reprobe Camera Endpoint Api V1 Cameras  Serial  Reprobe Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reprobe Camera Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Retrieve overall system health and subsystem statuses.",
+        "operationId": "get_system_health_api_v1_health_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get System Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/recording/status": {
+      "get": {
+        "description": "Retrieve recording policies for all accessible cameras.",
+        "operationId": "get_all_recording_status_api_v1_recording_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecordingStatusItem"
+                  },
+                  "title": "Response Get All Recording Status Api V1 Recording Status Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get All Recording Status",
+        "tags": [
+          "recording"
+        ]
+      }
+    },
+    "/api/v1/recording/{serial}": {
+      "patch": {
+        "description": "Update recording mode, schedule, audio, or retention for a camera (Operator+).",
+        "operationId": "update_recording_settings_api_v1_recording__serial__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingStatusItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Recording Settings",
+        "tags": [
+          "recording"
+        ]
+      }
+    },
+    "/api/v1/storage/scan": {
+      "post": {
+        "description": "Trigger background storage volume reconciliation scan (Operator+).",
+        "operationId": "trigger_storage_scan_endpoint_api_v1_storage_scan_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Trigger Storage Scan Endpoint Api V1 Storage Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Storage Scan Endpoint",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/v1/storage/set-path": {
+      "post": {
+        "description": "Update active recording storage volume (Owner only).",
+        "operationId": "set_storage_path_endpoint_api_v1_storage_set_path_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoragePathUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Storage Path Endpoint",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/v1/storage/status": {
+      "get": {
+        "description": "Retrieve recording storage configuration and live disk space metrics.",
+        "operationId": "get_storage_status_endpoint_api_v1_storage_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Storage Status Endpoint",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "description": "List all user accounts and their camera permissions (Admin/Owner only).",
+        "operationId": "list_users_api_v1_users_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserDetailResponse"
+                  },
+                  "title": "Response List Users Api V1 Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Users",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "description": "Create a new user account with role and optional camera whitelist (Admin/Owner only).",
+        "operationId": "create_user_api_v1_users_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create User",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "get": {
+        "description": "Retrieve detailed user account information (Admin/Owner only).",
+        "operationId": "get_user_api_v1_users__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get User",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "description": "Update user role, active status, and camera whitelist (Admin/Owner only).",
+        "operationId": "update_user_api_v1_users__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update User",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/reset-password": {
+      "post": {
+        "description": "Admin reset of a user's password; invalidates user's existing sessions (Admin/Owner only).",
+        "operationId": "reset_password_api_v1_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reset Password Api V1 Users  User Id  Reset Password Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
+        "tags": [
+          "users"
+        ]
+      }
+    }
+  }
+}

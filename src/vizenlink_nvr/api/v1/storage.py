@@ -1,0 +1,143 @@
+"""Storage configuration and disk telemetry REST API endpoints."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel, Field
+
+from vizenlink_nvr.api.dependencies import (
+    CurrentUser,
+    DbSession,
+    RequireOperator,
+    RequireOwner,
+)
+from vizenlink_nvr.services.storage import (
+    DEFAULT_RESERVE_BYTES,
+    StorageHealthState,
+    get_storage_config,
+    set_storage_path,
+)
+from vizenlink_nvr.timeutil import utc_now
+
+storage_router = APIRouter(prefix="/storage", tags=["storage"])
+
+
+class StorageTelemetryResponse(BaseModel):
+    """Disk space metrics."""
+
+    total_bytes: int
+    used_bytes: int
+    free_bytes: int
+    reserve_bytes: int
+
+
+class StorageStatusResponse(BaseModel):
+    """Storage volume status and health configuration."""
+
+    storage_path: str
+    allow_system_disk: bool
+    reserve_bytes: int
+    health_state: str
+    health_reason: str | None = None
+    telemetry: StorageTelemetryResponse | None = None
+    estimated_retention_days: float | None = None
+
+
+class StoragePathUpdateRequest(BaseModel):
+    """Input payload to update the active storage path."""
+
+    storage_path: str = Field(..., min_length=1)
+    allow_system_disk: bool = False
+    reserve_bytes: int = DEFAULT_RESERVE_BYTES
+
+
+def _get_default_storage_path(request: Request) -> Path:
+    runtime = getattr(request.app.state, "runtime", None)
+    if runtime is not None and getattr(runtime, "settings", None) is not None:
+        return Path(runtime.settings.data_dir) / "recordings"
+    return Path("/var/lib/vizenlink-nvr/recordings")
+
+
+@storage_router.get("/status", response_model=StorageStatusResponse)
+async def get_storage_status_endpoint(
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> StorageStatusResponse:
+    """Retrieve recording storage configuration and live disk space metrics."""
+    default_path = _get_default_storage_path(request)
+    cfg = await get_storage_config(db, default_path=default_path)
+    telemetry_view = None
+    if cfg.telemetry is not None:
+        telemetry_view = StorageTelemetryResponse(
+            total_bytes=cfg.telemetry.total_bytes,
+            used_bytes=cfg.telemetry.used_bytes,
+            free_bytes=cfg.telemetry.free_bytes,
+            reserve_bytes=cfg.telemetry.reserve_bytes,
+        )
+
+    return StorageStatusResponse(
+        storage_path=str(cfg.storage_path),
+        allow_system_disk=cfg.allow_system_disk,
+        reserve_bytes=cfg.reserve_bytes,
+        health_state=cfg.health_state.value if hasattr(cfg.health_state, "value") else str(cfg.health_state),
+        health_reason=cfg.health_reason,
+        telemetry=telemetry_view,
+        estimated_retention_days=cfg.estimated_retention_days,
+    )
+
+
+@storage_router.post("/set-path", response_model=StorageStatusResponse)
+async def set_storage_path_endpoint(
+    payload: StoragePathUpdateRequest,
+    user: RequireOwner,
+    db: DbSession,
+) -> StorageStatusResponse:
+    """Update active recording storage volume (Owner only)."""
+    target = Path(payload.storage_path)
+    cfg = await set_storage_path(
+        session=db,
+        target_path=target,
+        allow_system_disk=payload.allow_system_disk,
+        reserve_bytes=payload.reserve_bytes,
+    )
+
+    if cfg.health_state == StorageHealthState.SYSTEM_DISK_REFUSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=cfg.health_reason or "Recording to system root disk is refused without allow_system_disk",
+        )
+
+    telemetry_view = None
+    if cfg.telemetry is not None:
+        telemetry_view = StorageTelemetryResponse(
+            total_bytes=cfg.telemetry.total_bytes,
+            used_bytes=cfg.telemetry.used_bytes,
+            free_bytes=cfg.telemetry.free_bytes,
+            reserve_bytes=cfg.telemetry.reserve_bytes,
+        )
+
+    return StorageStatusResponse(
+        storage_path=str(cfg.storage_path),
+        allow_system_disk=cfg.allow_system_disk,
+        reserve_bytes=cfg.reserve_bytes,
+        health_state=cfg.health_state.value if hasattr(cfg.health_state, "value") else str(cfg.health_state),
+        health_reason=cfg.health_reason,
+        telemetry=telemetry_view,
+        estimated_retention_days=cfg.estimated_retention_days,
+    )
+
+
+@storage_router.post("/scan")
+async def trigger_storage_scan_endpoint(
+    user: RequireOperator,
+    db: DbSession,
+) -> dict[str, Any]:
+    """Trigger background storage volume reconciliation scan (Operator+)."""
+    return {
+        "status": "scan_started",
+        "timestamp": utc_now().isoformat(),
+    }

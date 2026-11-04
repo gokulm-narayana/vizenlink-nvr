@@ -176,9 +176,15 @@ Plans:
   3. Settings screens show only the options the camera's capability flags support, with values and validation following `camera_api` semantics, so the same camera behaves identically from the NVR and the mobile app
   4. User can reboot a camera and watch it go offline and come back with recording resumed; only Owner/Admin can factory-reset a camera, and only after a double confirmation
   5. User can view camera health: uptime, last reboot reason, clock sync status and firmware
-**Plans**: TBD
+**Plans**: 4 plans (ready for execution)
+
+Plans:
+- [ ] 06-01-PLAN.md — Camera settings core clients and models (wave 1)
+- [ ] 06-02-PLAN.md — Camera settings service, REST API, and OpenAPI baseline (wave 2)
+- [ ] 06-03-PLAN.md — React UI camera settings view and confirmation dialogs (wave 3)
+- [ ] 06-04-PLAN.md — Phase 6 end-to-end pipeline tracer and 13-step phase gate verification (wave 4)
 **UI hint**: yes
-**Research**: Standard pattern (`SETTINGS_API_GUIDE`); skip the research phase.
+**Research**: Completed (see .planning/phases/06-camera-settings/06-RESEARCH.md).
 
 ### Phase 7: Mobile LAN Integration
 **Goal**: The VizenLink mobile app on the same LAN can find the NVR, pair with it, and use it for live view, recorded history, health and camera management

@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     Float,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     Text,
@@ -116,6 +117,12 @@ class Camera(Base):
         "EventSubscription",
         back_populates="camera",
         uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    gallery_items: Mapped[list["GalleryItem"]] = relationship(
+        "GalleryItem",
+        back_populates="camera",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
@@ -300,6 +307,10 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    gallery_items: Mapped[list["GalleryItem"]] = relationship(
+        "GalleryItem",
+        back_populates="user",
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -453,6 +464,44 @@ class EventSubscription(Base):
             name="ck_event_subscription_state",
         ),
     )
+
+
+class GalleryItem(Base):
+    """Media gallery record for snapshots, manual clips, and exported clips."""
+
+    __tablename__ = "gallery_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    item_type: Mapped[str] = mapped_column(Text, nullable=False)
+    camera_serial: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("camera.serial", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    captured_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+    camera: Mapped["Camera"] = relationship("Camera", back_populates="gallery_items")
+    user: Mapped["User | None"] = relationship("User", back_populates="gallery_items")
+
+    __table_args__ = (
+        CheckConstraint(
+            "item_type IN ('snapshot', 'manual_clip', 'export_clip')",
+            name="ck_gallery_item_type",
+        ),
+        Index("ix_gallery_items_camera_captured", "camera_serial", "captured_at"),
+        Index("ix_gallery_items_type", "item_type"),
+    )
+
 
 
 

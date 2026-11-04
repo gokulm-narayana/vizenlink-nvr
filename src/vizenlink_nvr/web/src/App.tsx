@@ -9,6 +9,7 @@ import { EventFeed } from "./components/EventFeed";
 import { PlaybackView } from "./components/PlaybackView";
 import { GalleryView } from "./components/GalleryView";
 import { CameraSettingsView } from "./components/CameraSettingsView";
+import { PairedDevicesView } from "./components/PairedDevicesView";
 
 interface AuthStatus {
   initialized: boolean;
@@ -225,6 +226,9 @@ export const App: React.FC = () => {
             cameras={cameras}
             userRole={authStatus?.user?.role}
           />
+        )}
+        {currentTab === "devices" && (
+          <PairedDevicesView userRole={authStatus?.user?.role} />
         )}
         {currentTab === "dashboard" && (
           <Dashboard viewMode={viewMode} recordingCount={recordingSerials.size} />

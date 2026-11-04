@@ -110,7 +110,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — Schema migration 0004, auth models, and Argon2id password hashing (wave 1)
 - [x] 03-02-PLAN.md — First-run setup wizard, session authentication, and brute-force rate-limiting (wave 2)
-- [ ] 03-03-PLAN.md — Server-side RBAC dependencies and user management API (wave 3)
+- [x] 03-03-PLAN.md — Server-side RBAC dependencies and user management API (wave 3)
 - [ ] 03-04-PLAN.md — MediaMTX HTTP media auth webhook and signed media tokens (wave 4)
 - [ ] 03-05-PLAN.md — Core /api/v1 REST endpoints and OpenAPI 3.1 breaking-change guard (wave 5)
 - [ ] 03-06-PLAN.md — Persistent audit logging, camera outage tracking, and in-app alerts (wave 6)

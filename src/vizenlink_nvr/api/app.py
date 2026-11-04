@@ -8,6 +8,7 @@ from fastapi import APIRouter, FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from vizenlink_nvr.api.v1.auth import auth_router
+from vizenlink_nvr.api.v1.users import users_router
 
 
 def create_app(
@@ -31,6 +32,7 @@ def create_app(
     # V1 API Router
     v1_router = APIRouter(prefix="/api/v1")
     v1_router.include_router(auth_router)
+    v1_router.include_router(users_router)
 
     app.include_router(v1_router)
 
@@ -39,3 +41,4 @@ def create_app(
 
 # Default ASGI application instance
 app = create_app()
+

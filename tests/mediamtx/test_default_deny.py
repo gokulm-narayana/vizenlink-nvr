@@ -54,7 +54,7 @@ async def test_live_default_deny_probes(tmp_path: Path) -> None:
     control_pw = secrets.token_urlsafe(24)
     pw_hash = hash_control_password(control_pw)
 
-    cfg = build_config(ports, pw_hash)
+    cfg = build_config(ports, pw_hash, auth_method="internal")
     cfg_path = tmp_path / "mediamtx.yml"
     write_config(cfg_path, cfg)
 

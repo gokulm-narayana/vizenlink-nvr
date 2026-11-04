@@ -20,6 +20,40 @@ class TileState(StrEnum):
     ERROR = "error"
 
 
+class ViewMode(StrEnum):
+    """UI view complexity mode (AUTH-06)."""
+
+    SIMPLE = "simple"
+    ADVANCED = "advanced"
+
+
+ADVANCED_METRIC_KEYS = {
+    "reserve_bytes",
+    "db_ok",
+    "mediamtx_ok",
+    "details",
+    "mountpoint",
+    "hardware_id",
+    "tls_fingerprint_sha256",
+    "raw_capabilities",
+}
+
+
+def filter_dashboard_metrics(metrics: dict[str, Any], mode: ViewMode | str) -> dict[str, Any]:
+    """Filter dashboard telemetry based on user view mode (AUTH-06).
+
+    Simple view hides low-level technical and diagnostic fields.
+    Advanced view exposes full system diagnostics.
+    """
+    mode_str = str(mode).strip().lower()
+    if mode_str == ViewMode.ADVANCED.value:
+        return dict(metrics)
+
+    # Simple mode: filter out advanced keys
+    filtered = {k: v for k, v in metrics.items() if k not in ADVANCED_METRIC_KEYS}
+    return filtered
+
+
 class TileStateMachine:
     """State machine governing video stream connection and stall detection.
 

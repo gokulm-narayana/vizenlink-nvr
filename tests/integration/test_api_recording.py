@@ -156,3 +156,4 @@ async def test_recording_status_and_update(app_fixture) -> None:
         json={"mode": "non_existent_mode"},
     )
     assert res_bad.status_code == 400
+

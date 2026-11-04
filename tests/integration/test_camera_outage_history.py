@@ -187,3 +187,4 @@ async def test_outage_tracker_lifecycle_and_api(app_fixture) -> None:
     assert res_owner_alerts.status_code == 200
     owner_alerts = res_owner_alerts.json()
     assert any("CAM-OUT-02" in a["title"] for a in owner_alerts)
+

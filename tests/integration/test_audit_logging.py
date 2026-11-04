@@ -152,3 +152,4 @@ async def test_audit_service_direct_unit(app_fixture) -> None:
         assert events[0].action == "custom.test_event"
         assert events[0].actor_username == "test_runner"
         assert events[0].details_json == '{"key":"value"}'
+

@@ -33,3 +33,4 @@
    - `tests/integration/test_audit_logging.py`: 2 passed.
    - `tests/unit/test_inapp_alerts.py`: 2 passed.
    - `tests/integration/test_camera_outage_history.py`: 1 passed.
+

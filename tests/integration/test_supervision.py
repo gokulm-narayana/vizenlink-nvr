@@ -55,7 +55,7 @@ def test_core_crash_survivability_and_resync(
     settings = load_settings(data_dir=data_dir)
     # Ensure control password is created and matches config
     control_pw = get_control_password(settings)
-    cfg = build_config(ports, hash_control_password(control_pw))
+    cfg = build_config(ports, hash_control_password(control_pw), auth_method="internal")
     cfg_path = tmp_path / "mediamtx.yml"
     write_config(cfg_path, cfg)
 

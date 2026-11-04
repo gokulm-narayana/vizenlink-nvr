@@ -38,3 +38,4 @@
    - `tests/integration/test_api_recording.py`: 1 passed.
    - `tests/integration/test_api_storage.py`: 1 passed.
    - `tests/contract/test_openapi_spec.py`: 2 passed.
+

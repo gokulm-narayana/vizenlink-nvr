@@ -59,3 +59,4 @@ def test_media_token_malformed_inputs() -> None:
     assert service.verify_token("invalid") is None
     assert service.verify_token("a.b.c") is None
     assert service.verify_token(".") is None
+

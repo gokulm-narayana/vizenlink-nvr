@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundations & Camera Onboarding** - Secure, contract-tested base; cameras discovered, verified and registered by serial (headless)
 - [x] **Phase 2: Headless Recording Core** - 24/7 fMP4 recording with reconciler, segment index, retention janitor, gap watchdog and storage guard
-- [ ] **Phase 3: Secure API, Auth & Live View** - First LAN exposure: accounts and roles, media auth, `/api/v1`, React web app, live grid, health overview
+- [x] **Phase 3: Secure API, Auth & Live View** - First LAN exposure: accounts and roles, media auth, `/api/v1`, React web app, live grid, health overview
 - [ ] **Phase 4: Events & Event Recording** - Camera events ingested, protecting footage around them, listed, filtered and notified
 - [ ] **Phase 5: Playback, Export & Gallery** - Timeline playback, event jump, clip export, snapshots, gallery and recordings search
 - [ ] **Phase 6: Camera Settings** - Capability-gated camera configuration that behaves exactly like `camera_api`
@@ -111,11 +111,11 @@ Plans:
 - [x] 03-01-PLAN.md — Schema migration 0004, auth models, and Argon2id password hashing (wave 1)
 - [x] 03-02-PLAN.md — First-run setup wizard, session authentication, and brute-force rate-limiting (wave 2)
 - [x] 03-03-PLAN.md — Server-side RBAC dependencies and user management API (wave 3)
-- [ ] 03-04-PLAN.md — MediaMTX HTTP media auth webhook and signed media tokens (wave 4)
-- [ ] 03-05-PLAN.md — Core /api/v1 REST endpoints and OpenAPI 3.1 breaking-change guard (wave 5)
-- [ ] 03-06-PLAN.md — Persistent audit logging, camera outage tracking, and in-app alerts (wave 6)
-- [ ] 03-07-PLAN.md — React SPA, live multiview grid (1x1 to 4x4), and WHEP/HLS player (wave 7)
-- [ ] 03-08-PLAN.md — Health dashboard, Simple vs Advanced view toggle, and end-to-end tracer (wave 8)
+- [x] 03-04-PLAN.md — MediaMTX HTTP media auth webhook and signed media tokens (wave 4)
+- [x] 03-05-PLAN.md — Core /api/v1 REST endpoints and OpenAPI 3.1 breaking-change guard (wave 5)
+- [x] 03-06-PLAN.md — Persistent audit logging, camera outage tracking, and in-app alerts (wave 6)
+- [x] 03-07-PLAN.md — React SPA, live multiview grid (1x1 to 4x4), and WHEP/HLS player (wave 7)
+- [x] 03-08-PLAN.md — Health dashboard, Simple vs Advanced view toggle, and end-to-end tracer (wave 8)
 **UI hint**: yes
 **Research**: Needed (spikes): MediaMTX authMethod jwt vs http, including media-token renewal before expiry; multi-NIC WebRTC with UDP blocked; WebRTC load at 16 sessions; H.265 browser support matrix.
 

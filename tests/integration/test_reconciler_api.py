@@ -42,7 +42,7 @@ async def test_reconciler_api_live_sync(tmp_path: Path) -> None:
         webrtc_udp=_free_port(),
     )
     control_pw = secrets.token_urlsafe(24)
-    cfg = build_config(ports, hash_control_password(control_pw))
+    cfg = build_config(ports, hash_control_password(control_pw), auth_method="internal")
     cfg_path = tmp_path / "mediamtx.yml"
     write_config(cfg_path, cfg)
 

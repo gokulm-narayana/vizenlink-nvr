@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { SetupWizard } from "./components/SetupWizard";
 import { Login } from "./components/Login";
 import { LiveGrid, CameraInfo } from "./components/LiveGrid";
+import { Header, ViewMode, ViewTab } from "./components/Header";
+import { AlertsBanner, AlertData } from "./components/AlertsBanner";
+import { Dashboard } from "./components/Dashboard";
 
 interface AuthStatus {
   initialized: boolean;
@@ -18,6 +21,11 @@ export const App: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [cameras, setCameras] = useState<CameraInfo[]>([]);
   const [recordingSerials, setRecordingSerials] = useState<Set<string>>(new Set());
+  const [alerts, setAlerts] = useState<AlertData[]>([]);
+  const [currentTab, setCurrentTab] = useState<ViewTab>("live");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem("nvr_view_mode") as ViewMode) || "simple";
+  });
   const [loading, setLoading] = useState(true);
 
   const checkStatus = async () => {
@@ -26,12 +34,24 @@ export const App: React.FC = () => {
       const data = await res.json();
       setAuthStatus(data);
       if (data.authenticated) {
-        await loadCamerasAndRecording();
+        await Promise.all([loadCamerasAndRecording(), loadAlerts()]);
       }
     } catch {
       setAuthStatus({ initialized: true, authenticated: false });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAlerts = async () => {
+    try {
+      const res = await fetch("/api/v1/health/alerts");
+      if (res.ok) {
+        const data = await res.json();
+        setAlerts(data);
+      }
+    } catch {
+      // Ignore background fetch failure
     }
   };
 
@@ -64,7 +84,19 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     checkStatus();
-  }, []);
+    const interval = setInterval(() => {
+      if (authStatus?.authenticated) {
+        loadAlerts();
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [authStatus?.authenticated]);
+
+  const handleToggleViewMode = () => {
+    const nextMode: ViewMode = viewMode === "simple" ? "advanced" : "simple";
+    setViewMode(nextMode);
+    localStorage.setItem("nvr_view_mode", nextMode);
+  };
 
   const handleLogout = async () => {
     try {
@@ -72,6 +104,10 @@ export const App: React.FC = () => {
     } finally {
       setAuthStatus((prev) => (prev ? { ...prev, authenticated: false } : null));
     }
+  };
+
+  const handleDismissAlert = (alertId: string) => {
+    setAlerts((prev) => prev.filter((a) => a.id !== alertId));
   };
 
   if (loading) {
@@ -93,48 +129,27 @@ export const App: React.FC = () => {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Navigation Header */}
-      <header
-        style={{
-          height: "60px",
-          background: "#1e293b",
-          borderBottom: "1px solid #334155",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "0 20px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <h1 style={{ fontSize: "18px", margin: 0, fontWeight: "bold", color: "#38bdf8" }}>VizenLink NVR</h1>
-          <span style={{ fontSize: "12px", background: "#0f172a", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8" }}>
-            Live Multiview
-          </span>
-        </div>
+      <Header
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        viewMode={viewMode}
+        onViewModeToggle={handleToggleViewMode}
+        username={authStatus?.user?.username}
+        role={authStatus?.user?.role}
+        alertCount={alerts.length}
+        onLogout={handleLogout}
+      />
 
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span style={{ fontSize: "13px", color: "#cbd5e1" }}>
-            Signed in as <strong>{authStatus?.user?.username}</strong> ({authStatus?.user?.role})
-          </span>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "#ef4444",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              padding: "6px 12px",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
-          >
-            Sign Out
-          </button>
-        </div>
-      </header>
+      {/* Sticky Operational Alerts Banner */}
+      <AlertsBanner alerts={alerts} onDismiss={handleDismissAlert} />
 
-      {/* Main Live Multiview Grid */}
-      <main style={{ flex: 1, overflow: "hidden" }}>
-        <LiveGrid cameras={cameras} recordingSerials={recordingSerials} />
+      {/* Main View: Live Multiview Grid or Dashboard */}
+      <main style={{ flex: 1, overflow: "auto" }}>
+        {currentTab === "live" ? (
+          <LiveGrid cameras={cameras} recordingSerials={recordingSerials} />
+        ) : (
+          <Dashboard viewMode={viewMode} recordingCount={recordingSerials.size} />
+        )}
       </main>
     </div>
   );

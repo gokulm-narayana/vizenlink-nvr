@@ -98,3 +98,4 @@ class OutageTracker:
         stmt = stmt.order_by(CameraOutage.started_at.desc()).limit(limit).offset(offset)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+

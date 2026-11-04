@@ -9,7 +9,7 @@ from vizenlink_nvr.media.config import MediaMtxPorts, build_config
 
 def build_permissive_config(ports: MediaMtxPorts) -> dict[str, Any]:
     """Build MediaMTX configuration with default open 'any' users (negative control)."""
-    cfg = build_config(ports, "sha256:dummy")
+    cfg = build_config(ports, "sha256:dummy", auth_method="internal")
     cfg["authInternalUsers"] = [
         {
             "user": "any",

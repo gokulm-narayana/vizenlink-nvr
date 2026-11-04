@@ -56,3 +56,4 @@ def test_grid_pagination_slicing() -> None:
 
     page_3 = GridLayoutCalculator.paginate(cameras, dimension=2, page_index=3)
     assert page_3 == []
+

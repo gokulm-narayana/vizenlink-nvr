@@ -110,3 +110,4 @@ async def test_storage_status_and_path_configuration(app_fixture) -> None:
     h_data = res_health.json()
     assert "status" in h_data
     assert h_data["db_ok"] is True
+

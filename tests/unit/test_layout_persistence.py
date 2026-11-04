@@ -39,3 +39,4 @@ def test_layout_config_invalid_data_sanitization() -> None:
     malformed = GridLayoutConfig.from_json("invalid json string {}")
     assert malformed.dimension == 2
     assert malformed.page == 0
+

@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -50,12 +51,39 @@ def create_app(
 
     # Mount React Web SPA build if available
     web_dist = Path(__file__).resolve().parent.parent / "web" / "dist"
-    if web_dist.exists():
-        app.mount("/", StaticFiles(directory=str(web_dist), html=True), name="web")
+    if web_dist.exists() and (web_dist / "index.html").exists():
+        index_file = web_dist / "index.html"
+
+        if (web_dist / "assets").exists():
+            app.mount(
+                "/assets",
+                StaticFiles(directory=str(web_dist / "assets")),
+                name="assets",
+            )
+
+        @app.get("/", include_in_schema=False)
+        async def serve_index() -> FileResponse:
+            return FileResponse(index_file)
+
+        @app.exception_handler(404)
+        async def spa_404_handler(request: Request, exc: Exception) -> Response:
+            path = request.url.path
+            if (
+                path.startswith("/api/")
+                or path.startswith("/docs")
+                or path.startswith("/redoc")
+                or path.startswith("/test-")
+            ):
+                return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+            candidate = web_dist / path.lstrip("/")
+            if candidate.is_file():
+                return FileResponse(candidate)
+
+            return FileResponse(index_file)
 
     return app
 
 
 # Default ASGI application instance
 app = create_app()
-

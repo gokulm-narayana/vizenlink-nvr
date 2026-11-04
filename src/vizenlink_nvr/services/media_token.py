@@ -104,3 +104,4 @@ class MediaTokenService:
 
 # Global instance with process-wide secret
 default_media_token_service = MediaTokenService()
+

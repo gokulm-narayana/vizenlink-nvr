@@ -100,3 +100,4 @@ class AuditService:
 
         res = await session.execute(stmt)
         return int(res.scalar() or 0)
+

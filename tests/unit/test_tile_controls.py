@@ -51,3 +51,4 @@ def test_tile_controls_recording_badge_state() -> None:
 
     tile.is_recording = True
     assert tile.is_recording is True
+

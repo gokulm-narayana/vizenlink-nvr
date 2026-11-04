@@ -33,3 +33,4 @@
    - `tests/integration/test_sub_stream_auto_switch.py`: 1 passed.
    - `tests/unit/test_live_grid_layout.py`: 3 passed.
    - `tests/unit/test_tile_controls.py`: 3 passed.
+

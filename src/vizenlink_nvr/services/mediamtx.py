@@ -54,7 +54,7 @@ async def run_check(
 
     random_pw = secrets.token_urlsafe(24)
     pw_hash = hash_control_password(random_pw)
-    cfg = build_config(used_ports, pw_hash)
+    cfg = build_config(used_ports, pw_hash, auth_method="internal")
 
     cfg_dir = mediamtx_dir(rt.settings)
     cfg_path = cfg_dir / "mediamtx.yml"

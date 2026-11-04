@@ -138,3 +138,4 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     </div>
   );
 };
+

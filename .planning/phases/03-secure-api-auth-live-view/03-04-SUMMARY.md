@@ -41,3 +41,4 @@
 - Anonymous stream access is strictly prohibited across all protocols (WebRTC, HLS, RTSP).
 - Media tokens are ephemeral, reducing exposure risk without maintaining state in a central session database for every frame or stream packet.
 - Fast, local HMAC verification occurs inside the NVR auth webhook before database checks for active user status and permission grants.
+

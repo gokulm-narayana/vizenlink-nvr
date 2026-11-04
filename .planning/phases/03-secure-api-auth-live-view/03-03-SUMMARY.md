@@ -37,3 +37,4 @@
 - `tests/integration/test_rbac_authorization.py`: 1 passed.
 - `tests/integration/test_user_management.py`: 1 passed.
 - `tests/integration/test_user_camera_restrictions.py`: 1 passed.
+

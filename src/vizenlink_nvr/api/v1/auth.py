@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import urllib.parse
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -16,7 +17,9 @@ from vizenlink_nvr.api.dependencies import (
     DbSession,
 )
 from vizenlink_nvr.db.models import User
+from vizenlink_nvr.media.config import CONTROL_USER
 from vizenlink_nvr.services.auth_hasher import hash_password, verify_password
+from vizenlink_nvr.services.media_token import default_media_token_service
 from vizenlink_nvr.services.rate_limiter import login_rate_limiter
 from vizenlink_nvr.services.session_manager import (
     SESSION_COOKIE_NAME,
@@ -26,6 +29,17 @@ from vizenlink_nvr.services.setup import MIN_PASSWORD_LENGTH, SetupService
 from vizenlink_nvr.timeutil import utc_now
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class MediaMtxAuthRequest(BaseModel):
+    ip: str = ""
+    user: str = ""
+    password: str = ""
+    path: str = ""
+    protocol: str = ""
+    id: str = ""
+    action: str = ""
+    query: str = ""
 
 
 class SetupRequest(BaseModel):
@@ -271,3 +285,103 @@ async def change_password(
     SessionManager.set_cookie(response, sess.id)
 
     return {"success": True}
+
+
+def _is_loopback(host: str | None) -> bool:
+    """Check if IP or hostname is loopback."""
+    if not host:
+        return False
+    return host in ("127.0.0.1", "::1", "localhost", "testclient") or host.startswith("127.")
+
+
+@auth_router.post("/mediamtx", status_code=status.HTTP_200_OK)
+async def mediamtx_auth_webhook(
+    payload: MediaMtxAuthRequest,
+    request: Request,
+    db: DbSession,
+) -> dict[str, str]:
+    """MediaMTX HTTP authentication webhook (authMethod: http).
+
+    Verifies internal API control calls and ephemeral signed media tokens for stream reads.
+    """
+    client_host = request.client.host if request.client else None
+    
+    # Case 1: Internal API control
+    if payload.action == "api":
+        if not (_is_loopback(client_host) or _is_loopback(payload.ip)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MediaMTX API action must originate from loopback",
+            )
+        if payload.user != CONTROL_USER:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid control user",
+            )
+        # Check password against configured secret if present
+        expected_pw: str | None = getattr(request.app.state, "control_password", None)
+        if expected_pw is None and getattr(request.app.state, "runtime", None) is not None:
+            from vizenlink_nvr.media.reconciler import get_control_password
+            expected_pw = get_control_password(request.app.state.runtime.settings)
+        if expected_pw is not None and payload.password != expected_pw:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid control credentials",
+            )
+        return {"status": "ok"}
+
+    # Case 2: Streaming read
+    if payload.action == "read":
+        # Parse query string
+        params = urllib.parse.parse_qs(payload.query)
+        token_list = params.get("token")
+        if not token_list or not token_list[0]:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing media token in query parameters",
+            )
+
+        token_str = token_list[0]
+        verified = default_media_token_service.verify_token(token_str)
+        if verified is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired media token",
+            )
+
+        token_serial = verified.get("serial")
+        token_stream = verified.get("stream")
+        expected_path = f"cam/{token_serial}/{token_stream}"
+        req_path = payload.path.strip("/")
+        if req_path != expected_path and not req_path.startswith(f"{expected_path}/"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Token path mismatch (expected {expected_path}, got {req_path})",
+            )
+
+        # Verify user still exists, is active, and retains permissions
+        user_id = verified.get("sub")
+        stmt = select(User).options(selectinload(User.permissions)).where(User.id == user_id)
+        res = await db.execute(stmt)
+        user = res.scalar_one_or_none()
+        if user is None or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account is inactive or not found",
+            )
+
+        if user.role not in ("owner", "operator"):
+            allowed_cameras = {p.camera_serial for p in user.permissions}
+            if token_serial not in allowed_cameras:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Access denied to camera '{token_serial}'",
+                )
+
+        return {"status": "ok"}
+
+    # Case 3: Reject all other actions
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=f"Action '{payload.action}' forbidden",
+    )

@@ -108,3 +108,4 @@ async def test_camera_whitelist_restriction_lifecycle(tmp_path: Path) -> None:
         assert set(res_me_updated.json()["permissions"]) == {"CAM-AAA", "CAM-BBB"}
 
     await engine.dispose()
+

@@ -181,3 +181,4 @@ async def test_user_management_crud_and_guards(tmp_path: Path) -> None:
             assert res_bob_login.status_code == 200
 
     await engine.dispose()
+

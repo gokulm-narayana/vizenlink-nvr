@@ -52,7 +52,8 @@ def test_build_config_security_defaults() -> None:
     cfg = build_config(ports, pw_hash)
 
     # Authentication
-    assert cfg["authMethod"] == "internal"
+    assert cfg["authMethod"] == "http"
+    assert cfg["authHTTPAddress"] == "http://127.0.0.1:8000/api/v1/auth/mediamtx"
     users = cfg["authInternalUsers"]
     assert len(users) == 1
     assert users[0]["user"] == CONTROL_USER
@@ -96,6 +97,9 @@ def test_every_listener_address_explicit_loopback() -> None:
     def _walk(obj: Any) -> None:
         if isinstance(obj, dict):
             for k, v in obj.items():
+                if k == "authHTTPAddress":
+                    assert v.startswith("http://127.0.0.1:")
+                    continue
                 if "Address" in k:
                     found_address_keys.add(k)
                     assert isinstance(v, str), f"{k} value must be string: {v}"
@@ -121,7 +125,8 @@ def test_render_and_write_config(tmp_path: Path) -> None:
 
     # Round trip YAML validation
     parsed = yaml.safe_load(rendered)
-    assert parsed["authMethod"] == "internal"
+    assert parsed["authMethod"] == "http"
+    assert parsed["authHTTPAddress"] == "http://127.0.0.1:8000/api/v1/auth/mediamtx"
     assert parsed["apiAddress"] == "127.0.0.1:9997"
 
     target_file = tmp_path / "mediamtx.yml"

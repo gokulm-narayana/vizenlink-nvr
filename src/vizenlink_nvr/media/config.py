@@ -33,10 +33,18 @@ def hash_control_password(pw: str) -> str:
     return f"sha256:{b64}"
 
 
-def build_config(ports: MediaMtxPorts, control_password_hash: str) -> dict[str, Any]:
+def build_config(
+    ports: MediaMtxPorts,
+    control_password_hash: str,
+    nvr_port: int = 8000,
+    auth_method: str = "http",
+    auth_http_url: str | None = None,
+) -> dict[str, Any]:
     """Build MediaMTX configuration dictionary with explicit loopback binding and default-deny."""
+    http_address = auth_http_url or f"http://127.0.0.1:{nvr_port}/api/v1/auth/mediamtx"
     return {
-        "authMethod": "internal",
+        "authMethod": auth_method,
+        "authHTTPAddress": http_address,
         "authInternalUsers": [
             {
                 "user": CONTROL_USER,

@@ -59,8 +59,8 @@ Registry `ui` items returned: accordion, alert, alert-dialog, aspect-ratio, avat
 | Component | Import path | Notes |
 |-----------|-------------|-------|
 | sidebar | `@/components/ui/sidebar` | App shell. `collapsible="icon"`, built-in mobile Sheet. Control `open` from the Zustand UI store (`nvr_sidebar`), not the shadcn cookie. Width vars `--sidebar-width: 15rem`, `--sidebar-width-icon: 4rem`. |
-| button, button-group | `@/components/ui/button` | All actions. `button-group` for transport controls. |
-| toggle-group, toggle | `@/components/ui/toggle-group` | Grid size 1x1..4x4, timeline zoom, Simple/Advanced, theme. |
+| button, button-group | `@/components/ui/button`, `@/components/ui/button-group` | All actions. `button-group` for transport controls. |
+| toggle-group, toggle | `@/components/ui/toggle-group`, `@/components/ui/toggle` | Grid size 1x1..4x4, timeline zoom, Simple/Advanced, theme. |
 | tabs | `@/components/ui/tabs` | Gallery (Snapshots / Clips), camera settings sections. |
 | card | `@/components/ui/card` | Every surface block. |
 | badge | `@/components/ui/badge` | Online, Recording, event type, role, unread count. |
@@ -68,17 +68,21 @@ Registry `ui` items returned: accordion, alert, alert-dialog, aspect-ratio, avat
 | alert-dialog | `@/components/ui/alert-dialog` | Every destructive confirmation. |
 | dialog | `@/components/ui/dialog` | Clip export, QR pairing, snapshot/clip preview, outage history. |
 | sheet | `@/components/ui/sheet` | Event detail drawer. |
-| popover, calendar | `@/components/ui/popover`, `calendar` | Date picker with footage-day markers, alerts bell. |
-| select / native-select | `@/components/ui/select` | Camera and filter pickers. Use `native-select` on coarse pointers if Radix select misbehaves on touch. |
-| input, input-group, label, field, form | `@/components/ui/field` | Forms with `react-hook-form` + `zod`. |
-| switch, slider, checkbox, radio-group | `@/components/ui/switch` | Camera settings controls. |
+| popover, calendar | `@/components/ui/popover`, `@/components/ui/calendar` | Date picker with footage-day markers, alerts bell. |
+| select / native-select | `@/components/ui/select`, `@/components/ui/native-select` | Camera and filter pickers. Use `native-select` on coarse pointers if Radix select misbehaves on touch. |
+| input, input-group, label | `@/components/ui/input`, `@/components/ui/input-group`, `@/components/ui/label` | Text inputs and visible labels. |
+| field, form | `@/components/ui/field`, `@/components/ui/form` | Forms with `react-hook-form` + `zod`. |
+| switch | `@/components/ui/switch` | Unread-only filter, Lock / Unlock event, camera settings toggles. |
+| slider | `@/components/ui/slider` | Camera settings ranges. |
+| checkbox | `@/components/ui/checkbox` | Camera settings options. |
+| radio-group | `@/components/ui/radio-group` | Camera settings exclusive choices. |
 | table | `@/components/ui/table` | Dashboard camera table, paired devices. |
 | progress | `@/components/ui/progress` | Storage usage, export progress. |
-| skeleton, spinner | `@/components/ui/skeleton` | Loading states. |
+| skeleton, spinner | `@/components/ui/skeleton`, `@/components/ui/spinner` | Loading states. |
 | empty | `@/components/ui/empty` | Every empty state (icon, title, body, optional action). |
 | tooltip | `@/components/ui/tooltip` | Required on every icon-only button. |
 | dropdown-menu | `@/components/ui/dropdown-menu` | User menu, tile overflow menu. |
-| scroll-area, separator | `@/components/ui/scroll-area` | Camera list, sidebar groups. |
+| scroll-area, separator | `@/components/ui/scroll-area`, `@/components/ui/separator` | Camera list, sidebar groups. |
 | sonner | `@/components/ui/sonner` | Transient confirmations only. Replace its `next-themes` import with the project theme store. |
 | kbd | `@/components/ui/kbd` | Show shortcuts in tooltips. |
 | pagination | `@/components/ui/pagination` | Live grid pages, Gallery. |
@@ -103,7 +107,7 @@ Declared values (multiples of 4). Tailwind default 4 px unit; use only these ste
 
 Fixed layout dimensions (all multiples of 4): top bar 56, sidebar 240 expanded / 64 collapsed, control height 36 default / 32 compact / 40 large, table row 40, list row 48, timeline canvas 120 plus 32 axis, dialog max width 480 (export 560, preview 960), content max width 1280 (Dashboard, Gallery, Cameras, Devices; Live and Playback are full-bleed with 8 px padding).
 
-Exceptions: 1 px borders, 2 px focus ring plus 2 px offset, 2 px timeline cursor. On `@media (pointer: coarse)` every interactive control gets a minimum 44 px hit area (`min-h-11 min-w-11`, which is a multiple of 4). Icon sizes 16 / 20 / 24 px. No other off-scale values; no arbitrary `p-[13px]` style classes.
+Exceptions (stroke, indicator and corner values, not spacing): 1 px borders; 2 px focus ring plus 2 px offset; 2 px timeline cursor and playhead line; 2 px top-bar refetch progress line; 6 px control corner radius. Every other decorative mark is rounded to the 4 px scale (sidebar active indicator 4 px, recorded-footage span radius 4 px, locked-range underline 4 px, export-range handles 4 px wide). On `@media (pointer: coarse)` every interactive control gets a minimum 44 px hit area (`min-h-11 min-w-11`, which is a multiple of 4). Icon sizes 16 / 20 / 24 px. No other off-scale values; no arbitrary `p-[13px]` style classes.
 
 ---
 
@@ -156,7 +160,7 @@ Verified contrast (WCAG 2.2, computed 2026-11-05): light foreground on backgroun
 Accent reserved for (exhaustive):
 1. The single primary button of a view or dialog (Export clip, Pair mobile device, Sign in, Create owner account, Save changes)
 2. Focus ring on every focusable element
-3. Active sidebar item text/icon and its 3 px leading indicator (background is `--selected`)
+3. Active sidebar item text/icon and its 4 px leading indicator (background is `--selected`)
 4. Selected state of a toggle-group item and the selected day in the calendar
 5. Timeline: recorded-footage spans and nothing else; playhead uses `--foreground`
 6. Inline text links and the Unread events count badge
@@ -224,7 +228,20 @@ Page padding 24 at >= 768, 16 below. Live and Playback ignore padding and use 8.
 
 ## Page Contracts
 
-Every page has all five states: loading (Skeleton in the final layout shape, never a bare "Loading..." string), empty (`empty` component), error (inline `Alert` with Retry), 403 (below) and populated.
+Every page has all five states: loading (Skeleton in the final layout shape, never a bare "Loading..." string), empty (`empty` component with the matching Copywriting Contract row), error (inline `Alert` with the matching "Retry {action}" button from the Copywriting Contract), 403 (below) and populated.
+
+Primary visual anchor per route (the one element the eye lands on first; all other elements are subordinate in size and contrast):
+
+| Route | Anchor |
+|-------|--------|
+| `/setup`, `/login` | The centered auth `Card` and its single primary button |
+| `/` Live | The video tile grid (a maximized tile when one is open) |
+| `/playback` | The video area, with the timeline canvas as its direct companion |
+| `/events` | The `EventCard` list (snapshot thumbnails lead each card) |
+| `/gallery` | The thumbnail grid |
+| `/dashboard` | The Recorder status and Cameras online `MetricCard`s in Row 1 (Display-size values) |
+| `/cameras`, `/cameras/:serial` | The settings form for the selected camera (the camera list is secondary) |
+| `/devices` | The primary "Pair mobile device" button above the devices table |
 
 ### Setup wizard `/setup` and Login `/login`
 
@@ -241,46 +258,46 @@ Tile (`VideoTile`): black surface, radius 8, 1 px `--border`. Overlays use solid
 - Bottom-right (hover / focus-within / always on coarse pointers): icon buttons Snapshot (`Camera`), Mute (`Volume2`/`VolumeX`), Maximize (`Maximize2`), each 32 px, 44 px on coarse pointers, with Tooltip.
 - Advanced view adds a bottom-centre caption chip: `SUB`/`MAIN`, protocol `WebRTC`/`HLS`, serial. Simple view hides it.
 
-Tile states: connecting (Skeleton shimmer over black plus spinner), live, reconnecting (last frame stays, chip says Reconnecting…), offline (centered `WifiOff` 24 px + "Offline" + "Last seen {relative}" in Caption, no black void without text), error (centered message with Retry button). Maximize expands the tile to fill the content area inside the shell (not a modal): close with the `Minimize2` button or Esc; `F` toggles browser fullscreen; main stream is requested on maximize and sub stream restored on close, exactly as today. Players mount only for tiles on the visible page and unmount on route change.
+Tile states: connecting (Skeleton shimmer over black plus spinner), live, reconnecting (last frame stays, chip says Reconnecting…), offline (centered `WifiOff` 24 px + "Offline" + "Last seen {relative}" in Caption, no black void without text), error (centered message with "Retry stream" button). Maximize expands the tile to fill the content area inside the shell (not a modal): close with the `Minimize2` button or Esc; `F` toggles browser fullscreen; main stream is requested on maximize and sub stream restored on close, exactly as today. Players mount only for tiles on the visible page and unmount on route change.
 
 Tiles are `role="group"` with `aria-label="{name}, {state}"` and are focusable; Enter maximizes.
 
 ### Playback `/playback`
 
-Top row: camera `select` (shows name + online dot), date `popover` + `calendar` (days with footage marked by a 4 px dot under the number, selected day uses `--selected`, days without footage remain selectable but muted), "Jump to time" time input, and an Events link. Below: video area (black, 16:9, max height 60 dvh) with state overlays (Loading, "No footage at this time" in gaps, error with Retry); `TransportBar` as a `button-group` row: Play/Pause (`Play`/`Pause`), Back 10 s (`RotateCcw`), Forward 10 s (`RotateCw`), speed `select` (0.5x, 1x, 2x, 4x), Mute, Snapshot, Mark in, Mark out, Export clip (primary accent button, enabled only when in/out set), Fullscreen. Current time and date in Caption with tabular figures and the site time zone name.
+Top row: camera `select` (shows name + online dot), date `popover` + `calendar` (days with footage marked by a 4 px dot under the number, selected day uses `--selected`, days without footage remain selectable but muted), "Jump to time" time input, and an Events link. Below: video area (black, 16:9, max height 60 dvh) with state overlays (Loading, "No footage at this time" in gaps, error with "Retry playback" button); `TransportBar` as a `button-group` row: Play/Pause (`Play`/`Pause`), Back 10 s (`RotateCcw`), Forward 10 s (`RotateCw`), speed `select` (0.5x, 1x, 2x, 4x), Mute, Snapshot, Mark in, Mark out, Export clip (primary accent button, enabled only when in/out set), Fullscreen. Current time and date in Caption with tabular figures and the site time zone name.
 
 Timeline card (below): zoom `toggle-group` (24h, 12h, 4h, 1h), then the canvas (height 120 + 32 axis). Canvas colors come from tokens:
 
 | Element | Token |
 |---------|-------|
-| Recorded footage span | `--primary` fill, 24 px tall bar, 2 px radius |
+| Recorded footage span | `--primary` fill, 24 px tall bar, 4 px radius |
 | Recording outage gap | `--warning` diagonal hatch (distinct from retention) |
 | Footage removed by retention | `--muted-foreground` at 30% alpha, plain, with dotted baseline |
 | Event marker | `--info` 8 px diamond above the bar; locked event adds a 12 px lock glyph |
-| Locked recording range | 2 px `--foreground` underline beneath the bar |
-| Selected export range | `--selected` translucent band with 2 px accent handles |
+| Locked recording range | 4 px `--foreground` underline beneath the bar |
+| Selected export range | `--selected` translucent band with 4 px accent handles |
 | Playhead | `--foreground` 2 px line with 12 px triangle head |
 | Gridlines / axis ticks | `--border` / `--muted-foreground` |
 
 Legend row under the canvas lists the five encodings with swatches plus text. The canvas scales for `devicePixelRatio` and redraws on theme change and container resize. Pointer: click or drag seeks; wheel / pinch zooms around the cursor; hover shows a Tooltip with the time and span type. Keyboard: timeline is `role="slider"` with `aria-valuetext` = formatted time; Left/Right ±10 s, Shift+Left/Right ±60 s, `+`/`-` zoom, Space play/pause, `M`/`I`/`O` mute / mark in / mark out. A visually hidden table lists the day's recorded spans for screen readers. Gaps are skipped without freezing, as today.
 
-Clip export `dialog` (560 px): title "Export clip", fields Title, Start, End (prefilled from marks), duration caption, format fixed to MP4; footer buttons "Cancel" and primary "Export clip"; pending state shows `progress` and disables inputs; success closes the dialog and fires a toast with an "Open in Gallery" action; failure stays open with an inline Alert.
+Clip export `dialog` (560 px): title "Export clip", fields Title, Start, End (prefilled from marks), duration caption, format fixed to MP4; footer buttons "Keep editing clip" and primary "Export clip"; pending state shows `progress` and disables inputs; success closes the dialog and fires a toast with an "Open in Gallery" action; failure stays open with an inline Alert using the clip-export row of the mutation-failure copy (Copywriting Contract), and the primary button becomes "Retry export".
 
 ### Events `/events`
 
-Filter bar (card, wraps on small screens): camera `select`, event type `select`, date range `popover` + `calendar`, "Clear filters" ghost button, unread-only `switch` in Advanced. Results: a responsive list of `EventCard`s — 1 column below 768, 2 at >= 768, 3 at >= 1280. Each card: 16:9 snapshot (Skeleton while loading; `ImageOff` placeholder if no snapshot), type `badge` (neutral secondary badge with a per-type lucide icon: `Footprints` motion, `Spline` line crossing, `ShieldAlert` tamper in `--warning`, `User` person, `Car` vehicle), camera name (Body strong), time (Caption, relative + absolute in title), unread dot (accent 8 px) on unread cards, lock icon when locked. Event type is no longer a five-hue palette. Click opens a right `sheet` (480 px; full-width below 768): large snapshot, metadata, Lock / Unlock `switch`, primary "Play footage" which routes to `/playback?camera={serial}&t={start}`. Advanced view adds raw topic and clock-sync state ("Camera clock synced" / "Camera clock uncertain — NVR time used" with `info` / `warning` icon); Simple hides them. Marking an event read keeps today's behaviour (`nvr_read_events`). Use "Load more" at the end of the list, not infinite scroll; switch to `@tanstack/react-virtual` only if a list exceeds 200 rendered cards.
+Filter bar (card, wraps on small screens): camera `select`, event type `select`, date range `popover` + `calendar`, "Clear filters" ghost button, unread-only `switch` in Advanced. Results: a responsive list of `EventCard`s — 1 column below 768, 2 at >= 768, 3 at >= 1280. Each card: 16:9 snapshot (Skeleton while loading; `ImageOff` placeholder if no snapshot), type `badge` (neutral secondary badge with a per-type lucide icon: `Footprints` motion, `Spline` line crossing, `ShieldAlert` tamper in `--warning`, `User` person, `Car` vehicle), camera name (Body strong), time (Caption, relative + absolute in title), unread dot (accent 8 px) on unread cards, lock icon when locked. Event type is no longer a five-hue palette. Click opens a right `sheet` (480 px; full-width below 768): large snapshot, metadata, Lock / Unlock `switch`, primary "Play footage" which routes to `/playback?camera={serial}&t={start}`. Advanced view adds raw topic and clock-sync state ("Camera clock synced" / "Camera clock uncertain — NVR time used" with `info` / `warning` icon); Simple hides them. Marking an event read keeps today's behaviour (`nvr_read_events`). Use a "Load more events" button at the end of the list, not infinite scroll; switch to `@tanstack/react-virtual` only if a list exceeds 200 rendered cards.
 
 ### Gallery `/gallery`
 
-`tabs`: Snapshots | Clips. Filter bar: camera, date range, and (Advanced) user. Grid: 1 / 2 / 3 / 4 columns at <640 / >=640 / >=1024 / >=1280, gap 16, each `Card` has a 16:9 thumbnail, title (Body strong, truncated), camera + time (Caption), clip duration chip on clips. Click opens a `dialog` preview (960 px): image or `<video controls>`, metadata, buttons Download (secondary), "Open in Playback" (secondary), and Delete (destructive outline, operator and owner only). Delete always goes through `alert-dialog`. Viewer role sees no Delete control.
+`tabs`: Snapshots | Clips. Filter bar: camera, date range, and (Advanced) user. Grid: 1 / 2 / 3 / 4 columns at <640 / >=640 / >=1024 / >=1280, gap 16, each `Card` has a 16:9 thumbnail, title (Body strong, truncated), camera + time (Caption), clip duration chip on clips. Click opens a `dialog` preview (960 px): image or `<video controls>`, metadata, buttons "Download {snapshot or clip}" (secondary), "Open in Playback" (secondary), and "Delete {snapshot or clip}" (destructive outline, operator and owner only). Delete always goes through `alert-dialog`. Viewer role sees no Delete control. Download, save and delete failures use the mutation-failure copy. The empty state is the Gallery row in the Copywriting Contract.
 
 ### Dashboard `/dashboard`
 
-Row 1, `MetricCard`s (auto-fit, min 220 px): Recorder status (StatusBadge + word), Cameras online ("14 / 16", Display), Recording now (Display), Storage used (Display percent + `progress`; success under 80%, warning 80-90%, critical above 90%), Active alerts (Display; `--critical` when > 0). Row 2: Storage card (path, free space, estimated retention days, reserve) beside an Alerts card (list with severity icon, message, time, Dismiss; empty state "All clear"). Row 3: Cameras `table` with separate Online and Recording `StatusBadge` columns (the two are independent per HLTH requirements), last seen, and a row action "View outage history" that opens the outage `dialog` filtered to that camera; the existing global "Camera outage history" button stays in the page header. Advanced view adds: MediaMTX / database / storage subsystem checks (three small status rows), recorder uptime, and the raw health `details` in a collapsed `collapsible`. Simple view shows rows 1-3 only. Polling stays at 5 s (dashboard) and 10 s (alerts, unread) as today.
+Row 1, `MetricCard`s (auto-fit, min 220 px): Recorder status (StatusBadge + word), Cameras online ("14 / 16", Display), Recording now (Display), Storage used (Display percent + `progress`; success under 80%, warning 80-90%, critical above 90%), Active alerts (Display; `--critical` when > 0). Row 2: Storage card (path, free space, estimated retention days, reserve) beside an Alerts card (list with severity icon, message, time, "Dismiss alert" button; empty state "All clear"). Row 3: Cameras `table` (zero cameras renders the `empty` component with the "Empty state (Dashboard cameras table)" row in the Copywriting Contract instead of an empty table body) with separate Online and Recording `StatusBadge` columns (the two are independent per HLTH requirements), last seen, and a row action "View outage history" that opens the outage `dialog` filtered to that camera; the existing global "Camera outage history" button stays in the page header. Advanced view adds: MediaMTX / database / storage subsystem checks (three small status rows), recorder uptime, and the raw health `details` in a collapsed `collapsible`. Simple view shows rows 1-3 only. Polling stays at 5 s (dashboard) and 10 s (alerts, unread) as today.
 
 ### Cameras `/cameras` and `/cameras/:serial` (restyled `CameraSettingsView`)
 
-Master-detail. Left (280 px, `scroll-area`, collapses into a `select` above the form below 1024 px): camera list rows with name, location caption, online dot. Right: header with camera name, serial caption and StatusBadges, then `tabs`:
+Master-detail. Left (280 px, `scroll-area`, collapses into a `select` above the form below 1024 px): camera list rows with name, location caption, online dot. Zero cameras: the whole page body (list and detail) is replaced by one `empty` component using the "Empty state (Cameras)" row in the Copywriting Contract; no tabs or form render. Right: header with camera name, serial caption and StatusBadges, then `tabs`:
 
 | Tab | Simple | Advanced | Contents (existing sections) |
 |-----|--------|----------|------------------------------|
@@ -291,11 +308,11 @@ Master-detail. Left (280 px, `scroll-area`, collapses into a `select` above the 
 | Health | yes | yes | Uptime, last reboot reason, clock sync, firmware |
 | Maintenance | no | yes | Reboot, factory reset (owner only) |
 
-Capability gating stays as implemented (unsupported options are hidden, not disabled). Forms: `react-hook-form` + `zod`, a sticky footer bar appears only when the form is dirty with "Discard changes" (ghost) and "Save changes" (primary); successful save fires a toast "Settings saved". Field-level errors under the field in `--critical` with an icon. Maintenance is a `Card` where each action is a row with a description and a button (Reboot = secondary, Factory reset = destructive). Operators see Identity / Video / Image / Overlays / Health; only owners see the factory-reset row.
+Capability gating stays as implemented (unsupported options are hidden, not disabled). Forms: `react-hook-form` + `zod`, a sticky footer bar appears only when the form is dirty with "Discard changes" (ghost) and "Save changes" (primary); successful save fires a toast "Settings saved"; a failed save keeps the form dirty and shows the settings-save row of the mutation-failure copy in an inline Alert above the footer bar. Field-level errors under the field in `--critical` with an icon. Maintenance is a `Card` where each action is a row with a description and a button ("Reboot camera" = secondary, "Factory reset camera" = destructive). Operators see Identity / Video / Image / Overlays / Health; only owners see the factory-reset row.
 
 ### Mobile devices `/devices` (restyled `PairedDevicesView` + `MobilePairingModal`)
 
-Page header with primary button "Pair mobile device" (opens the QR `dialog`, 480 px: QR on a white 224 px square regardless of theme with 16 px quiet zone, the code expiry as a Caption countdown, "Generate new code" secondary button, instructions in numbered list). Devices `table`: name, platform, paired date, last seen, Revoke (destructive ghost) per row; revoke goes through `alert-dialog`. On mobile web the table becomes a stacked list of cards.
+Page header with primary button "Pair mobile device" (opens the QR `dialog`, 480 px: QR on a white 224 px square regardless of theme with 16 px quiet zone, the code expiry as a Caption countdown, "Generate new code" secondary button (a failed generation shows the pairing-code row of the mutation-failure copy as an inline Alert inside the dialog, QR area replaced by the Alert), instructions in numbered list). Devices `table`: name, platform, paired date, last seen, "Revoke device" (destructive ghost) per row; revoke goes through `alert-dialog`. On mobile web the table becomes a stacked list of cards.
 
 ---
 
@@ -329,22 +346,34 @@ Page header with primary button "Pair mobile device" (opens the QR `dialog`, 480
 | Empty state (Gallery) | Nothing saved yet. Save a snapshot from Live or Playback, or export a clip, and it will appear here. |
 | Empty state (Devices) | No mobile devices paired. Open VizenLink on your phone, choose Add NVR, then scan the code from Pair mobile device. |
 | Empty state (Dashboard alerts) | All clear. No active alerts. |
-| Error state (NVR unreachable) | Can't reach the NVR. Check that the NVR service is running and you're on the same network, then try again. (button: Try again) |
-| Error state (tile stream) | Can't play this stream. Retrying… (button: Retry now) |
-| Error state (load failure) | Couldn't load {thing}. Check your connection and try again. (button: Try again) |
+| Empty state (Cameras `/cameras`) | Heading "No cameras yet". Body: "Add a camera from the NVR host: run `nvr cameras scan`, then `nvr cameras add`. New cameras appear here within a few seconds." (same copy as Live; no action button because adding is CLI-only in this phase, A8) |
+| Empty state (Dashboard cameras table) | Heading "No cameras yet". Body: "Add a camera from the NVR host: run `nvr cameras scan`, then `nvr cameras add`. Status for each camera appears here." |
+| Error state (NVR unreachable) | Can't reach the NVR. Check that the NVR service is running and you're on the same network, then retry. (button: Retry connection) |
+| Error state (tile stream) | Can't play this stream. Retrying… (button: Retry stream) |
+| Error state (load failure) | Couldn't load {thing}. Check your connection and try again. (button: Reload {thing}) |
+| Error state (mutation failure, template) | Couldn't {action} {thing}. Check your connection and try again. (button: Retry {action}). Shown as an inline `Alert` (`role="alert"`) next to the control that failed; the form or dialog stays open and keeps the user's input. Covers every surface in the next six rows. |
+| Error state (clip export failure) | Couldn't export the clip. Check your connection and that the time range has footage, then try again. (button: Retry export) |
+| Error state (settings save failure) | Couldn't save settings for {camera name}. Check that the camera is online and the values are in range, then try again. (button: Retry save) |
+| Error state (snapshot save failure) | Couldn't save the snapshot. Check your connection and that the NVR has free storage, then try again. (button: Retry snapshot) |
+| Error state (revoke device failure) | Couldn't revoke {device name}. Check your connection and try again. (button: Retry revoke) |
+| Error state (reboot / factory reset failure) | Couldn't {reboot or factory reset} {camera name}. Check that the camera is online and try again. (button: Retry {reboot or factory reset}) |
+| Error state (gallery delete failure) | Couldn't delete the {snapshot or clip}. Check your connection and try again. (button: Retry delete) |
+| Error state (pairing code failure) | Couldn't generate a pairing code. Check your connection and try again. (button: Retry code) |
 | Error state (login) | Incorrect username or password. |
 | Error state (lockout) | Too many failed attempts. Try again in 15 minutes. |
 | Error state (setup validation) | Passwords don't match. Re-enter both and try again. |
 | 403 state | You don't have access to this page. Ask the NVR owner to change your role if you need it. (button: Go to Live) |
 | Offline tile | Offline. Last seen {relative time}. |
 | Recorder chip | Recording {n} of {total} |
-| Destructive: delete snapshot/clip | Delete {snapshot or clip}: "Delete this {snapshot or clip}? This permanently removes the file from the NVR and can't be undone." Buttons: "Delete {snapshot or clip}" (destructive) / "Keep" |
-| Destructive: revoke device | Revoke device: "Revoke {device name}? It will be signed out and refused until it pairs again." Buttons: "Revoke device" / "Cancel" |
-| Destructive: reboot camera | Reboot camera: "Reboot {camera name}? It will go offline for about a minute. Recording resumes automatically." Buttons: "Reboot camera" / "Cancel" |
-| Destructive: factory reset (double confirmation) | Step 1, Factory reset camera: "This erases all settings and credentials on {camera name}. Recording stops until you set it up again." Buttons: "Continue" / "Cancel". Step 2: "Type {camera name} to confirm." Button: "Factory reset camera" (destructive, disabled until the name matches) / "Cancel" |
-| Non-destructive, no confirm | Sign out, Lock / Unlock event, Dismiss alert |
+| Destructive: delete snapshot/clip | Delete {snapshot or clip}: "Delete this {snapshot or clip}? This permanently removes the file from the NVR and can't be undone." Buttons: "Delete {snapshot or clip}" (destructive) / "Keep {snapshot or clip}" |
+| Destructive: revoke device | Revoke device: "Revoke {device name}? It will be signed out and refused until it pairs again." Buttons: "Revoke device" / "Keep device paired" |
+| Destructive: reboot camera | Reboot camera: "Reboot {camera name}? It will go offline for about a minute. Recording resumes automatically." Buttons: "Reboot camera" / "Keep camera running" |
+| Destructive: factory reset (double confirmation) | Step 1, Factory reset camera: "This erases all settings and credentials on {camera name}. Recording stops until you set it up again." Buttons: "Continue factory reset" / "Keep camera settings". Step 2: "Type {camera name} to confirm." Button: "Factory reset camera" (destructive, disabled until the name matches) / "Keep camera settings" |
+| Dismiss / discard / exit labels (every dialog backs out with a named outcome, never bare "Cancel", "Close" or "Dismiss") | Clip export dialog: "Keep editing clip". Form footer: "Discard changes". Alerts and bell list: "Dismiss alert". Preview dialogs and sheets use the icon-only close button with aria-label "Close preview" / "Close event details" and a Tooltip. Pairing dialog footer: "Close pairing" |
+| Other button labels with a noun | "Retry stream", "Retry playback", "Retry connection", "Reload {thing}", "Download snapshot", "Download clip", "Load more events", "Clear filters", "Open in Playback", "Open in Gallery", "Play footage", "Generate new code", "View outage history", "Go to Live" |
+| Non-destructive, no confirm | Sign out, Lock event / Unlock event, Dismiss alert |
 
-Tone: plain, specific, second person, sentence case, no exclamation marks, no emoji (remove the warning emoji from today's factory-reset modal). Buttons are verb + noun. Never "OK", "Submit", "Click here".
+Tone: plain, specific, second person, sentence case, no exclamation marks, no emoji (remove the warning emoji from today's factory-reset modal). Buttons are verb + noun. Never "OK", "Submit", "Cancel", "Retry" alone, "Click here".
 
 ---
 
@@ -354,9 +383,9 @@ Applicable state considerations resolved: 14 covered, 2 backstop, 1 unresolved.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | Live grid, Playback day, Events, Gallery, Devices, Dashboard alerts | ✅ covered | Each renders the `empty` component with the matching row from the Copywriting Contract |
+| empty | Live grid, Cameras page, Dashboard cameras table, Playback day, Events, Gallery, Devices, Dashboard alerts | ✅ covered | Each renders the `empty` component with the matching row from the Copywriting Contract (Cameras and Dashboard cameras table reuse the Live "No cameras yet" copy) |
 | loading | Every route and every tile | ✅ covered | Skeletons in the final layout shape; tiles show Connecting; no bare "Loading..." text anywhere |
-| error | Route data, tile stream, forms | ✅ covered | Inline Alert with Retry; tile shows "Can't play this stream. Retrying…"; never a blank area |
+| error | Route data, tile stream, forms, and mutations (clip export, settings save, snapshot save, revoke, reboot / factory reset, gallery delete, pairing code) | ✅ covered | Inline Alert with a named "Retry {action}" / "Reload {thing}" button; each mutation has a row in the Copywriting Contract; tile shows "Can't play this stream. Retrying…"; never a blank area |
 | forbidden | Cameras, Devices, Gallery delete | ✅ covered | Sidebar hides the item by role; direct URL shows the 403 state; server stays authoritative |
 | zero-one-many | Camera count 1 vs 16 | ✅ covered | 1 camera defaults the grid to 1x1; pagination only appears when cameras exceed tiles per page; 16 cameras fit one 4x4 page |
 | overflow | Camera names, event titles, gallery titles | ✅ covered | Truncate with ellipsis plus `title`; never wrap in tile chips; cards use `min-w-0` |

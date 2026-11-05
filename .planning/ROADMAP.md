@@ -246,7 +246,26 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Ph
 **UI hint**: yes
 **Requirements**: TBD
 **Depends on:** Phase 8
-**Plans:** 0 plans
+**Plans:** 20 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 9 to break down)
+- [ ] 09-01-PLAN.md — Dependency approval gate (lockfile + audit) and stack-bump-only commit (wave 1)
+- [ ] 09-02-PLAN.md — Backend: authenticated /cam WHEP proxy (D-14), site_timezone on auth status (D-15), UI-SPEC rev 5 (wave 1)
+- [ ] 09-03-PLAN.md — Design tokens, Tailwind v4, Vitest, contrast test, design gates, legacy isolation, CI web job (wave 2)
+- [ ] 09-04-PLAN.md — shadcn/ui with contract overrides, Inter, VizenLink logo crops and BrandLogo (wave 3)
+- [ ] 09-05-PLAN.md — React Router, auth routing table, restyled Login and Setup (wave 4)
+- [ ] 09-06-PLAN.md — App shell, theme and user menu, route registry with legacy page adapters (wave 5)
+- [ ] 09-07-PLAN.md — Shell status: alerts, recorder chip, badges, StatusBadge, InlineError, site-zone time, shortcuts (wave 6)
+- [ ] 09-08-PLAN.md — Playwright harness, auth and sidebar e2e (a-f), CI e2e (wave 7)
+- [ ] 09-09-PLAN.md — Live: player reconnect and leak fix (D-17), restyled grid and tiles (wave 7)
+- [ ] 09-10-PLAN.md — Playback timeline: site-zone geometry, token styling, keyboard/ARIA/zoom (wave 7)
+- [ ] 09-11-PLAN.md — Playback page, transport, date picker, clip export dialog (wave 8)
+- [ ] 09-12-PLAN.md — Events list, filters and detail sheet (wave 7)
+- [ ] 09-13-PLAN.md — Gallery tabs, preview and role-gated delete (wave 7)
+- [ ] 09-14-PLAN.md — Dashboard rows, storage and alerts cards, cameras table, outage dialog (wave 7)
+- [ ] 09-15-PLAN.md — Cameras master-detail, capability-gated tabs, reboot and factory reset (wave 7)
+- [ ] 09-16-PLAN.md — Mobile devices with scannable QR and revoke (wave 7)
+- [ ] 09-17-PLAN.md — Add-camera wizard (manual entry) (wave 7)
+- [ ] 09-18-PLAN.md — Change-password dialog and Profile page (wave 7)
+- [ ] 09-19-PLAN.md — Users management (owner) (wave 8)
+- [ ] 09-20-PLAN.md — Final gates, legacy removal, visual and performance backstops (wave 9)

@@ -406,18 +406,27 @@ webServer: {
 | A5 | CI runner Node 24 resolves to >=24.15 (jsdom 30 engine) | Standard Stack | CI install warning or failure; pin `node-version: 24.x` and check |
 | A6 | Rolldown resolving `@/` with no config is stable behaviour, not an accident of this probe | Pattern 1 | Mitigated by setting `resolve.tsconfigPaths: true` explicitly |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All seven questions were resolved by the owner's research review on 2026-11-05 (09-CONTEXT.md D-14 to D-19). The original question text is kept below each resolution for traceability.
 
 1. **How does the browser reach MediaMTX WHEP in production? (blocking for Plan 2 acceptance)**
+   - **RESOLVED (D-14):** option (a), a minimal authenticated FastAPI reverse proxy for `/cam/*`. Built in 09-02 Task 1 (`api/cam_proxy.py`, `tests/integration/test_cam_proxy.py`); the web player uses it in 09-11 Task 1.
    - Known: web player calls `/cam/<serial>/<role>/whep` on the page origin; only the Vite dev proxy serves it; FastAPI returns HTML 200; MediaMTX `webrtcAllowOrigins` is `[]`.
    - Unclear: whether Phase 5/8 verification ever exercised web Live from a built bundle.
    - Recommendation: ask the owner to choose (a) a FastAPI reverse proxy for `/cam/*` (backend change) or (b) `webrtcAllowOrigins` for the NVR origin plus a direct `http://<host>:8889` URL (config change). Until then Plan 2 verifies Live only via the Vite dev proxy.
 2. **Setup form fields.** Recommendation: keep `timezone` and `allow_system_disk`; amend the UI-SPEC (or have the planner list them explicitly).
+   - **RESOLVED (D-16):** both fields are kept. UI-SPEC revision 5 records all six Setup fields (09-02 Task 3); the Setup page sends them (09-06 Task 3).
 3. **Keep `TimelineCanvas` DOM-based?** Recommendation: yes; treat keyboard/ARIA/wheel as new tasks and scope them (they are sizeable). Owner should confirm that a true `<canvas>` rewrite is not expected this phase.
+   - **RESOLVED (D-16):** it stays DOM-based and is restyled with token classes; no `<canvas>` rewrite this phase. The geometry move and restyle are 09-12 Task 1; keyboard, slider ARIA, wheel and pinch zoom, legend and the hidden table are 09-12 Task 2. UI-SPEC revision 5 records it (09-02 Task 3).
 4. **Site time zone source.** The setup flow stores a `timezone`, but no `/api/v1` response exposes it (grep of `api/v1/*.py` finds `timezone` only in `auth.py` setup and `camera_settings.py`). The project rule and UI-SPEC say display in the site IANA zone; the web can only use the browser zone today. Recommendation: Phase 9 uses the browser zone and records the gap; a read-only site-timezone field on an existing endpoint is a small backend change for the owner to approve.
+   - **RESOLVED (D-15):** `site_timezone` is added to `GET /api/v1/auth/status` (09-02 Task 2, `tests/integration/test_auth_site_timezone.py`). The web reads it through `useSiteTimeZone()` and DST-safe `zonedDayBounds` (09-09 Task 3); the timeline day window uses it (09-12 Task 1).
 5. **SPA fallback hardening** (assets/non-GET/`/cam` returning HTML). Recommendation: optional backend fix with a pytest; owner approval needed because the phase says backend untouched.
+   - **RESOLVED as deferred (D-19):** not planned in Phase 9. The `/cam` part no longer matters because 09-02 registers the proxy before the SPA mount (its test asserts `/cam/...` never reaches the SPA fallback).
 6. **Auto-reconnect and HLS fallback in the web player.** Neither exists in the web source. Recommendation: state in the Live plan that they are out of scope (restyle only) or add them as explicit tasks.
+   - **RESOLVED (D-17):** auto-reconnect with capped backoff and the RTCPeerConnection leak fix are in scope (09-11 Task 1, `services/player.test.ts`); the public STUN host is removed (same task); the hls.js fallback is deferred.
 7. **UI-SPEC amendments.** Revision 4 already carries D-01 to D-13, so the planner does not need to re-apply them. Remaining open items to carry as explicit plan notes: `form` to `field`, `cn` vs clsx/tailwind-merge, Setup fields, timeline implementation, `/cam`.
+   - **RESOLVED (D-13, D-16):** UI-SPEC revision 5 (09-02 Task 3) records `field` instead of `form`, the `cn` package, `shadcn` as a devDependency, Inter, the sidebar overrides, the Setup fields, the DOM timeline, the `/cam` proxy, the D-17 Live scope, the site-zone source, the viewer camera health view (A7) and the D-18 add-camera copy. The shadcn overrides are applied in 09-05.
 
 ## Environment Availability
 

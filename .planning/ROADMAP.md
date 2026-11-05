@@ -244,28 +244,32 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Ph
 
 **Goal:** Replace the inline-styled React UI with a Tailwind v4 + shadcn/ui design system: light/dark tokens, a sidebar app shell with a router, and restyled Live grid, Playback, Gallery, Events, Dashboard, Settings and Mobile Devices pages. Bump the web stack to React 19 / Vite 8 / TypeScript ~6.0 and fix the Settings/Devices navigation build break (`tsc` TS2367 in `App.tsx`).
 **UI hint**: yes
-**Requirements**: TBD
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, CAM-02, CAM-03, CAM-06, EVT-02, EVT-03, EVT-05, EVT-07, GAL-01, GAL-02, HLTH-01, HLTH-02, HLTH-04, HLTH-05, HLTH-06, HLTH-07, HLTH-08, HLTH-09, LIVE-01, LIVE-02, LIVE-03, LIVE-04, LIVE-05, LIVE-06, MOB-01, MOB-03, PLAY-01, PLAY-02, PLAY-03, PLAY-04, PLAY-05, PLAY-06, PLAY-07, PLAY-08, SET-01, SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08
+**Requirements note**: Phase 9 introduces no new requirement. The IDs above are the ones the Phase 9 plans claim, as regression guards for requirements delivered in Phases 2-8 (the UI is rebuilt on top of them; see 09-RESEARCH.md "Phase Requirements"). LIVE-01's HLS fallback stays deferred (D-17). SET-06 reads "Owner/Admin"; the code has roles viewer, operator and owner only (D-10), and the Phase 6 factory-reset endpoint uses `RequireOperator`, so the UI shows factory reset to operators and owners as implemented and changes no authorization (09-18). Whether to amend SET-06's wording or tighten the endpoint is an owner decision outside Phase 9.
 **Depends on:** Phase 8
-**Plans:** 20 plans
+**Plans:** 23 plans
 
 Plans:
 - [ ] 09-01-PLAN.md — Dependency approval gate (lockfile + audit) and stack-bump-only commit (wave 1)
 - [ ] 09-02-PLAN.md — Backend: authenticated /cam WHEP proxy (D-14), site_timezone on auth status (D-15), UI-SPEC rev 5 (wave 1)
-- [ ] 09-03-PLAN.md — Design tokens, Tailwind v4, Vitest, contrast test, design gates, legacy isolation, CI web job (wave 2)
-- [ ] 09-04-PLAN.md — shadcn/ui with contract overrides, Inter, VizenLink logo crops and BrandLogo (wave 3)
-- [ ] 09-05-PLAN.md — React Router, auth routing table, restyled Login and Setup (wave 4)
-- [ ] 09-06-PLAN.md — App shell, theme and user menu, route registry with legacy page adapters (wave 5)
-- [ ] 09-07-PLAN.md — Shell status: alerts, recorder chip, badges, StatusBadge, InlineError, site-zone time, shortcuts (wave 6)
-- [ ] 09-08-PLAN.md — Playwright harness, auth and sidebar e2e (a-f), CI e2e (wave 7)
-- [ ] 09-09-PLAN.md — Live: player reconnect and leak fix (D-17), restyled grid and tiles (wave 7)
-- [ ] 09-10-PLAN.md — Playback timeline: site-zone geometry, token styling, keyboard/ARIA/zoom (wave 7)
-- [ ] 09-11-PLAN.md — Playback page, transport, date picker, clip export dialog (wave 8)
-- [ ] 09-12-PLAN.md — Events list, filters and detail sheet (wave 7)
-- [ ] 09-13-PLAN.md — Gallery tabs, preview and role-gated delete (wave 7)
-- [ ] 09-14-PLAN.md — Dashboard rows, storage and alerts cards, cameras table, outage dialog (wave 7)
-- [ ] 09-15-PLAN.md — Cameras master-detail, capability-gated tabs, reboot and factory reset (wave 7)
-- [ ] 09-16-PLAN.md — Mobile devices with scannable QR and revoke (wave 7)
-- [ ] 09-17-PLAN.md — Add-camera wizard (manual entry) (wave 7)
-- [ ] 09-18-PLAN.md — Change-password dialog and Profile page (wave 7)
-- [ ] 09-19-PLAN.md — Users management (owner) (wave 8)
-- [ ] 09-20-PLAN.md — Final gates, legacy removal, visual and performance backstops (wave 9)
+- [ ] 09-03-PLAN.md — Backend: POST /cameras fails closed without a runtime vault, Runtime.vault, production-factory pytest (D-18) (wave 1)
+- [ ] 09-04-PLAN.md — Design tokens, Tailwind v4, Vitest, contrast test, design gates, legacy isolation, owner Header patch, CI web job (wave 2)
+- [ ] 09-05-PLAN.md — shadcn/ui with contract overrides, Inter, VizenLink logo crops with SHA-256 provenance manifest, BrandLogo (wave 3)
+- [ ] 09-06-PLAN.md — React Router, auth routing table, restyled Login and Setup (wave 4)
+- [ ] 09-07-PLAN.md — App shell and UI store: route registry, sidebar, top bar, user menu, theme, Live at /live (wave 5)
+- [ ] 09-08-PLAN.md — Legacy page route adapters, cut-over of / into the shell, LegacyApp and Header deleted (wave 6)
+- [ ] 09-09-PLAN.md — Shell status: alerts, camera health link, recorder chip, badges, StatusBadge, InlineError, site-zone time, shortcuts (wave 7)
+- [ ] 09-10-PLAN.md — Playwright harness (runtime-backed server, smoke subset), auth and sidebar e2e (a-f), CI e2e (wave 8)
+- [ ] 09-11-PLAN.md — Live: player reconnect and leak fix (D-17), restyled grid and tiles (wave 8)
+- [ ] 09-12-PLAN.md — Playback timeline: site-zone geometry, token styling, keyboard/ARIA/zoom (wave 8)
+- [ ] 09-13-PLAN.md — Playback page, transport, date picker, clip export dialog (wave 9)
+- [ ] 09-14-PLAN.md — Events list, filters and detail sheet (wave 8)
+- [ ] 09-15-PLAN.md — Gallery tabs, preview and role-gated delete (wave 8)
+- [ ] 09-16-PLAN.md — Dashboard rows, storage and alerts cards, cameras table, outage dialog (wave 8)
+- [ ] 09-17-PLAN.md — Cameras master-detail: Identity, Video, Image, Overlays with capability gating (wave 8)
+- [ ] 09-18-PLAN.md — Cameras Health and Maintenance: health tab, viewer health view, reboot, factory reset, legacy removal (wave 9)
+- [ ] 09-19-PLAN.md — Mobile devices with scannable QR and revoke (wave 8)
+- [ ] 09-20-PLAN.md — Add-camera wizard (manual entry, 409 and 503 vault handling) (wave 9)
+- [ ] 09-21-PLAN.md — Change-password dialog and Profile page (wave 8)
+- [ ] 09-22-PLAN.md — Users management (owner) (wave 9)
+- [ ] 09-23-PLAN.md — Final gates, legacy removal, visual and performance backstops, one-pass full suite (wave 10)

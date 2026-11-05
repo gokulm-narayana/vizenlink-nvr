@@ -40,6 +40,15 @@ Also in scope (decided in discussion): an Add-camera wizard, user management, ch
 ### UI-SPEC relationship
 - **D-13:** `09-UI-SPEC.md` was force-approved before these decisions. Where this CONTEXT.md and the UI-SPEC differ (accent color, grounds, logo, added pages), CONTEXT.md wins. The UI-SPEC still carries the four open items from its sign-off (verb-plus-noun retry labels, sign-out alert role, accent-list gaps, first-run flow e2e). Recommended: re-run `/gsd-ui-phase 9` in Update mode so the contract carries the new tokens and pages before planning; if skipped, the planner must apply D-01 to D-12 on top of it.
 
+### Decisions from research review (2026-11-05, owner-approved)
+- **D-14:** Add a FastAPI `/cam` proxy to MediaMTX WHEP (:8889) in Phase 9 so Live works on one origin in production. This is an approved backend addition; keep it minimal, authenticated, and covered by a pytest.
+- **D-15:** Expose the stored site timezone through an existing endpoint (e.g. `/auth/status` or a settings endpoint) so the UI can display times in the site zone. Minimal backend addition, with a pytest.
+- **D-16:** Amend the UI-SPEC: Setup keeps `timezone` and `allow_system_disk`; `TimelineCanvas` stays DOM-based and is restyled with token classes, with keyboard, slider ARIA and wheel zoom as new tasks. Use shadcn `field` + react-hook-form (no `form` component), move `shadcn` to devDependencies, swap Geist for Inter, override sidebar widths/storage/shortcut per the UI-SPEC.
+- **D-17:** Live gets auto-reconnect and the RTCPeerConnection leak fix only. hls.js fallback is deferred. Remove the public STUN host (LAN-only).
+- **D-18:** Third approved backend addition: `POST /api/v1/cameras` must fail closed (clear error) when the app has no runtime vault, instead of falling back to the all-zero in-memory test key. Minimal change, with a pytest, plus a pytest through the production app factory asserting credentials land in `runtime.vault`.
+- **D-19:** SPA-fallback hardening (404 for missing `/assets/*`, non-GET, `/openapi.json`) is DEFERRED; research Open Question 5 is resolved as deferred.
+- Research corrections: the SPA fallback in `api/app.py` is already committed (the uncommitted diff is an unrelated lifespan change); stage only each plan's own files. Pin Node 24 in CI and add a `web` CI job.
+
 ### Claude's Discretion
 - Exact dark-mode shades for light-mode accent and status text, as long as AA contrast holds.
 - Cropping and sizing of the logo lockup for sidebar, collapsed rail and auth pages.

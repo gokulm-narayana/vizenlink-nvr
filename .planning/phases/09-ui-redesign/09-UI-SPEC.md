@@ -382,10 +382,11 @@ Tone: plain, specific, second person, sentence case, no exclamation marks, no em
 
 ## UI Considerations
 
-Applicable state considerations resolved: 14 covered, 2 backstop, 1 unresolved.
+Applicable state considerations resolved: 15 covered, 2 backstop, 1 unresolved.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
+| populated | Live grid, Playback, Events, Gallery, Dashboard, Cameras, Devices | ✅ covered | Each page's layout and anchor are specified in Page Contracts for the normal data case (1 to 16 cameras, 24 h of footage, a full event list) |
 | empty | Live grid, Cameras page, Dashboard cameras table, Playback day, Events, Gallery, Devices, Dashboard alerts | ✅ covered | Each renders the `empty` component with the matching row from the Copywriting Contract (Cameras and Dashboard cameras table reuse the Live "No cameras yet" copy) |
 | loading | Every route and every tile | ✅ covered | Skeletons in the final layout shape; tiles show Connecting; no bare "Loading..." text anywhere |
 | error | Route data, tile stream, forms, and mutations (clip export, settings save, snapshot save, revoke, reboot / factory reset, gallery delete, pairing code, lock / unlock event, sign out, owner setup) | ✅ covered | Inline Alert with a named "Retry {action}" / "Reload {thing}" button; each of these ten server mutations has its own row in the Copywriting Contract (sign out routes to `/login` first, then shows its Alert there); tile shows "Can't play this stream. Retrying…"; never a blank area |
@@ -455,4 +456,8 @@ Add-camera wizard in the web app (CLI `nvr cameras add` remains the path; API `P
 - [ ] Dimension 6 Registry Safety: PASS
 - [ ] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** force-approved by the owner on 2026-11-05 after 2 revision rounds (checker cap reached). Accepted open items, which the planner must fix as part of Phase 9 planning:
+1. Dimension 1 (BLOCK accepted): seven retry labels are verb-only and must become verb + noun: "Retry export clip", "Retry save settings", "Retry revoke device", "Retry reboot camera" / "Retry factory reset camera", "Retry delete snapshot" / "Retry delete clip", "Retry lock event" / "Retry unlock event", "Retry sign-out request". Update the template row to match.
+2. Dimension 1 FLAG: the sign-out error Alert uses `role="status"` while the mutation template says `role="alert"`. Align them, or state sign-out as the one exception in the template.
+3. Dimension 3 FLAG: the Events unread dot and the Playback export-range handles use the accent but are not in the exhaustive accent list. Add both to the list or move them to a non-accent token.
+4. First-run flow stays unresolved (see UI Considerations): needs an e2e test.

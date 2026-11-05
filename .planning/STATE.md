@@ -57,6 +57,10 @@ Decisions are logged in PROJECT.md Key Decisions table and Phase Contexts:
 - [D-55]: Mobile LAN Integration architecture: mDNS zero-configuration discovery advertising API version, secure device pairing via QR-code or credentials with revocable per-device bearer tokens, sub-stream live relay default, daily calendar/span recordings playback, and server-side RBAC.
 - [D-56]: Cross-Platform Packaging & Soak: Service generators for Systemd, LaunchDaemon, and WinSW; PowerManager host sleep inhibition; atomic SQLite backup/restore with SHA-256 manifests; 16-camera concurrency and soak simulation.
 
+### Roadmap Evolution
+
+- Phase 9 added: UI Redesign (Tailwind v4 + shadcn/ui design system, sidebar shell with router, restyled pages, web stack bump, fix Settings/Devices nav build break)
+
 ## Session Continuity
 
 Last session: 2026-11-04

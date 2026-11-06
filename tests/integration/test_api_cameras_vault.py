@@ -114,3 +114,92 @@ async def test_production_factory_credential_round_trip(tmp_path: Path) -> None:
         async with rt.sessions() as session:
             with pytest.raises(CredentialsUnreadable):
                 await load_connection(session, zero_vault, "CAM-VAULT-1")
+
+
+@pytest.mark.asyncio
+async def test_add_camera_fails_closed_without_runtime_vault(tmp_path: Path) -> None:
+    """When the app has no runtime vault, POST /api/v1/cameras returns 503 and writes nothing."""
+    import types
+
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
+    from vizenlink_nvr.db.models import Camera, CameraCredential
+
+    db_file = tmp_path / "test_fail_closed.db"
+    upgrade_to_head(db_file)
+    engine = create_engine_for(db_file)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    # 1. Create app with session factory only (no runtime)
+    app = create_app(session_factory=session_factory)
+
+    now = utc_now()
+    async with session_factory() as session:
+        op = User(
+            username="op_user",
+            password_hash=hash_password("OperatorPass123!"),
+            role="operator",
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(op)
+        await session.commit()
+        await session.refresh(op)
+        sess = await SessionManager.create_session(session, op.id, "127.0.0.1", "test")
+        token = sess.id
+
+    cam_payload = {
+        "serial": "CAM-FAIL-1",
+        "host": "192.0.2.20",
+        "username": "admin",
+        "password": "SecretPassword1",
+    }
+
+    # Case A: No runtime at all -> 503
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        cookies={SESSION_COOKIE_NAME: token},
+    ) as client:
+        res = await client.post("/api/v1/cameras", json=cam_payload)
+        assert res.status_code == 503
+        assert res.json() == {
+            "detail": "Camera credentials can't be stored because the NVR credential vault is unavailable."
+        }
+
+    # Verify no rows written in DB
+    async with session_factory() as session:
+        cam_stmt = select(Camera).where(Camera.serial == "CAM-FAIL-1")
+        cam_row = (await session.execute(cam_stmt)).scalar_one_or_none()
+        assert cam_row is None
+        cred_stmt = select(CameraCredential).where(CameraCredential.serial == "CAM-FAIL-1")
+        cred_row = (await session.execute(cred_stmt)).scalar_one_or_none()
+        assert cred_row is None
+
+    # Case B: app.state.vault set explicitly -> still 503 (app.state.vault ignored)
+    app.state.vault = Vault(b"0" * 32, "test-vault-key", "memory")
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        cookies={SESSION_COOKIE_NAME: token},
+    ) as client:
+        res_b = await client.post("/api/v1/cameras", json=cam_payload)
+        assert res_b.status_code == 503
+
+    # Case C: Runtime present but runtime.vault is None -> 503
+    app_c = create_app(
+        session_factory=session_factory,
+        runtime=types.SimpleNamespace(vault=None),
+    )
+    transport_c = ASGITransport(app=app_c)
+    async with AsyncClient(
+        transport=transport_c,
+        base_url="http://test",
+        cookies={SESSION_COOKIE_NAME: token},
+    ) as client:
+        res_c = await client.post("/api/v1/cameras", json=cam_payload)
+        assert res_c.status_code == 503

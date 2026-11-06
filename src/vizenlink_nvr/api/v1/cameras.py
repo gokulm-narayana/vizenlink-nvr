@@ -85,13 +85,14 @@ class CameraCreateRequest(BaseModel):
 
 
 def _resolve_vault(request: Request) -> Vault:
-    """Resolve vault from app runtime or provide test vault."""
+    """Resolve operational vault from runtime. Fails closed (503) when unavailable (D-18)."""
     runtime = getattr(request.app.state, "runtime", None)
     if runtime is not None and getattr(runtime, "vault", None) is not None:
         return cast(Vault, runtime.vault)
-    if not hasattr(request.app.state, "vault"):
-        request.app.state.vault = Vault(b"0" * 32, "test-vault-key", "memory")
-    return cast(Vault, request.app.state.vault)
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Camera credentials can't be stored because the NVR credential vault is unavailable.",
+    )
 
 
 @cameras_router.get("", response_model=list[CameraView])
@@ -132,6 +133,8 @@ async def add_camera_endpoint(
     db: DbSession,
 ) -> CameraView:
     """Onboard a new camera into the registry (Operator or Owner only)."""
+    vault = _resolve_vault(request)
+
     existing = await get_camera(db, payload.serial)
     if existing is not None:
         raise HTTPException(
@@ -139,7 +142,6 @@ async def add_camera_endpoint(
             detail=f"Camera with serial '{payload.serial}' already exists",
         )
 
-    vault = _resolve_vault(request)
     sealed_pw = vault.seal(payload.serial, payload.username, SecretStr(payload.password))
 
     now = utc_now()

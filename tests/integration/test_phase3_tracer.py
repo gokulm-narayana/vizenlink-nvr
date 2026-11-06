@@ -14,6 +14,7 @@ Validates:
 
 from __future__ import annotations
 
+import types
 from datetime import timedelta
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from vizenlink_nvr.api.app import create_app
 from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
 from vizenlink_nvr.media.config import CONTROL_USER
+from vizenlink_nvr.secrets.vault import Vault
 from vizenlink_nvr.services.outage_tracker import OutageTracker
 from vizenlink_nvr.timeutil import utc_now
 
@@ -39,7 +41,10 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
     storage_dir = tmp_path / "recordings"
     storage_dir.mkdir(parents=True, exist_ok=True)
 
-    app = create_app(session_factory=session_factory)
+    app = create_app(
+        session_factory=session_factory,
+        runtime=types.SimpleNamespace(vault=Vault(b"0" * 32, "test-vault-key", "memory")),
+    )
     app.state.control_password = "tracer-control-pw"
 
     transport = httpx.ASGITransport(app=app)
@@ -54,6 +59,7 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
             "initialized": False,
             "authenticated": False,
             "user": None,
+            "site_timezone": None,
         }
 
         # Anonymous access to protected endpoints is rejected with 401
@@ -415,4 +421,3 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
             assert res_v_audit.status_code == 403
 
     await engine.dispose()
-

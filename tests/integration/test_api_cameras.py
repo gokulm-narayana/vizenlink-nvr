@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import types
 from pathlib import Path
 
 import httpx
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from vizenlink_nvr.api.app import create_app
 from vizenlink_nvr.db.models import Base, User, UserCameraPermission
+from vizenlink_nvr.secrets.vault import Vault
 from vizenlink_nvr.services.auth_hasher import hash_password
 from vizenlink_nvr.services.session_manager import SessionManager
 from vizenlink_nvr.timeutil import utc_now
@@ -24,7 +26,10 @@ async def app_fixture(tmp_path: Path):
         await conn.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    app = create_app(session_factory=session_factory)
+    app = create_app(
+        session_factory=session_factory,
+        runtime=types.SimpleNamespace(vault=Vault(b"0" * 32, "test-vault-key", "memory")),
+    )
 
     async with session_factory() as session:
         owner = User(
@@ -43,9 +48,7 @@ async def app_fixture(tmp_path: Path):
             created_at=utc_now(),
             updated_at=utc_now(),
         )
-        viewer.permissions.append(
-            UserCameraPermission(camera_serial="CAM-PERMITTED", created_at=utc_now())
-        )
+        viewer.permissions.append(UserCameraPermission(camera_serial="CAM-PERMITTED", created_at=utc_now()))
 
         session.add_all([owner, viewer])
         await session.commit()

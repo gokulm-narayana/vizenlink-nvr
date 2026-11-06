@@ -22,12 +22,14 @@ interface AuthStatus {
   };
 }
 
+type AppTab = ViewTab | "settings" | "devices";
+
 export const App: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [cameras, setCameras] = useState<CameraInfo[]>([]);
   const [recordingSerials, setRecordingSerials] = useState<Set<string>>(new Set());
   const [alerts, setAlerts] = useState<AlertData[]>([]);
-  const [currentTab, setCurrentTab] = useState<ViewTab>("live");
+  const [currentTab, setCurrentTab] = useState<AppTab>("live");
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem("nvr_view_mode") as ViewMode) || "simple";
   });
@@ -178,7 +180,7 @@ export const App: React.FC = () => {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Navigation Header */}
       <Header
-        currentTab={currentTab}
+        currentTab={currentTab as ViewTab}
         onTabChange={setCurrentTab}
         viewMode={viewMode}
         onViewModeToggle={handleToggleViewMode}

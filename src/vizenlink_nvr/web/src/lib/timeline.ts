@@ -27,7 +27,7 @@ export interface TimelineEvent {
   is_locked: boolean;
 }
 
-function toIsoDate(d: Date | string, zone: string): string {
+export function toIsoDate(d: Date | string, zone: string): string {
   if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
     return d;
   }

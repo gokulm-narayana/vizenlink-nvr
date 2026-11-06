@@ -1,12 +1,13 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppRoutes } from "./router";
 import { useUiStore } from "@/stores/ui";
 import { setMediaQueryMatches } from "@/test/setup";
+import { Toaster } from "@/components/ui/sonner";
 
 function renderRoutesApp(
   initialEntries = ["/live"],
@@ -106,6 +107,14 @@ function renderRoutesApp(
         )
       );
     }
+    if (urlStr.includes("/api/v1/playback/export")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ id: 1, file_path: "/clips/1.mp4", file_size_bytes: 1024 }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+    }
     if (urlStr.includes("/api/v1/gallery")) {
       return Promise.resolve(
         new Response(
@@ -137,6 +146,7 @@ function renderRoutesApp(
   const utils = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster />
     </QueryClientProvider>
   );
 
@@ -171,8 +181,7 @@ describe("Feature Route Adapters", () => {
     expect(screen.getByRole("link", { name: "Playback" })).toBeInTheDocument();
 
     await waitFor(() => {
-      const select = screen.getByDisplayValue("Front Door (CAM1)") as HTMLSelectElement;
-      expect(select).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Select camera" })).toBeInTheDocument();
     });
   });
 
@@ -184,7 +193,24 @@ describe("Feature Route Adapters", () => {
       expect(screen.getByRole("heading", { level: 1, name: "Playback" })).toBeInTheDocument();
     });
 
-    const openGalleryBtn = screen.getByRole("button", { name: /view media gallery/i });
+    // Mark in and Mark out to enable export
+    const markInBtn = await screen.findByRole("button", { name: "Mark in" });
+    const markOutBtn = screen.getByRole("button", { name: "Mark out" });
+    await user.click(markInBtn);
+    await user.click(markOutBtn);
+
+    const exportBtn = screen.getByRole("button", { name: "Export clip" });
+    await user.click(exportBtn);
+
+    const dialog = await screen.findByRole("dialog");
+    const endInput = within(dialog).getByLabelText("End time");
+    await user.clear(endInput);
+    await user.type(endInput, "2026-11-05T10:05:00");
+
+    const dialogExportBtn = within(dialog).getByRole("button", { name: "Export clip" });
+    await user.click(dialogExportBtn);
+
+    const openGalleryBtn = await screen.findByRole("button", { name: "Open in Gallery" });
     await user.click(openGalleryBtn);
 
     await waitFor(() => {

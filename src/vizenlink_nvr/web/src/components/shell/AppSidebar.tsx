@@ -18,6 +18,7 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -29,14 +30,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { BrandLogo } from "@/components/BrandLogo";
-import { useCurrentUser } from "@/lib/queries";
+import { Kbd } from "@/components/ui/kbd";
+import { useCurrentUser, useAlerts, useUnreadCount } from "@/lib/queries";
+import { useUiStore } from "@/stores/ui";
 import { isRegistered, type Role } from "@/app/routes";
+import { RecorderStatusChip } from "./RecorderStatusChip";
 
 interface NavItem {
   title: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   minRole: Role;
+  shortcut?: string;
 }
 
 interface NavGroup {
@@ -60,16 +65,16 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Watch",
     items: [
-      { title: "Live", path: "/", icon: LayoutGrid, minRole: "viewer" },
-      { title: "Playback", path: "/playback", icon: History, minRole: "viewer" },
-      { title: "Events", path: "/events", icon: Bell, minRole: "viewer" },
-      { title: "Gallery", path: "/gallery", icon: Images, minRole: "viewer" },
+      { title: "Live", path: "/", icon: LayoutGrid, minRole: "viewer", shortcut: "G then L" },
+      { title: "Playback", path: "/playback", icon: History, minRole: "viewer", shortcut: "G then P" },
+      { title: "Events", path: "/events", icon: Bell, minRole: "viewer", shortcut: "G then E" },
+      { title: "Gallery", path: "/gallery", icon: Images, minRole: "viewer", shortcut: "G then G" },
     ],
   },
   {
     label: "Monitor",
     items: [
-      { title: "Dashboard", path: "/dashboard", icon: Activity, minRole: "viewer" },
+      { title: "Dashboard", path: "/dashboard", icon: Activity, minRole: "viewer", shortcut: "G then D" },
     ],
   },
   {
@@ -87,6 +92,14 @@ export const AppSidebar: React.FC = () => {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+
+  const { data: rawAlerts = [] } = useAlerts();
+  const dismissedAlertIds = useUiStore((s) => s.dismissedAlertIds);
+  const activeAlerts = (rawAlerts as any[]).filter((a) => !dismissedAlertIds.has(a.id));
+  const activeAlertCount = activeAlerts.length;
+  const hasCriticalAlert = activeAlerts.some((a) => a.severity === "critical");
+
+  const { unreadCount = 0 } = useUnreadCount();
 
   return (
     <Sidebar collapsible="icon">
@@ -139,9 +152,31 @@ export const AppSidebar: React.FC = () => {
                           ? "/live"
                           : item.path;
 
+                      const isDashboard = item.path === "/dashboard";
+                      const showDashboardBadge = isDashboard && activeAlertCount > 0;
+
+                      const isEvents = item.path === "/events";
+                      const showEventsBadge = isEvents && unreadCount > 0;
+
+                      let tooltipLabel = item.title;
+                      if (showDashboardBadge) {
+                        tooltipLabel = `${item.title} (${activeAlertCount} active alerts)`;
+                      } else if (showEventsBadge) {
+                        tooltipLabel = `${item.title} (${unreadCount} unread)`;
+                      }
+
+                      const tooltipContent = {
+                        children: (
+                          <div className="flex items-center gap-2">
+                            <span>{tooltipLabel}</span>
+                            {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
+                          </div>
+                        ),
+                      };
+
                       return (
                         <SidebarMenuItem key={item.path}>
-                          <SidebarMenuButton asChild tooltip={item.title}>
+                          <SidebarMenuButton asChild tooltip={tooltipContent}>
                             <NavLink
                               to={targetPath}
                               className={({ isActive }) =>
@@ -154,6 +189,27 @@ export const AppSidebar: React.FC = () => {
                             >
                               <item.icon className="h-4 w-4 shrink-0" />
                               <span>{item.title}</span>
+                              {showDashboardBadge && (
+                                <span
+                                  data-slot="dashboard-alert-badge"
+                                  className={cn(
+                                    "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
+                                    hasCriticalAlert
+                                      ? "bg-critical text-critical-foreground"
+                                      : "bg-warning text-warning-foreground"
+                                  )}
+                                >
+                                  {activeAlertCount > 99 ? "99+" : activeAlertCount}
+                                </span>
+                              )}
+                              {showEventsBadge && (
+                                <span
+                                  data-slot="events-unread-badge"
+                                  className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums bg-primary text-primary-foreground"
+                                >
+                                  {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
+                              )}
                             </NavLink>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -166,6 +222,10 @@ export const AppSidebar: React.FC = () => {
           })}
         </nav>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-border p-2">
+        <RecorderStatusChip />
+      </SidebarFooter>
     </Sidebar>
   );
 };

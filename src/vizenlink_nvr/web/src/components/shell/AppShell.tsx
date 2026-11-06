@@ -5,10 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "./AppSidebar";
 import { UserMenu } from "./UserMenu";
 import { ViewModeToggle } from "./ViewModeToggle";
+import { AlertsBell } from "./AlertsBell";
+import { AlertStack } from "./AlertStack";
+import { RefetchBar } from "./RefetchBar";
+import { Shortcuts } from "./Shortcuts";
 import { ThemeSync } from "./ThemeSync";
 import { BrandLogo } from "@/components/BrandLogo";
-import { AlertsBanner } from "@/legacy/AlertsBanner";
-import { useAlerts } from "@/lib/queries";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "cn";
 
@@ -20,11 +22,6 @@ interface RouteHandle {
 export const AppShell: React.FC = () => {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
-  const dismissedAlertIds = useUiStore((s) => s.dismissedAlertIds);
-  const dismissAlert = useUiStore((s) => s.dismissAlert);
-  const { data: alerts = [] } = useAlerts();
-
-  const activeAlerts = (alerts as any[]).filter((a) => !dismissedAlertIds.has(a.id));
 
   const matches = useMatches();
   const currentMatch = matches[matches.length - 1];
@@ -34,12 +31,19 @@ export const AppShell: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={0}>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:ring-2 focus:ring-primary shadow-md"
+      >
+        Skip to main content
+      </a>
+      <Shortcuts />
       <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <ThemeSync />
         <div className="flex min-h-dvh w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-1 flex-col min-w-0">
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+          <header className="relative flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
             <div className="flex items-center gap-2 min-w-0">
               <SidebarTrigger />
               <Link
@@ -54,18 +58,21 @@ export const AppShell: React.FC = () => {
               </h1>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <AlertsBell />
               <ViewModeToggle />
               <UserMenu />
             </div>
+            <RefetchBar />
           </header>
 
-          <AlertsBanner alerts={activeAlerts} onDismiss={dismissAlert} />
+          <AlertStack />
 
           <main
             id="main"
+            tabIndex={-1}
             className={cn(
-              "flex-1 overflow-auto",
+              "flex-1 overflow-auto outline-hidden",
               isFullBleed ? "p-2" : "p-4 md:p-6"
             )}
           >

@@ -1,5 +1,7 @@
+import React from "react";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./api";
+import { useUiStore } from "@/stores/ui";
 
 export interface AuthUser {
   id: number;
@@ -96,4 +98,45 @@ export function useAlerts() {
     refetchInterval: 10000,
     placeholderData: (previousData) => previousData,
   });
+}
+
+export interface HealthStatus {
+  status: string;
+  db_ok: boolean;
+  mediamtx_ok: boolean;
+  storage_ok: boolean;
+  total_cameras: number;
+  active_cameras: number;
+  details?: Record<string, any>;
+}
+
+export function useHealth() {
+  return useQuery<HealthStatus>({
+    queryKey: ["health"],
+    queryFn: () => apiFetch<HealthStatus>("/api/v1/health"),
+    refetchInterval: 10000,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export interface EventsResponse {
+  items: Array<{ id: number; [key: string]: any }>;
+  total: number;
+}
+
+export function useUnreadCount() {
+  const readEventIds = useUiStore((s) => s.readEventIds);
+  const query = useQuery<EventsResponse>({
+    queryKey: ["recentEvents50"],
+    queryFn: () => apiFetch<EventsResponse>("/api/v1/events?limit=50"),
+    refetchInterval: 10000,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const unreadCount = React.useMemo(() => {
+    if (!query.data?.items) return 0;
+    return query.data.items.filter((item) => !readEventIds.has(item.id)).length;
+  }, [query.data?.items, readEventIds]);
+
+  return { ...query, unreadCount };
 }

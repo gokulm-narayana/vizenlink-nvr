@@ -280,15 +280,15 @@ describe("Feature Route Adapters", () => {
     renderRoutesApp(["/live"], "viewer", testAlerts);
 
     await waitFor(() => {
-      expect(screen.getByText(/Disk Space Low:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Disk Space Low/i)).toBeInTheDocument();
       expect(screen.getByText(/Free space below 10%/i)).toBeInTheDocument();
     });
 
-    const dismissBtn = screen.getByRole("button", { name: /✕/i });
+    const dismissBtn = screen.getByRole("button", { name: /dismiss alert/i });
     await user.click(dismissBtn);
 
     await waitFor(() => {
-      expect(screen.queryByText(/Disk Space Low:/i)).toBeNull();
+      expect(screen.queryByText(/Disk Space Low/i)).toBeNull();
     });
     expect(useUiStore.getState().dismissedAlertIds.has("alert-disk")).toBe(true);
   });

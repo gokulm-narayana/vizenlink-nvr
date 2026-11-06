@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router";
-import { User, Sun, Moon, Monitor, LogOut } from "lucide-react";
+import { User, Sun, Moon, Monitor, LogOut, KeyRound } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +18,10 @@ import { useCurrentUser } from "@/lib/queries";
 import { useUiStore, type Theme, type ViewMode } from "@/stores/ui";
 import { useSignOut } from "@/features/auth/api";
 import { isRegistered } from "@/app/routes";
+import { ChangePasswordDialog } from "@/features/profile/ChangePasswordDialog";
 
 export const UserMenu: React.FC = () => {
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const user = useCurrentUser();
   const theme = useUiStore((s) => s.theme);
   const setTheme = useUiStore((s) => s.setTheme);
@@ -71,6 +73,12 @@ export const UserMenu: React.FC = () => {
         )}
 
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => setIsChangePasswordOpen(true)}>
+          <KeyRound className="h-4 w-4 mr-2" />
+          <span>Change password</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
           Theme
         </DropdownMenuLabel>
@@ -116,6 +124,11 @@ export const UserMenu: React.FC = () => {
           <span>Sign out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <ChangePasswordDialog
+        open={isChangePasswordOpen}
+        onOpenChange={setIsChangePasswordOpen}
+      />
     </DropdownMenu>
   );
 };

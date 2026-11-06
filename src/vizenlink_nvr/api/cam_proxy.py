@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response, status
 from fastapi.responses import JSONResponse
+from starlette.requests import ClientDisconnect
 
 from vizenlink_nvr.api.dependencies import DbSession, get_current_user_optional, verify_camera_access
 from vizenlink_nvr.db.models import User
@@ -57,7 +58,14 @@ async def _read_capped_body(request: Request) -> bytes:
         except ValueError:
             pass
 
-    body = await request.body()
+    try:
+        body = await request.body()
+    except ClientDisconnect:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Client disconnected",
+        )
+
     if len(body) > MAX_BODY_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
@@ -102,7 +110,10 @@ async def _proxy_request(
     stream: str,
     session_id: str | None = None,
 ) -> Response:
-    body = await _read_capped_body(request)
+    try:
+        body = await _read_capped_body(request)
+    except ClientDisconnect:
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
     headers = _forwarded_headers(request)
     params = _forwarded_params(request)
     url = _build_upstream_url(request, serial, stream, session_id)

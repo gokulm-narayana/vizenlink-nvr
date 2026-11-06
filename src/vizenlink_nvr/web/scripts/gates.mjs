@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const RULES = {
+  R0: "Legacy UI directory (src/legacy) must not exist",
   R1: "Inline style object without dynamic-style comment",
   R2: "CSS hex colour literal in TSX",
   R3: "Arbitrary bracket font sizes or spacing values",
@@ -17,19 +18,36 @@ export const RULES = {
 
 const ALLOWED_SPACING_STEPS = new Set(["0", "1", "2", "4", "6", "8", "12", "16"]);
 
+export function checkLegacyDir(rootDir) {
+  const legacyDir = path.join(rootDir, "src", "legacy");
+  if (fs.existsSync(legacyDir)) {
+    return [{ rule: "R0", line: 1, message: `${RULES.R0} (found directory at ${legacyDir})` }];
+  }
+  return [];
+}
+
 export function scanSource(relPath, text) {
   const normPath = relPath.replace(/\\/g, "/");
 
-  // Skip legacy and test files
-  if (normPath.includes("src/legacy/") || normPath.includes("src/test/")) {
-    return [];
+  // R0: Legacy UI must not exist; any file in src/legacy fails with R0
+  if (normPath.includes("src/legacy/") || normPath.includes("src/legacy")) {
+    return [
+      {
+        rule: "R0",
+        line: 1,
+        message: RULES.R0,
+      },
+    ];
   }
 
+  // Scoping: src/test/** is explicitly skipped ONLY for R1 and R2 (test fixtures may hold literals)
+  const isTestFile = normPath.includes("src/test/");
   const isTsx = normPath.endsWith(".tsx");
   const isUiComponent = normPath.includes("src/components/ui/");
   const isProjectSpacingScoped =
     (normPath.includes("src/app/") || normPath.includes("src/features/") || normPath.includes("src/components/")) &&
-    !isUiComponent;
+    !isUiComponent &&
+    !isTestFile;
 
   const violations = [];
   const lines = text.split("\n");
@@ -39,8 +57,8 @@ export function scanSource(relPath, text) {
     const line = lines[i];
     const prevLine = i > 0 ? lines[i - 1] : "";
 
-    // R1: Inline style in .tsx requires dynamic-style comment on same or prev line
-    if (isTsx && /style\s*=\s*\{\{/.test(line)) {
+    // R1: Inline style in .tsx requires dynamic-style comment (scoped: skip src/test/**)
+    if (isTsx && !isTestFile && /style\s*=\s*\{\{/.test(line)) {
       const hasComment = line.includes("dynamic-style:") || prevLine.includes("dynamic-style:");
       if (!hasComment) {
         violations.push({
@@ -51,8 +69,8 @@ export function scanSource(relPath, text) {
       }
     }
 
-    // R2: No CSS hex colour literal in .tsx
-    if (isTsx && /#(?:[0-9a-fA-F]{3,8})\b/.test(line)) {
+    // R2: No CSS hex colour literal in .tsx (scoped: skip src/test/**)
+    if (isTsx && !isTestFile && /#(?:[0-9a-fA-F]{3,8})\b/.test(line)) {
       violations.push({
         rule: "R2",
         line: lineNum,
@@ -79,9 +97,12 @@ export function scanSource(relPath, text) {
     }
 
     // R5: No weight utilities other than font-normal and font-semibold; no text-base, text-lg, text-2xl+
+    const isAssertionLine =
+      isTestFile && (line.includes(".not.") || line.includes("it(") || line.includes("describe("));
     if (
-      /\bfont-(?:medium|bold|light|thin|extralight|extrabold|black)\b/.test(line) ||
-      /\btext-(?:base|lg|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)\b/.test(line)
+      !isAssertionLine &&
+      (/\bfont-(?:medium|bold|light|thin|extralight|extrabold|black)\b/.test(line) ||
+        /\btext-(?:base|lg|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)\b/.test(line))
     ) {
       violations.push({
         rule: "R5",
@@ -163,7 +184,7 @@ export function walkDirectory(dir, fileList = []) {
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === "dist" || entry.name === "legacy" || entry.name === "test") {
+      if (entry.name === "node_modules" || entry.name === "dist") {
         continue;
       }
       walkDirectory(fullPath, fileList);
@@ -182,9 +203,17 @@ const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolv
 if (isMain) {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const srcDir = path.join(rootDir, "src");
-  const files = walkDirectory(srcDir);
 
   let totalViolations = 0;
+
+  // Check R0: src/legacy must not exist
+  const legacyViolations = checkLegacyDir(rootDir);
+  for (const v of legacyViolations) {
+    console.error(`src/legacy:1 [${v.rule}] ${v.message}`);
+    totalViolations++;
+  }
+
+  const files = walkDirectory(srcDir);
   for (const file of files) {
     const relPath = path.relative(rootDir, file);
     const content = fs.readFileSync(file, "utf8");

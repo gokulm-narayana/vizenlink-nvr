@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scanSource, walkDirectory, RULES } from "./gates.mjs";
+import { scanSource, walkDirectory, checkLegacyDir, RULES } from "./gates.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -102,14 +102,38 @@ describe("Design gates (scanSource)", () => {
     expect(scanSource("src/components/ui/button.tsx", violating).some((v) => v.rule === "R10")).toBe(false);
   });
 
-  it("skips src/legacy and src/test files in scanSource and walkDirectory", () => {
-    const violating = `<div style={{ width: 100 }}><Button size="icon">Cancel</Button></div>`;
-    expect(scanSource("src/legacy/LegacyApp.tsx", violating)).toEqual([]);
-    expect(scanSource("src/test/setup.ts", violating)).toEqual([]);
+  it("R0: flags any file under src/legacy with R0 violation", () => {
+    const cleanContent = `export const Clean = () => <div className="p-4" />;`;
+    const violations = scanSource("src/legacy/OldView.tsx", cleanContent);
+    expect(violations.length).toBe(1);
+    expect(violations[0].rule).toBe("R0");
+    expect(violations[0].message).toBe(RULES.R0);
 
+    // Negative case: non-legacy file does not trigger R0
+    expect(scanSource("src/features/users/UsersPage.tsx", cleanContent)).toEqual([]);
+  });
+
+  it("R0: checkLegacyDir flags presence of src/legacy directory", () => {
     const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-    const files = walkDirectory(path.join(rootDir, "src"));
-    expect(files.some((f) => f.includes("/legacy/"))).toBe(false);
-    expect(files.some((f) => f.includes("/test/"))).toBe(false);
+    // Negative case: currently src/legacy does not exist -> 0 violations
+    expect(checkLegacyDir(rootDir)).toEqual([]);
+  });
+
+  it("scoping: src/test/** skips R1 and R2 but flags other rule violations", () => {
+    // R1 inline style: skipped in test
+    const r1Snippet = `<div style={{ width: 100 }} />`;
+    expect(scanSource("src/test/fixture.tsx", r1Snippet)).toEqual([]);
+
+    // R2 hex color: skipped in test
+    const r2Snippet = `<div className="text-[#123456]" />`;
+    expect(scanSource("src/test/fixture.tsx", r2Snippet)).toEqual([]);
+
+    // R4 bare button label: NOT skipped in test
+    const r4Snippet = `<button>Cancel</button>`;
+    expect(scanSource("src/test/fixture.tsx", r4Snippet).some((v) => v.rule === "R4")).toBe(true);
+
+    // R7 raw HTML injection: NOT skipped in test
+    const r7Snippet = `<div dangerouslySetInnerHTML={{ __html: "x" }} />`;
+    expect(scanSource("src/test/fixture.tsx", r7Snippet).some((v) => v.rule === "R7")).toBe(true);
   });
 });

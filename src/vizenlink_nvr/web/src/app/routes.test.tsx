@@ -264,7 +264,7 @@ describe("Feature Route Adapters", () => {
       expect(screen.getByRole("heading", { level: 1, name: "Mobile devices" })).toBeInTheDocument();
     });
     expect(screen.getByRole("link", { name: "Mobile devices" })).toBeInTheDocument();
-    expect(screen.getByText(/Paired Mobile Devices/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pair mobile device" })).toBeInTheDocument();
   });
 
   it("renders active alerts in AlertsBanner under top bar and dismisses them", async () => {

@@ -57,3 +57,40 @@ jobs:
         run: |
           uv run alembic upgrade head
           uv run alembic check
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: src/vizenlink_nvr/web
+    env:
+      NVR_SECRETS_BACKEND: file
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24.x"
+          cache: npm
+          cache-dependency-path: src/vizenlink_nvr/web/package-lock.json
+      - name: Check Node version floor
+        run: node -e 'const [maj, min] = process.versions.node.split(".").map(Number); if (maj < 24 || (maj === 24 && min < 15)) { console.error("Node 24.15+ required, found " + process.versions.node); process.exit(1); }'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build web bundle
+        run: npm run build
+      - name: Run web tests
+        run: npm test
+      - name: Run design gates
+        run: npm run gates
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+      - name: Sync Python dependencies
+        working-directory: .
+        run: uv sync --locked
+      - name: Verify bundle served by backend
+        working-directory: .
+        run: uv run pytest tests/integration/test_web_bundle_served.py -q

@@ -47,6 +47,7 @@ Also in scope (decided in discussion): an Add-camera wizard, user management, ch
 - **D-17:** Live gets auto-reconnect and the RTCPeerConnection leak fix only. hls.js fallback is deferred. Remove the public STUN host (LAN-only).
 - **D-18:** Third approved backend addition: `POST /api/v1/cameras` must fail closed (clear error) when the app has no runtime vault, instead of falling back to the all-zero in-memory test key. Minimal change, with a pytest, plus a pytest through the production app factory asserting credentials land in `runtime.vault`.
 - **D-19:** SPA-fallback hardening (404 for missing `/assets/*`, non-GET, `/openapi.json`) is DEFERRED; research Open Question 5 is resolved as deferred.
+- **D-20:** Owner waived the 15-file plan-size guideline for plans 09-04 (18 files), 09-06 (18), 09-08 (20) and 09-09 (17) on 2026-11-06. The overages are mechanical (moves, adapters, deletions). The plan set stays at 23 plans; all other plan-checker dimensions passed.
 - Research corrections: the SPA fallback in `api/app.py` is already committed (the uncommitted diff is an unrelated lifespan change); stage only each plan's own files. Pin Node 24 in CI and add a `web` CI job.
 
 ### Claude's Discretion

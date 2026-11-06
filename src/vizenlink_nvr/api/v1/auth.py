@@ -26,6 +26,7 @@ from vizenlink_nvr.services.session_manager import (
     SESSION_COOKIE_NAME,
     SessionManager,
 )
+from vizenlink_nvr.services.settings import read_site_timezone
 from vizenlink_nvr.services.setup import MIN_PASSWORD_LENGTH, SetupService
 from vizenlink_nvr.timeutil import utc_now
 
@@ -74,6 +75,7 @@ class AuthStatusResponse(BaseModel):
     initialized: bool
     authenticated: bool
     user: UserResponse | None = None
+    site_timezone: str | None = None
 
 
 def _get_client_ip(request: Request) -> str:
@@ -91,6 +93,7 @@ async def get_auth_status(
     """Return whether first-run setup is complete and current authentication status."""
     is_init = await SetupService.is_initialized(db)
     user_resp: UserResponse | None = None
+    site_tz: str | None = None
 
     if current_user is not None:
         user_resp = UserResponse(
@@ -101,11 +104,13 @@ async def get_auth_status(
             cognito_sub=current_user.cognito_sub,
             permissions=[p.camera_serial for p in current_user.permissions],
         )
+        site_tz = await read_site_timezone(db)
 
     return AuthStatusResponse(
         initialized=is_init,
         authenticated=current_user is not None,
         user=user_resp,
+        site_timezone=site_tz,
     )
 
 

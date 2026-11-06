@@ -173,6 +173,17 @@
             "title": "Initialized",
             "type": "boolean"
           },
+          "site_timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Timezone"
+          },
           "user": {
             "anyOf": [
               {

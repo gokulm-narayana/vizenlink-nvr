@@ -52,6 +52,24 @@ async def put_setting(
         session.add(AppSetting(key=key, value=json_val, updated_at=ts))
 
 
+async def read_site_timezone(session: AsyncSession) -> str:
+    """Get site timezone name using an active session, falling back to default site zone."""
+    stmt = select(AppSetting).where(AppSetting.key == SITE_TIMEZONE_KEY)
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is not None:
+        try:
+            val: object = json.loads(row.value)
+        except Exception:
+            val = row.value
+        if isinstance(val, str) and val:
+            try:
+                validate_zone(val)
+                return val
+            except Exception as exc:
+                logger.debug("Invalid stored site timezone: %s", exc)
+    return default_site_zone_name()
+
+
 async def get_site_timezone(rt: Runtime) -> str:
     """Get site timezone name, falling back to host system timezone or UTC."""
     val = await get_setting(rt, SITE_TIMEZONE_KEY)

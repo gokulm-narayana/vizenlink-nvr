@@ -15,7 +15,8 @@ import { IdentityTab } from "./tabs/IdentityTab";
 import { VideoTab } from "./tabs/VideoTab";
 import { ImageTab } from "./tabs/ImageTab";
 import { OverlaysTab } from "./tabs/OverlaysTab";
-import { LegacyBridgeTab } from "./tabs/LegacyBridgeTab";
+import { HealthTab } from "./tabs/HealthTab";
+import { MaintenanceTab } from "./tabs/MaintenanceTab";
 import { useCameraSettings } from "./api";
 import { CAMERAS_COPY } from "./copy";
 
@@ -54,15 +55,15 @@ export const CamerasPage: React.FC = () => {
 
   const visibleTabs = useMemo(() => {
     if (isAdvanced) {
-      return ["identity", "video", "image", "overlays", "maintenance", "health"];
+      return ["identity", "video", "image", "overlays", "health", "maintenance"];
     }
-    return ["identity", "maintenance", "health"];
+    return ["identity", "health"];
   }, [isAdvanced]);
 
   // If tabParam not in visibleTabs, fallback to identity
   const activeTab = useMemo(() => {
     if (visibleTabs.includes(tabParam)) {
-      return tabParam === "health" ? "maintenance" : tabParam;
+      return tabParam;
     }
     return "identity";
   }, [tabParam, visibleTabs]);
@@ -238,17 +239,31 @@ export const CamerasPage: React.FC = () => {
             )}
 
             <TabsTrigger
-              value="maintenance"
+              value="health"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
             >
-              Health and maintenance
+              Health
             </TabsTrigger>
+
+            {isAdvanced && (
+              <TabsTrigger
+                value="maintenance"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
+              >
+                Maintenance
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 
         {/* Tab Panels */}
         {activeTab === "maintenance" ? (
-          <LegacyBridgeTab cameras={rawCameras} userRole={user?.role} />
+          <MaintenanceTab
+            serial={selectedCamera.serial}
+            cameraName={selectedCamera.name}
+          />
+        ) : activeTab === "health" ? (
+          <HealthTab serial={selectedSerial} />
         ) : settingsLoading ? (
           <div className="flex flex-col gap-4">
             <Skeleton className="h-48 w-full" />

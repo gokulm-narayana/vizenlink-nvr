@@ -75,3 +75,18 @@ export function clampSetting(value: number, minVal: number, maxVal: number): num
 export function canPerformMaintenance(role?: string | null): boolean {
   return role === "owner" || role === "operator";
 }
+
+/**
+ * Format uptime seconds into human-readable duration (e.g. "1d 2h 3m 4s" or "2h 3m 4s").
+ */
+export function formatUptime(seconds?: number): string {
+  if (seconds == null || isNaN(seconds)) return "Unknown";
+  const d = Math.floor(seconds / (3600 * 24));
+  const h = Math.floor((seconds % (3600 * 24)) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (d > 0) {
+    return `${d}d ${h}h ${m}m ${s}s`;
+  }
+  return `${h}h ${m}m ${s}s`;
+}

@@ -72,13 +72,14 @@ vi.mock("./api", () => ({
     mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
     isPending: false,
   }),
-  useReboot: vi.fn(),
-  useFactoryReset: vi.fn(),
-}));
-
-// Mock LegacyBridgeTab to keep tests fast and isolated
-vi.mock("./tabs/LegacyBridgeTab", () => ({
-  LegacyBridgeTab: () => <div data-testid="legacy-bridge-tab">Legacy Bridge Tab Content</div>,
+  useReboot: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
+    isPending: false,
+  }),
+  useFactoryReset: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
+    isPending: false,
+  }),
 }));
 
 describe("Cameras Feature", () => {
@@ -338,18 +339,19 @@ describe("Cameras Feature", () => {
   });
 
   describe("Simple vs Advanced View Mode", () => {
-    it("hides Video, Image, and Overlays tabs in Simple mode", () => {
+    it("hides Video, Image, Overlays, and Maintenance tabs in Simple mode", () => {
       useUiStore.setState({ viewMode: "simple" });
       renderWithRouter(["/cameras/CAM-01"]);
 
       expect(screen.getByRole("tab", { name: "Identity" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Health and maintenance" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
       expect(screen.queryByRole("tab", { name: "Video" })).not.toBeInTheDocument();
       expect(screen.queryByRole("tab", { name: "Image" })).not.toBeInTheDocument();
       expect(screen.queryByRole("tab", { name: "Overlays" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Maintenance" })).not.toBeInTheDocument();
     });
 
-    it("shows Video, Image, and Overlays tabs in Advanced mode", () => {
+    it("shows all tabs in Advanced mode", () => {
       useUiStore.setState({ viewMode: "advanced" });
       renderWithRouter(["/cameras/CAM-01"]);
 
@@ -357,7 +359,8 @@ describe("Cameras Feature", () => {
       expect(screen.getByRole("tab", { name: "Video" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Image" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Overlays" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Health and maintenance" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
     });
 
     it("falls back to Identity when simple mode accesses a hidden tab", () => {
@@ -368,20 +371,24 @@ describe("Cameras Feature", () => {
     });
   });
 
-  describe("Bridge Tab & Maintenance", () => {
-    it("renders legacy bridge tab when Health and maintenance tab is selected", async () => {
+  describe("Maintenance Tab", () => {
+    it("renders reboot and factory reset buttons when Maintenance tab is selected in advanced mode", async () => {
       const user = userEvent.setup();
+      useUiStore.setState({ viewMode: "advanced" });
       renderWithRouter(["/cameras/CAM-01"]);
 
-      const maintTab = screen.getByRole("tab", { name: "Health and maintenance" });
+      const maintTab = screen.getByRole("tab", { name: "Maintenance" });
       await user.click(maintTab);
 
-      expect(screen.getByTestId("legacy-bridge-tab")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Reboot camera" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Factory reset camera" })).toBeInTheDocument();
     });
 
-    it("renders bridge tab directly when route has ?tab=maintenance or ?tab=health", () => {
-      renderWithRouter(["/cameras/CAM-01?tab=health"]);
-      expect(screen.getByTestId("legacy-bridge-tab")).toBeInTheDocument();
+    it("renders maintenance tab directly when route has ?tab=maintenance", () => {
+      useUiStore.setState({ viewMode: "advanced" });
+      renderWithRouter(["/cameras/CAM-01?tab=maintenance"]);
+      expect(screen.getByRole("button", { name: "Reboot camera" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Factory reset camera" })).toBeInTheDocument();
     });
   });
 

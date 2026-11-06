@@ -259,7 +259,7 @@ describe("AlertStack, Bell and Dashboard Badge", () => {
 
     unmount();
 
-    // 2. Viewer role when /cameras/:serial/health is not registered yet renders null
+    // 2. Viewer role when /cameras/:serial/health is registered renders "View camera health" link
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       Promise.resolve(
         new Response(
@@ -288,7 +288,8 @@ describe("AlertStack, Bell and Dashboard Badge", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole("link", { name: /camera health/i })).toBeNull();
+      const link = screen.getByRole("link", { name: "View camera health" });
+      expect(link).toHaveAttribute("href", "/cameras/CAM1/health");
     });
   });
 });

@@ -1,0 +1,55 @@
+{
+  "source": {
+    "repo": "mobilecctvapp",
+    "dir": "assets/branding",
+    "files": {
+      "vizenlink_light.png": "8399d85957756fe50c00ceffcbb48952f8a94f641b8218cc050d1cc8b1411c7e",
+      "vizenlink_dark.png": "f727bc1e6866410b0a15c5b979e006203b35e149897c5b83ac7c10ef12eacec0"
+    }
+  },
+  "tool": "tools/crop_brand.py",
+  "outputs": {
+    "vizenlink-mark-light.png": {
+      "sha256": "a5f66c1fac9dc280a2876856ef1be327cae0ad673fd0a464f9b5194d7f749e12",
+      "width": 189,
+      "height": 128,
+      "source": "vizenlink_light.png"
+    },
+    "vizenlink-wordmark-light.png": {
+      "sha256": "946d4f13e7140fb0b4f26f646e942cbc5c7b86055cbdefe6c507c4376af0b8a7",
+      "width": 500,
+      "height": 48,
+      "source": "vizenlink_light.png"
+    },
+    "vizenlink-full-light.png": {
+      "sha256": "f9bae5c6e61e1f1ccc6126959c24c88377d93fe30db7f9628c77aa03169503a8",
+      "width": 627,
+      "height": 480,
+      "source": "vizenlink_light.png"
+    },
+    "favicon.png": {
+      "sha256": "969d22aeab24c17be424183a16e50c12e40e1d7904ea817623f6e7cbb52d19fe",
+      "width": 32,
+      "height": 32,
+      "source": "vizenlink_light.png"
+    },
+    "vizenlink-mark-dark.png": {
+      "sha256": "11e246dd6bbce3fc58ea9e28255c7ee83e998147bc4289c2bc16f7f4f0a43f37",
+      "width": 189,
+      "height": 128,
+      "source": "vizenlink_dark.png"
+    },
+    "vizenlink-wordmark-dark.png": {
+      "sha256": "176e2205d1b94c838d0f6b825467745ccf4111187d13a19c094cb0dac71e6333",
+      "width": 500,
+      "height": 48,
+      "source": "vizenlink_dark.png"
+    },
+    "vizenlink-full-dark.png": {
+      "sha256": "8297072903ca2e839bc3aac9eba15c2e353125d27ce6b9cfe338fc51547bba3e",
+      "width": 627,
+      "height": 480,
+      "source": "vizenlink_dark.png"
+    }
+  }
+}

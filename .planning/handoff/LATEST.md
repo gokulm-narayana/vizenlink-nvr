@@ -1,51 +1,36 @@
-# Handoff — 2026-10-27 — phase1-dependency-review
+# Handoff — 2026-11-06 — phase9-planned-ready-to-execute
 
-**GSD position:** Phase 1, plan 01-01 of 31, wave 1 of 20. Stage A complete; Stage B entered and stopped at the required dependency-list review. No implementation tasks completed. Phase NOT verified.
+**Account/session:** Claude (planning); execution intended in a separate Gemini session, then back to Claude for verification
+**GSD position:** Phase 9 (UI Redesign): CONTEXT, UI-SPEC (rev 4, 7/7), RESEARCH, 23 PLAN.md files, VALIDATION all done and committed. Plan checker: all dimensions pass except the plan-size guideline, which the owner waived (D-20). 0 of 23 plans executed.
 
 ## What this session did
+- Wrote 09-CONTEXT.md (D-01..D-20), approved 09-UI-SPEC.md, 09-RESEARCH.md (verified toolchain in scratch projects), 23 plans in 10 waves, 09-VALIDATION.md.
+- Renumbered duplicate threat IDs (T-09-60..62 in plans 02, 03, 08 and VALIDATION) so the execute-phase threat-ID gate passes (79e65a3).
+- Did NOT start execution (no executor agents run, no web or backend source changed).
 
-- Read .claude/CLAUDE.md, prior LATEST.md, 01-REVISION-1.md, STATE and locked context.
-- Ran the installed GSD plan-phase workflow in existing-plan revision mode; no research or discussion repeated.
-- Split the six oversized plans and additionally split hidden 49-file contract vendoring. Result: 31 plans, each 4–13 files and at most 3 tasks, 20 waves, disjoint same-wave writes.
-- Applied credential-order fix: bind blank-credential serial before any password-bearing request; preserve post-verification serial/data reads. Added planned regression checks.
-- Applied SOAP unauthorized mapping, authoritative existing-vault key source, explicit loopback MediaMTX addresses, pending prohibition tests, and pending three-OS CI gate.
-- Independent checker round 1 found 2 blockers/4 warnings. Fixed all, including simulator prerequisites, discovery reply transport, interface ownership, behavior references and estimates. Round 2 returned VERIFICATION PASSED, 0 blockers/0 warnings. Reports: 01-PLAN-CHECK-1.md and 01-PLAN-CHECK-2.md.
-- Committed revised plans as **1d0589c** (`docs(01): revise bounded phase plans and pass plan checker`).
-- Initialized GSD execute-phase 1 and dispatched only the first ready plan. Executor returned blocking-human Task 1 checkpoint, 0/2 tasks completed; no fetch/install/code changes.
+## Decisions made (and why)
+- D-14: add a FastAPI /cam proxy to MediaMTX WHEP (Live is offline in production otherwise).
+- D-15: expose site timezone on /auth/status.
+- D-16: Setup keeps timezone + allow_system_disk; TimelineCanvas stays DOM-based; shadcn `field` instead of `form`; shadcn in devDependencies; Inter font.
+- D-17: Live gets auto-reconnect only; no hls.js fallback; no public STUN host.
+- D-18: POST /api/v1/cameras fails closed (503) when the app has no runtime vault (was an all-zero in-memory key). Plan 09-03.
+- D-19: SPA-fallback hardening deferred.
+- D-20: 15-file plan-size guideline waived for plans 04, 06, 08, 09.
+- Backend changes allowed in Phase 9 are ONLY: /cam proxy, site_timezone, vault fail-closed.
 
-## What was built and test evidence
+## Current state
+- Working: all planning artifacts in .planning/phases/09-ui-redesign/.
+- Owner's UNCOMMITTED work, must not be swept into commits: src/vizenlink_nvr/api/app.py (lifespan), src/vizenlink_nvr/cli/app.py (nvr run), src/vizenlink_nvr/web/src/components/Header.tsx, tests/integration/test_16camera_soak.py, tools/phase_gate.py, .planning/STATE.md, 08-05-SUMMARY.md. Plans commit through a private index with `git diff --cached --name-only` assertions; plan 09-04 saves the Header.tsx diff as a patch before moving it.
+- tsc currently fails (TS2367 in App.tsx lines 224/230) from the uncommitted Header.tsx; plan 09-01 fixes it.
 
-- Built: planning artifacts only. No application code, dependency lock or executable test suite exists yet.
-- Passed planning checks: independent plan checker round 2; structural scope/dependency/wave checks; GSD phase index (31 plans, 20 waves, only 01-01 initially ready); git diff --check.
-- Verify-command path probe: not_applicable for uv commands, no findings; not evidence that commands ran. Failure-direction probe: ok, no findings.
-- Product/unit/integration/media/hardware tests: NOT RUN; implementation awaits explicit dependency approval. No runtime pass/fail claims.
-- **tools/phase_gate.py output: unavailable — file does not exist yet (owned by revised 01-31). Not run.** No local phase-gate evidence exists yet.
-- Three-OS CI: PENDING, no remote; no remote created. Local checks cannot satisfy this gate.
-- Real-camera suite: NOT RUN, no camera environment supplied. Never enabled NVR_HW_ALLOW_RESET.
-- Both read-only reference repositories' before/after git status snapshots compare byte-for-byte equal. No writes made there.
-- Locked 01-CONTEXT.md checksum unchanged: f69f42771b00379c31a96b70cc4445592d7ced35a55b167ee96b0040fb4ee546.
+## Next step (for the executing session)
+1. Run on the MAIN working tree, sequentially, NO git worktrees (set `workflow.use_worktrees=false` in .planning/config.json, or use --interactive). Worktrees start from HEAD and would not contain the owner's uncommitted edits the plans account for.
+2. `/gsd-execute-phase 9` (waves 1..10). Plan 09-01 stops at a blocking-human checkpoint: owner must approve the lockfile diff and `npm audit --omit=dev`, and decide on the `uqr` QR library (drop it => Devices page shows pairing code as text only).
+3. Do not edit camera_api or the mobile app repos. Do not read the old VMS repo.
+4. When done, return to Claude for `/gsd-verify-work 9` and a code review against .claude/CLAUDE.md.
 
-## Decisions and why
-
-- Retained all D-01..D-30; no new product decision or contract modification.
-- Bounded discovery UDP sockets are outbound client transactions using ephemeral interface ports, correlated responses and finally cleanup, as the revision brief anticipates. These must not become persistent/fixed non-loopback service listeners. Binding discovery reply sockets to loopback would prevent LAN replies.
-- CLI examples use --serial/--zone flags, honoring D-16.
-- Planning verification is separate from phase verification; phase remains unverified for the owner's separate session.
-
-## Waiting on — exact dependency review (01-01 Task 1)
-
-Runtime: httpx==0.28.1, cryptography~=50.0, keyring~=25.7, ifaddr~=0.2, defusedxml~=0.7, sqlalchemy[asyncio]~=2.1, aiosqlite~=0.22, alembic~=1.20, typer~=0.27, rich~=15.0, pydantic~=2.14, pydantic-settings~=2.16, platformdirs~=4.13, pyyaml~=6.0, tzdata, tzlocal~=5.4.
-
-Development: pytest~=9.1, pytest-asyncio~=1.4, pytest-timeout~=2.4, ruff~=0.17, mypy~=2.4.
-
-Build backend: hatchling.
-
-No dependency approval has been given. Await owner reply “approved” or package changes. Do not infer approval from the original build request, planning pass, or yolo config.
-
-## Next step
-
-On actual approval, continue /gsd-execute-phase 1 at 01-01 Task 2, preserving the approved exact list, committing per task and proceeding by ready waves. Do not rerun planning or repeat the checkpoint after approval.
-
-Later required stops: D-11 serial primary-key confirmation in **01-24 Task 1**; real-camera execution in **01-30 Task 2** after the harness is built. Request NVR_HW_HOST/NVR_HW_PASSWORD via environment or hidden input, never command arguments/output; mutation/reset need explicit authorization and reset stays disabled unless the owner says so.
-
-At actual build completion, write the requested dated phase1-built handoff, copy to LATEST and commit. Do not claim built completion from this checkpoint handoff. Do not mark phase verified or run the separate owner's verification workflow.
+## Open questions / waiting on
+- Owner: `nvr run` (uncommitted cli/app.py) builds the app without a runtime, so after plan 09-03 the web Add-camera wizard gets 503 in production until `nvr run` builds the app with `open_runtime` and passes `runtime=`. No plan touches cli/app.py.
+- `camera_settings.get_vault` still has the same all-zero fallback (outside D-18); follow-up.
+- SET-06 says Owner/Admin but the code allows operators; plans follow the code.
+- dark logo (vizenlink_dark.png) not yet checked on dark grounds (plan 09-05).

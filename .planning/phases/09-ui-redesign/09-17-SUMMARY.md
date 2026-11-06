@@ -1,0 +1,57 @@
+# Plan 09-17 Summary: Cameras & Settings Overhaul (Part 1)
+
+## What Was Built
+- **`src/vizenlink_nvr/web/src/features/cameras/capabilities.ts`**:
+  - Exact capability gating ported from legacy view and `test_camera_settings_ui.py`:
+    - `isWdrVisible`: checks sensor WDR support.
+    - `availableNightVisionTypes`: returns `["grey"]`, `["grey", "color"]`, or `["grey", "color", "smart"]`.
+    - `resolutionLabels`: formats encoder resolutions in camera-reported order.
+    - `clampSetting`: clamps values to `[min, max]`.
+    - `canPerformMaintenance`: verifies role authorization (owner/operator only).
+- **`src/vizenlink_nvr/web/src/features/cameras/capabilities.test.ts`**:
+  - 12 unit tests verifying all capability helpers against edge cases and sensor capability combinations.
+- **`src/vizenlink_nvr/web/src/features/cameras/copy.ts`**:
+  - UI-SPEC strings for empty state, caption, not-connected warning, settings save toast, and retry error alerts.
+- **`src/vizenlink_nvr/web/src/features/cameras/api.ts`**:
+  - `useCameraSettings` and `useCameraHealth` query hooks.
+  - Mutations for saving identity (`gcTime: 0` for credential security), encoder, imaging, and OSD parameters.
+  - `useReboot` and `useFactoryReset` mutations for maintenance actions.
+- **`src/vizenlink_nvr/web/src/features/cameras/SettingsForm.tsx`**:
+  - Reusable form container that only renders the sticky footer bar ("Discard changes" ghost, "Save changes" primary) when dirty or submitting.
+  - Displays inline `Alert` with "Retry save settings" on submission failure.
+- **`src/vizenlink_nvr/web/src/features/cameras/CameraList.tsx`**:
+  - Desktop 280 px master sidebar with scroll area, "Cameras" caption, "Add camera" secondary button, camera name, location caption, and online dot.
+  - Mobile select dropdown below 1024 px (`lg:hidden`).
+  - Preserves `?tab=` query parameter across camera selection.
+- **`src/vizenlink_nvr/web/src/features/cameras/tabs/IdentityTab.tsx`**:
+  - Identity fields: Camera name, location, timezone select dropdown.
+  - Credential security: `PasswordField` (`autoComplete="new-password"`, never prefilled, with helper text).
+  - Read-only hardware & build info card: manufacturer, model, firmware version, serial number, hardware ID.
+- **`src/vizenlink_nvr/web/src/features/cameras/tabs/VideoTab.tsx`**:
+  - Per-stream selector for multi-profile cameras.
+  - Codec selector, resolution options, frame rate, bitrate, and quality sliders/inputs bounded by camera-reported ranges.
+- **`src/vizenlink_nvr/web/src/features/cameras/tabs/ImageTab.tsx`**:
+  - Night vision mode selector filtered by sensor capabilities.
+  - WDR controls hidden when unsupported (not disabled), accompanied by sensor switch warning alert without emoji.
+  - ISP sliders for brightness, contrast, saturation, and sharpness.
+  - Orientation (mirror/flip) and anti-flicker frequency selectors.
+- **`src/vizenlink_nvr/web/src/features/cameras/tabs/OverlaysTab.tsx`**:
+  - Date & timestamp position selector, custom watermark text, and title position selector.
+- **`src/vizenlink_nvr/web/src/features/cameras/tabs/LegacyBridgeTab.tsx`**:
+  - Temporary bridge rendering `CameraSettingsView` to ensure maintenance actions remain usable until Plan 09-18.
+- **`src/vizenlink_nvr/web/src/features/cameras/CamerasPage.tsx`**:
+  - Master-detail page with responsive layout.
+  - Zero cameras empty state replacing whole page with primary "Add camera" CTA.
+  - Warning alert showing verbatim `last_error` with "Edit camera details" button for disconnected cameras.
+  - Tab navigation with Simple mode (Identity + Health & Maintenance) and Advanced mode (adds Video, Image, Overlays).
+- **`src/vizenlink_nvr/web/src/features/cameras/routes.tsx`**:
+  - Mounted `CamerasPage` on `/cameras` and `/cameras/:serial`.
+- **`src/vizenlink_nvr/web/src/features/cameras/cameras.test.tsx`**:
+  - 14 integration tests covering navigation, empty state, error alert, form save/discard/retry, simple/advanced view mode, bridge tab, and capability gating.
+
+## Verification
+- `npm --prefix src/vizenlink_nvr/web test -- src/features/cameras`: PASS (26/26 tests across 2 suites)
+- `npm --prefix src/vizenlink_nvr/web run gates`: PASS (144 non-legacy files scanned, 0 violations)
+- `npm --prefix src/vizenlink_nvr/web run build`: PASS (TypeScript tsc & Vite production bundle green)
+- `npm --prefix src/vizenlink_nvr/web test`: PASS (271/271 tests across 25 suites)
+- `test -e src/vizenlink_nvr/web/src/legacy/CameraSettingsView.tsx`: PASS (file preserved for bridge tab until 09-18)

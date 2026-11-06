@@ -246,8 +246,8 @@ describe("Feature Route Adapters", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Cameras" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: "Front Door" })).toBeInTheDocument();
     });
-    expect(screen.getByRole("heading", { level: 2, name: "Camera Settings" })).toBeInTheDocument();
   });
 
   it("hides Mobile devices in sidebar for viewer, shows for owner and renders /devices", async () => {

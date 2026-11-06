@@ -5,6 +5,8 @@ import {
 import { AuthGate } from "@/features/auth/AuthGate";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { SetupPage } from "@/features/auth/SetupPage";
+import { AppShell } from "@/components/shell/AppShell";
+import { shellRoutes, RequireRole } from "@/app/routes";
 import LegacyApp from "@/legacy/LegacyApp";
 import { queryClient } from "@/lib/queries";
 import { setUnauthorizedHandler } from "@/lib/api";
@@ -21,6 +23,18 @@ export function createAppRoutes(): RouteObject[] {
         {
           path: "/setup",
           element: <SetupPage />,
+        },
+        {
+          element: <AppShell />,
+          children: shellRoutes.map((r) => ({
+            path: r.path.startsWith("/") ? r.path.slice(1) : r.path,
+            element: <RequireRole min={r.minRole}>{r.element}</RequireRole>,
+            handle: { title: r.title, fullBleed: r.fullBleed },
+          })),
+        },
+        {
+          index: true,
+          element: <LegacyApp />,
         },
         {
           path: "*",

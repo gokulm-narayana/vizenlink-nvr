@@ -7,6 +7,8 @@ import { UserMenu } from "./UserMenu";
 import { ViewModeToggle } from "./ViewModeToggle";
 import { ThemeSync } from "./ThemeSync";
 import { BrandLogo } from "@/components/BrandLogo";
+import { AlertsBanner } from "@/legacy/AlertsBanner";
+import { useAlerts } from "@/lib/queries";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "cn";
 
@@ -18,6 +20,11 @@ interface RouteHandle {
 export const AppShell: React.FC = () => {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
+  const dismissedAlertIds = useUiStore((s) => s.dismissedAlertIds);
+  const dismissAlert = useUiStore((s) => s.dismissAlert);
+  const { data: alerts = [] } = useAlerts();
+
+  const activeAlerts = (alerts as any[]).filter((a) => !dismissedAlertIds.has(a.id));
 
   const matches = useMatches();
   const currentMatch = matches[matches.length - 1];
@@ -52,6 +59,8 @@ export const AppShell: React.FC = () => {
               <UserMenu />
             </div>
           </header>
+
+          <AlertsBanner alerts={activeAlerts} onDismiss={dismissAlert} />
 
           <main
             id="main"

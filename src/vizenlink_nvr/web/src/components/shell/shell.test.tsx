@@ -153,14 +153,21 @@ describe("AppShell tracer & navigation", () => {
     document.body.removeChild(input);
   });
 
-  it("renders legacy app on / and /dashboard, not the new shell", async () => {
-    renderShellApp(["/"]);
+  it("renders shell on / and /dashboard with Primary navigation", async () => {
+    const { unmount } = renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByText("Live Multiview")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole("navigation", { name: "Primary" })).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+    unmount();
+
+    renderShellApp(["/dashboard"]);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
   });
 
   it("RequireRole shows 403 state when role is insufficient", async () => {

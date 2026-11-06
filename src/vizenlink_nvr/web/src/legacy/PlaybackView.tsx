@@ -3,10 +3,8 @@ import { TimelineCanvas, ZoomLevel, TimelineSegment, TimelineOutage, TimelineEve
 import { TransportBar } from "./TransportBar";
 import { ClipExportModal } from "./ClipExportModal";
 
-export interface CameraOption {
-  serial: string;
-  name: string;
-}
+import type { CameraOption } from "@/lib/types";
+export type { CameraOption };
 
 interface PlaybackViewProps {
   cameras: CameraOption[];

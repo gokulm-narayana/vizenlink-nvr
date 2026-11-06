@@ -30,6 +30,13 @@ function LiveRouteAdapter() {
 
 export const routes: ShellRoute[] = [
   {
+    path: "/",
+    title: "Live",
+    minRole: "viewer",
+    fullBleed: true,
+    element: <LiveRouteAdapter />,
+  },
+  {
     path: "/live",
     title: "Live",
     minRole: "viewer",

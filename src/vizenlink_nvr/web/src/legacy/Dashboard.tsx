@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ViewMode } from "./Header";
+import type { ViewMode } from "@/lib/types";
 import { OutageHistoryModal } from "./OutageHistoryModal";
 
 interface HealthData {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { CameraOption } from "./PlaybackView";
+import type { CameraOption } from "@/lib/types";
 
 export interface GalleryItem {
   id: number;

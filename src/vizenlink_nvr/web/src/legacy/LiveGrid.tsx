@@ -2,11 +2,8 @@ import React, { useEffect, useState } from "react";
 import { GridDimension, GridStorage } from "../services/grid_storage";
 import { VideoTile } from "./VideoTile";
 
-export interface CameraInfo {
-  serial: string;
-  name: string;
-  state: string;
-}
+import type { CameraInfo } from "@/lib/types";
+export type { CameraInfo };
 
 interface LiveGridProps {
   cameras: CameraInfo[];

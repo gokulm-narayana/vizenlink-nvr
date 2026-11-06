@@ -70,10 +70,29 @@ export function useCameras() {
   });
 }
 
+export interface AlertData {
+  id: string;
+  severity: "warning" | "critical";
+  message: string;
+  camera_serial?: string;
+  timestamp?: string;
+  acknowledged?: boolean;
+  [key: string]: any;
+}
+
 export function useRecordingStatus() {
   return useQuery<RecordingStatusItem[]>({
     queryKey: ["recordingStatus"],
     queryFn: () => apiFetch<RecordingStatusItem[]>("/api/v1/recording/status"),
+    refetchInterval: 10000,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useAlerts() {
+  return useQuery<AlertData[]>({
+    queryKey: ["alerts"],
+    queryFn: () => apiFetch<AlertData[]>("/api/v1/health/alerts"),
     refetchInterval: 10000,
     placeholderData: (previousData) => previousData,
   });

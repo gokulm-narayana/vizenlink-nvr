@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, Link } from "react-router";
+import { NavLink, Link, useLocation } from "react-router";
 import {
   LayoutGrid,
   History,
@@ -60,7 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Watch",
     items: [
-      { title: "Live", path: "/live", icon: LayoutGrid, minRole: "viewer" },
+      { title: "Live", path: "/", icon: LayoutGrid, minRole: "viewer" },
       { title: "Playback", path: "/playback", icon: History, minRole: "viewer" },
       { title: "Events", path: "/events", icon: Bell, minRole: "viewer" },
       { title: "Gallery", path: "/gallery", icon: Images, minRole: "viewer" },
@@ -84,6 +84,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 export const AppSidebar: React.FC = () => {
   const currentUser = useCurrentUser();
+  const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -132,25 +133,32 @@ export const AppSidebar: React.FC = () => {
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {visibleItems.map((item) => (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton asChild tooltip={item.title}>
-                          <NavLink
-                            to={item.path}
-                            className={({ isActive }) =>
-                              cn(
-                                "relative flex items-center gap-2",
-                                isActive &&
-                                  "bg-selected text-primary-text font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-1 before:rounded-r before:bg-primary"
-                              )
-                            }
-                          >
-                            <item.icon className="h-4 w-4 shrink-0" />
-                            <span>{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                    {visibleItems.map((item) => {
+                      const targetPath =
+                        item.path === "/" && location.pathname === "/live"
+                          ? "/live"
+                          : item.path;
+
+                      return (
+                        <SidebarMenuItem key={item.path}>
+                          <SidebarMenuButton asChild tooltip={item.title}>
+                            <NavLink
+                              to={targetPath}
+                              className={({ isActive }) =>
+                                cn(
+                                  "relative flex items-center gap-2",
+                                  isActive &&
+                                    "bg-selected text-primary-text font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-1 before:rounded-r before:bg-primary"
+                                )
+                              }
+                            >
+                              <item.icon className="h-4 w-4 shrink-0" />
+                              <span>{item.title}</span>
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CameraInfo } from "./LiveGrid";
+import type { CameraInfo } from "@/lib/types";
 
 interface CameraSettingsViewProps {
   cameras: CameraInfo[];

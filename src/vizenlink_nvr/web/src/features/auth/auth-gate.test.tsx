@@ -252,7 +252,7 @@ describe("AuthGate routing", () => {
     });
   });
 
-  it("Signed in at / renders the legacy app", async () => {
+  it("Signed in at / renders the shell Live page", async () => {
     const user = { id: 1, username: "admin", role: "owner", permissions: ["*"] };
     renderWithRouter(["/"], {
       initialized: true,
@@ -261,8 +261,10 @@ describe("AuthGate routing", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Live Multiview")).toBeInTheDocument();
-      expect(screen.getByText("admin")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Account menu for admin" })
+      ).toBeInTheDocument();
     });
   });
 });

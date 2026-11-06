@@ -55,11 +55,16 @@ export const LoginPage: React.FC = () => {
   const onSubmit = async (values: LoginFormValues) => {
     setFormError(null);
     try {
-      await loginMutation.mutateAsync(values);
-      await queryClient.invalidateQueries({ queryKey: ["authStatus"] });
+      const loginRes = await loginMutation.mutateAsync(values);
       const nextParam = searchParams.get("next");
       const target = safeNext(nextParam) ?? "/";
+      queryClient.setQueryData(["authStatus"], (old: any) => ({
+        ...old,
+        authenticated: true,
+        user: loginRes?.user ?? null,
+      }));
       void navigate(target, { replace: true });
+      void queryClient.invalidateQueries({ queryKey: ["authStatus"] });
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.status === 401) {

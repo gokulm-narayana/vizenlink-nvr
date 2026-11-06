@@ -12,6 +12,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "npm run build && playwright test",
+    "e2e:smoke": "npm run build && playwright test --grep @smoke",
+    "e2e:run": "playwright test",
     "gates": "node scripts/gates.mjs",
     "typecheck": "tsc --noEmit"
   },

@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { safeNext } from "@/lib/safe-next";
 import { AUTH_COPY } from "./copy";
 
 export const AuthGate: React.FC = () => {
@@ -73,9 +74,11 @@ export const AuthGate: React.FC = () => {
     return <Navigate to={`/login?next=${next}`} replace />;
   }
 
-  // Row 10: authenticated=true at /login or /setup -> replace to /
+  // Row 10: authenticated=true at /login or /setup -> replace to safeNext(next) or /
   if (pathname === "/login" || pathname === "/setup") {
-    return <Navigate to="/" replace />;
+    const nextParam = new URLSearchParams(search).get("next");
+    const target = safeNext(nextParam) ?? "/";
+    return <Navigate to={target} replace />;
   }
 
   // Authenticated at / or any protected route

@@ -94,6 +94,8 @@ def test_ci_web_job() -> None:
         "npm run gates",
         "npm audit --omit=dev",
         "test_web_bundle_served.py",
+        "playwright install",
+        "npm run e2e",
     ]
 
     for expected in expected_commands:

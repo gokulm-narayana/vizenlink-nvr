@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { SetupWizard } from "./components/SetupWizard";
-import { Login } from "./components/Login";
-import { LiveGrid, CameraInfo } from "./components/LiveGrid";
-import { Header, ViewMode, ViewTab } from "./components/Header";
-import { AlertsBanner, AlertData } from "./components/AlertsBanner";
-import { Dashboard } from "./components/Dashboard";
-import { EventFeed } from "./components/EventFeed";
-import { PlaybackView } from "./components/PlaybackView";
-import { GalleryView } from "./components/GalleryView";
-import { CameraSettingsView } from "./components/CameraSettingsView";
-import { PairedDevicesView } from "./components/PairedDevicesView";
+import { SetupWizard } from "./SetupWizard";
+import { Login } from "./Login";
+import { LiveGrid, CameraInfo } from "./LiveGrid";
+import { Header, ViewMode, ViewTab } from "./Header";
+import { AlertsBanner, AlertData } from "./AlertsBanner";
+import { Dashboard } from "./Dashboard";
+import { EventFeed } from "./EventFeed";
+import { PlaybackView } from "./PlaybackView";
+import { GalleryView } from "./GalleryView";
+import { CameraSettingsView } from "./CameraSettingsView";
+import { PairedDevicesView } from "./PairedDevicesView";
 
 interface AuthStatus {
   initialized: boolean;
@@ -24,7 +24,7 @@ interface AuthStatus {
 
 type AppTab = ViewTab | "settings" | "devices";
 
-export const App: React.FC = () => {
+export const LegacyApp: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [cameras, setCameras] = useState<CameraInfo[]>([]);
   const [recordingSerials, setRecordingSerials] = useState<Set<string>>(new Set());
@@ -239,4 +239,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
-export default App;
+export default LegacyApp;

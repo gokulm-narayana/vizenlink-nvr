@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { TimelineCanvas, ZoomLevel, TimelineSegment, TimelineOutage, TimelineEvent } from "./TimelineCanvas";
+import { Timeline as TimelineCanvas } from "@/features/playback/timeline/Timeline";
+import type { ZoomLevel, TimelineSegment, TimelineOutage, TimelineEvent } from "@/lib/timeline";
 import { TransportBar } from "./TransportBar";
 import { ClipExportModal } from "./ClipExportModal";
 

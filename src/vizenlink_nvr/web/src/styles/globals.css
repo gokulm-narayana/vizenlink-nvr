@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/inter";
 @import "./tokens.css";
+@import "shadcn/tailwind.css";
 
 @layer base {
   *,

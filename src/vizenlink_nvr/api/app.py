@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from vizenlink_nvr.api.cam_proxy import cam_proxy_router
 from vizenlink_nvr.api.v1.audit import audit_router
 from vizenlink_nvr.api.v1.auth import auth_router
 from vizenlink_nvr.api.v1.camera_settings import camera_settings_router
@@ -58,6 +59,7 @@ def create_app(
     v1_router.include_router(mobile_router, prefix="/mobile")
 
     app.include_router(v1_router)
+    app.include_router(cam_proxy_router)
 
     # Mount React Web SPA build if available
     web_dist = Path(__file__).resolve().parent.parent / "web" / "dist"

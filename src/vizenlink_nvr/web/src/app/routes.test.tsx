@@ -201,7 +201,10 @@ describe("Feature Route Adapters", () => {
       expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeInTheDocument();
     });
 
-    const playbackBtn = await screen.findByTitle("Jump to footage in 24h timeline");
+    const card = await screen.findByText("Front Door");
+    await user.click(card);
+
+    const playbackBtn = await screen.findByRole("button", { name: "Play footage" });
     await user.click(playbackBtn);
 
     await waitFor(() => {

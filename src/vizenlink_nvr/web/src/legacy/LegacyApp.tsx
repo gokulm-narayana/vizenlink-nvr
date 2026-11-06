@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { SetupWizard } from "./SetupWizard";
-import { Login } from "./Login";
+import { useCurrentUser } from "@/lib/queries";
+import { useSignOut } from "@/features/auth/api";
 import { LiveGrid, CameraInfo } from "./LiveGrid";
 import { Header, ViewMode, ViewTab } from "./Header";
 import { AlertsBanner, AlertData } from "./AlertsBanner";
@@ -11,21 +11,12 @@ import { GalleryView } from "./GalleryView";
 import { CameraSettingsView } from "./CameraSettingsView";
 import { PairedDevicesView } from "./PairedDevicesView";
 
-interface AuthStatus {
-  initialized: boolean;
-  authenticated: boolean;
-  user?: {
-    id: number;
-    username: string;
-    role: string;
-    permissions: string[];
-  };
-}
-
 type AppTab = ViewTab | "settings" | "devices";
 
 export const LegacyApp: React.FC = () => {
-  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const currentUser = useCurrentUser();
+  const signOut = useSignOut();
+
   const [cameras, setCameras] = useState<CameraInfo[]>([]);
   const [recordingSerials, setRecordingSerials] = useState<Set<string>>(new Set());
   const [alerts, setAlerts] = useState<AlertData[]>([]);
@@ -46,22 +37,6 @@ export const LegacyApp: React.FC = () => {
     cameraSerial: string;
     timestamp: string;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const checkStatus = async () => {
-    try {
-      const res = await fetch("/api/v1/auth/status");
-      const data = await res.json();
-      setAuthStatus(data);
-      if (data.authenticated) {
-        await Promise.all([loadCamerasAndRecording(), loadAlerts(), loadUnreadEvents()]);
-      }
-    } catch {
-      setAuthStatus({ initialized: true, authenticated: false });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadUnreadEvents = async () => {
     try {
@@ -116,15 +91,19 @@ export const LegacyApp: React.FC = () => {
   };
 
   useEffect(() => {
-    checkStatus();
+    if (currentUser) {
+      void loadCamerasAndRecording();
+      void loadAlerts();
+      void loadUnreadEvents();
+    }
     const interval = setInterval(() => {
-      if (authStatus?.authenticated) {
-        loadAlerts();
-        loadUnreadEvents();
+      if (currentUser) {
+        void loadAlerts();
+        void loadUnreadEvents();
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [authStatus?.authenticated, readEventIds]);
+  }, [currentUser, readEventIds]);
 
   const handleToggleViewMode = () => {
     const nextMode: ViewMode = viewMode === "simple" ? "advanced" : "simple";
@@ -143,12 +122,8 @@ export const LegacyApp: React.FC = () => {
     setUnreadEventsCount((prev) => Math.max(0, prev - 1));
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/v1/auth/logout", { method: "POST" });
-    } finally {
-      setAuthStatus((prev) => (prev ? { ...prev, authenticated: false } : null));
-    }
+  const handleLogout = () => {
+    void signOut();
   };
 
   const handleDismissAlert = (alertId: string) => {
@@ -160,22 +135,6 @@ export const LegacyApp: React.FC = () => {
     setCurrentTab("playback");
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
-        Loading VizenLink NVR...
-      </div>
-    );
-  }
-
-  if (authStatus && !authStatus.initialized) {
-    return <SetupWizard onComplete={checkStatus} />;
-  }
-
-  if (authStatus && !authStatus.authenticated) {
-    return <Login onSuccess={checkStatus} />;
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Navigation Header */}
@@ -184,8 +143,8 @@ export const LegacyApp: React.FC = () => {
         onTabChange={setCurrentTab}
         viewMode={viewMode}
         onViewModeToggle={handleToggleViewMode}
-        username={authStatus?.user?.username}
-        role={authStatus?.user?.role}
+        username={currentUser?.username}
+        role={currentUser?.role}
         alertCount={alerts.length}
         unreadEventsCount={unreadEventsCount}
         onLogout={handleLogout}
@@ -219,18 +178,18 @@ export const LegacyApp: React.FC = () => {
         {currentTab === "gallery" && (
           <GalleryView
             cameras={cameras}
-            userRole={authStatus?.user?.role}
+            userRole={currentUser?.role}
             onJumpToPlayback={handleJumpToPlayback}
           />
         )}
         {currentTab === "settings" && (
           <CameraSettingsView
             cameras={cameras}
-            userRole={authStatus?.user?.role}
+            userRole={currentUser?.role}
           />
         )}
         {currentTab === "devices" && (
-          <PairedDevicesView userRole={authStatus?.user?.role} />
+          <PairedDevicesView userRole={currentUser?.role} />
         )}
         {currentTab === "dashboard" && (
           <Dashboard viewMode={viewMode} recordingCount={recordingSerials.size} />
@@ -239,4 +198,5 @@ export const LegacyApp: React.FC = () => {
     </div>
   );
 };
+
 export default LegacyApp;

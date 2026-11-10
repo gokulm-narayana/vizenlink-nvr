@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime, formatRelative, useSiteTimeZone } from "@/lib/time";
 import type { EventItem } from "./api";
 import { EVENTS_COPY } from "./copy";
+import { ReviewBadge, SeverityBadge } from "./AlertActions";
+import { cn } from "cn";
 
 export interface EventCardProps {
   event: EventItem;
@@ -86,7 +88,12 @@ export const EventCard: React.FC<EventCardProps> = ({
           onClick(event);
         }
       }}
-      className="group relative flex flex-col overflow-hidden border-border bg-card p-0 transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
+      data-severity={event.severity ?? "info"}
+      className={cn(
+        "group relative flex flex-col overflow-hidden border-border bg-card p-0 transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none border-l-4",
+        event.severity === "critical" ? "border-l-critical" : event.severity === "warning" ? "border-l-warning" : "border-l-info",
+        event.review_state === "resolved" && "opacity-75"
+      )}
     >
       {/* 16:9 Snapshot Thumbnail Area */}
       <div className="relative aspect-video w-full bg-muted overflow-hidden flex items-center justify-center">
@@ -152,6 +159,10 @@ export const EventCard: React.FC<EventCardProps> = ({
           >
             {relTime}
           </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SeverityBadge severity={event.severity} />
+          <ReviewBadge state={event.review_state} />
         </div>
       </div>
     </Card>

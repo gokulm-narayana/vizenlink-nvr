@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { XIcon, Lock, Unlock, Info, TriangleAlert, Play } from "lucide-react";
 import {
   Sheet,
@@ -19,6 +19,7 @@ import type { EventItem } from "./api";
 import { useLockEvent, useUnlockEvent } from "./api";
 import { formatEventTypeLabel, getEventTypeIcon } from "./EventCard";
 import { EVENTS_COPY } from "./copy";
+import { AlertActions, ReviewBadge, SeverityBadge } from "./AlertActions";
 
 export interface EventSheetProps {
   event: EventItem | null;
@@ -265,7 +266,15 @@ export const EventSheet: React.FC<EventSheetProps> = ({
         </div>
 
         {/* Primary Action Footer */}
-        <div className="border-t border-border p-4 bg-card">
+        <div className="flex flex-col gap-4 border-t border-border p-4 bg-card">
+          <div className="flex flex-wrap items-center gap-2">
+            <SeverityBadge severity={event.severity} />
+            <ReviewBadge state={event.review_state} />
+            <Link to={`/events/${event.id}`} className="ml-auto text-sm font-semibold text-primary-text hover:underline">
+              Open alert details
+            </Link>
+          </div>
+          <AlertActions event={event} onRemoved={onClose} />
           <Button
             onClick={handlePlayFootage}
             className="w-full h-10 gap-2 font-semibold"

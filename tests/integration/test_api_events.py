@@ -348,3 +348,52 @@ async def test_subscription_status(app_fixture):
     assert resp.status_code == 200
     assert len(resp.json()) == 1
     assert resp.json()[0]["camera_serial"] == "CAM-PERMITTED"
+
+
+@pytest.mark.asyncio
+async def test_alert_review_workflow(app_fixture) -> None:
+    """Phase 10: severity, search, acknowledge / resolve / reopen, acknowledge-all, hide."""
+    client, owner_session, viewer_session = app_fixture[0], app_fixture[1], app_fixture[2]
+
+    client.cookies.set("session_id", owner_session)
+    items = {i["id"]: i for i in (await client.get("/api/v1/events")).json()["items"]}
+    assert items[1]["severity"] == "info" and items[1]["review_state"] == "new"
+    assert items[2]["severity"] == "warning"
+
+    # Severity and search filters
+    assert [i["id"] for i in (await client.get("/api/v1/events?severity=warning")).json()["items"]] == [2]
+    assert [i["id"] for i in (await client.get("/api/v1/events?severity=info")).json()["items"]] == [1]
+    assert [i["id"] for i in (await client.get("/api/v1/events?q=front")).json()["items"]] == [1]
+    assert [i["id"] for i in (await client.get("/api/v1/events?q=line crossing")).json()["items"]] == [2]
+
+    # Viewer can acknowledge their own camera's alert but not someone else's
+    client.cookies.set("session_id", viewer_session)
+    res = await client.post("/api/v1/events/1/acknowledge")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["review_state"] == "acknowledged" and body["reviewed_by"] == "viewer_user"
+    assert (await client.post("/api/v1/events/2/acknowledge")).status_code == 403
+    # Viewers cannot hide alerts
+    assert (await client.post("/api/v1/events/1/hide")).status_code == 403
+
+    client.cookies.set("session_id", owner_session)
+    assert (await client.post("/api/v1/events/1/resolve")).json()["review_state"] == "resolved"
+    assert [i["id"] for i in (await client.get("/api/v1/events?review_state=open")).json()["items"]] == [2]
+    assert (await client.post("/api/v1/events/1/reopen")).json()["review_state"] == "new"
+
+    # Acknowledge all open alerts
+    assert (await client.post("/api/v1/events/acknowledge-all", json={})).json() == {"acknowledged": 2}
+    assert (await client.get("/api/v1/events?review_state=new")).json()["total"] == 0
+
+    # Locked alerts cannot be hidden (footage protection); unlocked ones disappear from lists
+    assert (await client.post("/api/v1/events/2/hide")).status_code == 409
+    assert (await client.post("/api/v1/events/1/hide")).json() == {"hidden": True}
+    listed = (await client.get("/api/v1/events")).json()
+    assert [i["id"] for i in listed["items"]] == [2] and listed["total"] == 1
+    assert (await client.get("/api/v1/events/1/acknowledge")).status_code in (404, 405)
+    assert (await client.post("/api/v1/events/1/acknowledge")).status_code == 404
+
+    # Audit trail records the review actions
+    audit = (await client.get("/api/v1/audit-logs?limit=200")).json()
+    actions = {a["action"] for a in audit["items"]}
+    assert {"event.acknowledge", "event.resolve", "event.acknowledge_all", "event.hide"} <= actions

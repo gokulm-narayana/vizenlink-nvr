@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import type { DateRange } from "react-day-picker";
 import {
   Select,
@@ -34,7 +35,26 @@ export interface EventFiltersProps {
   onClearFilters: () => void;
   isFiltered: boolean;
   zone?: string;
+  search?: string;
+  onSearchChange?: (q: string) => void;
+  severity?: string;
+  onSeverityChange?: (s: string) => void;
+  status?: string;
+  onStatusChange?: (s: string) => void;
 }
+
+const SEVERITIES = [
+  { value: "critical", label: "Critical" },
+  { value: "warning", label: "Warning" },
+  { value: "info", label: "Info" },
+];
+const STATUSES = [
+  { value: "open", label: "Open alerts" },
+  { value: "new", label: "New" },
+  { value: "acknowledged", label: "Acknowledged" },
+  { value: "resolved", label: "Resolved" },
+  { value: "all", label: "All alerts" },
+];
 
 const EVENT_TYPES = [
   { value: "motion", label: "Motion" },
@@ -57,6 +77,12 @@ export const EventFilters: React.FC<EventFiltersProps> = ({
   onClearFilters,
   isFiltered,
   zone: zoneProp,
+  search = "",
+  onSearchChange,
+  severity = "",
+  onSeverityChange,
+  status = "open",
+  onStatusChange,
 }) => {
   const defaultZone = useSiteTimeZone();
   const zone = zoneProp || defaultZone;
@@ -73,6 +99,47 @@ export const EventFilters: React.FC<EventFiltersProps> = ({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-4">
+        {onSearchChange && (
+          <div className="relative min-w-40 flex-1 basis-48">
+            <Search className="absolute left-2 top-2 size-4 text-muted-foreground" />
+            <Input
+              aria-label="Search alerts"
+              placeholder="Search camera, place or type…"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="h-9 pl-8"
+            />
+          </div>
+        )}
+        {onStatusChange && (
+          <Select value={status} onValueChange={onStatusChange}>
+            <SelectTrigger className="h-9 min-w-36 text-xs" aria-label="Alert status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((st) => (
+                <SelectItem key={st.value} value={st.value}>
+                  {st.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {onSeverityChange && (
+          <Select value={severity || "all"} onValueChange={(v) => onSeverityChange(v === "all" ? "" : v)}>
+            <SelectTrigger className="h-9 min-w-36 text-xs" aria-label="Severity">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All severities</SelectItem>
+              {SEVERITIES.map((sv) => (
+                <SelectItem key={sv.value} value={sv.value}>
+                  {sv.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {/* Camera Select */}
         <Select
           value={selectedCamera || "all"}

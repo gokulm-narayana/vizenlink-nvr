@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { Bell } from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
+import { toast } from "sonner";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +11,7 @@ import { InlineError } from "@/components/InlineError";
 import { useCameras } from "@/lib/queries";
 import { useSiteTimeZone, zonedDayBounds } from "@/lib/time";
 import { useUiStore } from "@/stores/ui";
-import { useEvents, type EventItem, type EventFilters as ApiEventFilters } from "./api";
+import { useAcknowledgeAll, useEvents, type EventItem, type EventFilters as ApiEventFilters } from "./api";
 import { EventFilters } from "./EventFilters";
 import { EventCard } from "./EventCard";
 import { EventSheet } from "./EventSheet";
@@ -48,6 +49,15 @@ export const EventsPage: React.FC = () => {
   const selectedType = searchParams.get("type") || "";
   const fromParam = searchParams.get("from") || "";
   const toParam = searchParams.get("to") || "";
+  const severityParam = searchParams.get("severity") || "";
+  const statusParam = searchParams.get("status") || "open";
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+  const ackAll = useAcknowledgeAll();
 
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
@@ -65,6 +75,9 @@ export const EventsPage: React.FC = () => {
     const filters: ApiEventFilters = {};
     if (selectedCamera) filters.camera_serial = selectedCamera;
     if (selectedType) filters.event_type = selectedType;
+    if (severityParam) filters.severity = severityParam;
+    if (statusParam !== "all") filters.review_state = statusParam;
+    if (debouncedSearch) filters.q = debouncedSearch;
 
     if (fromParam) {
       try {
@@ -91,7 +104,7 @@ export const EventsPage: React.FC = () => {
       }
     }
     return filters;
-  }, [selectedCamera, selectedType, fromParam, toParam, siteZone]);
+  }, [selectedCamera, selectedType, fromParam, toParam, siteZone, severityParam, statusParam, debouncedSearch]);
 
   const {
     data,
@@ -120,8 +133,15 @@ export const EventsPage: React.FC = () => {
   }, [allItems, viewMode, unreadOnly, readEventIds]);
 
   const isFiltered = Boolean(
-    selectedCamera || selectedType || fromParam || toParam || (unreadOnly)
+    selectedCamera || selectedType || fromParam || toParam || unreadOnly || severityParam || debouncedSearch || statusParam !== "open"
   );
+  const setParam = (key: string, value: string, defaultValue = "") =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value && value !== defaultValue) next.set(key, value);
+      else next.delete(key);
+      return next;
+    });
 
   // Filter Handlers
   const handleCameraChange = (serial: string) => {
@@ -166,8 +186,12 @@ export const EventsPage: React.FC = () => {
       next.delete("type");
       next.delete("from");
       next.delete("to");
+      next.delete("severity");
+      next.delete("status");
+      next.delete("q");
       return next;
     });
+    setSearch("");
     setUnreadOnly(false);
   };
 
@@ -177,16 +201,38 @@ export const EventsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-full">
+    <div className="flex min-h-full flex-col gap-6">
       {/* Filter Bar & Summary */}
       <div className="flex flex-col gap-4">
-        {total > 0 && (
-          <div className="flex items-center justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          {total > 0 && (
             <span className="text-xs font-normal text-muted-foreground">
               Total events: <strong className="text-foreground">{total}</strong>
             </span>
-          </div>
-        )}
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={ackAll.isPending}
+            onClick={() =>
+              ackAll.mutate(
+                {
+                  camera_serial: selectedCamera || undefined,
+                  event_type: selectedType || undefined,
+                  severity: severityParam || undefined,
+                },
+                {
+                  onSuccess: (r) =>
+                    toast.success(r.acknowledged ? `Acknowledged ${r.acknowledged} alerts` : "No new alerts to acknowledge"),
+                  onError: (e) => toast.error(e.message),
+                }
+              )
+            }
+          >
+            <CheckCheck className="size-4" />
+            Acknowledge all
+          </Button>
+        </div>
 
         <EventFilters
           cameras={cameras}
@@ -201,6 +247,15 @@ export const EventsPage: React.FC = () => {
           onClearFilters={handleClearFilters}
           isFiltered={isFiltered}
           zone={siteZone}
+          search={search}
+          onSearchChange={(q) => {
+            setSearch(q);
+            setParam("q", q.trim());
+          }}
+          severity={severityParam}
+          onSeverityChange={(v) => setParam("severity", v)}
+          status={statusParam}
+          onStatusChange={(v) => setParam("status", v, "open")}
         />
       </div>
 

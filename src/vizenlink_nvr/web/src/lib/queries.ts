@@ -138,7 +138,10 @@ export function useUnreadCount() {
 
   const unreadCount = React.useMemo(() => {
     if (!query.data?.items) return 0;
-    return query.data.items.filter((item) => !readEventIds.has(item.id)).length;
+    // Phase 10: shared review state wins; fall back to this browser's read marks for old servers.
+    return query.data.items.filter((item) =>
+      typeof item.review_state === "string" ? item.review_state === "new" : !readEventIds.has(item.id)
+    ).length;
   }, [query.data?.items, readEventIds]);
 
   return { ...query, unreadCount };

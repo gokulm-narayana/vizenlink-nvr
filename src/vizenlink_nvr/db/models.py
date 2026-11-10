@@ -439,6 +439,13 @@ class Event(Base):
     raw_topic: Mapped[str | None] = mapped_column(Text, nullable=True)
     details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+    # Phase 10 review workflow (migration 0008). Hidden events stay in the DB.
+    review_state: Mapped[str] = mapped_column(
+        Text, nullable=False, default="new", server_default="new", index=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hidden_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
     camera: Mapped["Camera"] = relationship("Camera", back_populates="events")
 
@@ -446,6 +453,10 @@ class Event(Base):
         CheckConstraint(
             "clock_sync_state IN ('synced', 'uncertain', 'drift_detected')",
             name="ck_event_clock_sync_state",
+        ),
+        CheckConstraint(
+            "review_state IN ('new', 'acknowledged', 'resolved')",
+            name="ck_event_review_state",
         ),
     )
 

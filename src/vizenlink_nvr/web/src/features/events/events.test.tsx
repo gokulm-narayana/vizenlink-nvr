@@ -30,6 +30,7 @@ vi.mock("@/lib/queries", () => ({
   useAuthStatus: () => ({
     data: { site_timezone: "UTC" },
   }),
+  useCurrentUser: () => ({ id: 1, username: "op", role: "operator", permissions: ["*"] }),
 }));
 
 describe("Events Feature", () => {
@@ -325,6 +326,82 @@ describe("Events Feature", () => {
       // Event 101 is read, so only Event 102 (Backyard) remains
       expect(screen.queryByText("Front Door")).not.toBeInTheDocument();
       expect(screen.getByText("Backyard")).toBeInTheDocument();
+    });
+  });
+
+  describe("Alert review (Phase 10)", () => {
+    it("shows severity and status, and acknowledges / resolves from the alert panel", async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn().mockImplementation(async (url: string) => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ...mockEvent2, review_state: url.endsWith("acknowledge") ? "acknowledged" : "resolved" }),
+      }));
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      renderWithProviders(
+        <EventSheet
+          event={{ ...mockEvent2, severity: "critical", review_state: "new" }}
+          cameraName="Backyard"
+          isOpen={true}
+          onClose={() => {}}
+          zone="UTC"
+        />
+      );
+
+      expect(screen.getByText("Critical")).toBeInTheDocument();
+      expect(screen.getByText("New")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Open alert details" })).toHaveAttribute("href", "/events/102");
+
+      await user.click(screen.getByRole("button", { name: "Acknowledge" }));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/events/102/acknowledge", { method: "POST" }));
+      await user.click(screen.getByRole("button", { name: "Resolve" }));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/events/102/resolve", { method: "POST" }));
+    });
+
+    it("removes an alert only after confirming, explaining that footage is kept", async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ hidden: true }) });
+      global.fetch = fetchMock as unknown as typeof fetch;
+      const onClose = vi.fn();
+
+      renderWithProviders(
+        <EventSheet event={{ ...mockEvent1, review_state: "acknowledged" }} cameraName="Front Door" isOpen={true} onClose={onClose} zone="UTC" />
+      );
+      await user.click(screen.getByRole("button", { name: "Remove alert" }));
+      expect(screen.getByText(/recorded footage is not deleted/i)).toBeInTheDocument();
+      const removeButtons = screen.getAllByRole("button", { name: "Remove alert" });
+      await user.click(removeButtons[removeButtons.length - 1]);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/events/101/hide", { method: "POST" }));
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+    });
+
+    it("sends search, severity and open-status filters, and acknowledges all", async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn().mockImplementation(async (url: string) => ({
+        ok: true,
+        status: 200,
+        json: async () =>
+          url.includes("acknowledge-all") ? { acknowledged: 2 } : { items: [mockEvent1, mockEvent2], total: 2, limit: 50, offset: 0 },
+      }));
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      renderWithProviders(<EventsPage />, ["/events?severity=critical"]);
+      await screen.findByText("Front Door");
+      const listUrl = String(fetchMock.mock.calls[0][0]);
+      expect(listUrl).toContain("severity=critical");
+      expect(listUrl).toContain("review_state=open");
+
+      await user.type(screen.getByRole("textbox", { name: "Search alerts" }), "gate");
+      await waitFor(() => expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("q=gate"))).toBe(true));
+
+      await user.click(screen.getByRole("button", { name: "Acknowledge all" }));
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/v1/events/acknowledge-all",
+          expect.objectContaining({ method: "POST", body: JSON.stringify({ severity: "critical" }) })
+        )
+      );
     });
   });
 });

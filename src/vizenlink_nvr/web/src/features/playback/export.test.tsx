@@ -144,7 +144,7 @@ describe("ClipExportDialog", () => {
       expect(toast.success).toHaveBeenCalledWith(
         "Clip exported",
         expect.objectContaining({
-          action: expect.objectContaining({ label: "Open in Saved Media" }),
+          action: expect.objectContaining({ label: "Open in Gallery" }),
         })
       );
     });

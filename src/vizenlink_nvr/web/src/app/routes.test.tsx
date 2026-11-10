@@ -194,8 +194,9 @@ describe("Feature Route Adapters", () => {
     });
 
     // Mark in and Mark out to enable export
-    const markInBtn = await screen.findByRole("button", { name: "Mark in" });
-    const markOutBtn = screen.getByRole("button", { name: "Mark out" });
+    // Transport buttons were renamed for clarity ("Set clip start/end").
+    const markInBtn = await screen.findByRole("button", { name: "Set clip start" });
+    const markOutBtn = screen.getByRole("button", { name: "Set clip end" });
     await user.click(markInBtn);
     await user.click(markOutBtn);
 

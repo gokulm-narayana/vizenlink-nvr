@@ -328,6 +328,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               variant="ghost"
               size="sm"
               onClick={onClearMarkers}
+              aria-label="Clear markers"
               className="text-xs font-normal text-destructive hover:text-destructive h-8 px-2"
             >
               {TIMELINE_COPY.MARKER_CLEAR}

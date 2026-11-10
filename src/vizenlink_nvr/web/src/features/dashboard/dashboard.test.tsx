@@ -167,6 +167,7 @@ describe("Dashboard Feature", () => {
 
   describe("Recommended dashboard layout", () => {
     it("shows key numbers, cameras with problems first, recent alerts, storage and system", () => {
+      useUiStore.setState({ viewMode: "advanced" });
       renderWithProviders(<DashboardPage />);
 
       const kpi = (label: string) => document.querySelector(`[data-kpi="${label}"]`) as HTMLElement;
@@ -390,6 +391,14 @@ describe("Dashboard Feature", () => {
       expect(screen.queryByText("CAM-02")).not.toBeInTheDocument();
       expect(screen.getByText("30m 0s")).toBeInTheDocument();
     });
+  });
+
+  it("hides CPU and memory unless technical details are turned on", () => {
+    useUiStore.setState({ viewMode: "simple" });
+    renderWithProviders(<DashboardPage />);
+    expect(screen.queryByText("CPU")).toBeNull();
+    expect(screen.queryByText("Memory")).toBeNull();
+    expect(screen.getByText("Video service")).toBeInTheDocument();
   });
 
   it("shows Healthy only when storage, services and every camera are fine", () => {

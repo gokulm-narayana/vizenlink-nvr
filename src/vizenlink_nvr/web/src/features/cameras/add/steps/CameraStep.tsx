@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordField } from "@/components/PasswordField";
 import type { AddCameraFormValues } from "../schema";
 import { ADD_CAMERA_COPY } from "../copy";
+import { DiscoverCameras } from "../DiscoverCameras";
 
 export interface CameraStepProps {
   form: UseFormReturn<AddCameraFormValues>;
@@ -26,6 +27,9 @@ export const CameraStep: React.FC<CameraStepProps> = ({ form, disabled = false }
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Network discovery fills host/name/location (was built but never rendered). */}
+      {!disabled && <DiscoverCameras form={form} />}
+
       {/* Serial Number */}
       <Field className="flex flex-col gap-1">
         <FieldLabel htmlFor="camera-serial" className="text-xs font-semibold">

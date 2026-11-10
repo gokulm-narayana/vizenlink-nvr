@@ -229,6 +229,8 @@ export const DashboardPage: React.FC = () => {
   const user = useCurrentUser();
   const isManager = user?.role === "owner" || user?.role === "operator";
   const dismissedAlertIds = useUiStore((s) => s.dismissedAlertIds);
+  // CPU/memory are diagnostics, not user value (REQUIREMENTS out-of-scope): only in technical view.
+  const showTechnical = useUiStore((s) => s.viewMode) === "advanced";
 
   const { data: health, error: healthError, isLoading: healthLoading, refetch: refetchHealth } = useHealth();
   const { data: storage, error: storageError, isLoading: storageLoading, refetch: refetchStorage } = useStorageStatus();
@@ -540,6 +542,7 @@ export const DashboardPage: React.FC = () => {
                 title="System"
                 action={<span className="text-xs text-muted-foreground">{metrics ? `Up ${formatUptime(metrics.nvr_uptime_seconds)}` : ""}</span>}
               >
+                {showTechnical && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                   <Meter label="CPU" percent={metrics?.cpu_percent ?? null} caption={metrics ? `${metrics.cpu_count} cores` : undefined} />
                   <Meter
@@ -548,12 +551,13 @@ export const DashboardPage: React.FC = () => {
                     caption={metrics ? `${bytesToGiB(metrics.memory_used_bytes)} of ${bytesToGiB(metrics.memory_total_bytes)}` : undefined}
                   />
                 </div>
-                <div className="flex flex-col gap-2 border-t border-border pt-4">
+                )}
+                <div className={cn("flex flex-col gap-2", showTechnical && "border-t border-border pt-4")}>
                   <ServiceRow name="Database" ok={health?.db_ok} />
                   <ServiceRow name="Video service" ok={health?.mediamtx_ok} />
                   <ServiceRow name="Recording storage" ok={health ? !status.storageBroken : undefined} />
                 </div>
-                {metrics && (
+                {metrics && showTechnical && (
                   <span className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Cpu className="size-4" />v{metrics.version} · {metrics.platform}
                   </span>

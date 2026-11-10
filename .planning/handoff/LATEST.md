@@ -43,3 +43,27 @@
 ## Open questions / waiting on
 - Owner restart of the NVR and choice of storage folder.
 - Phase 10 has no PLAN.md/SUMMARY.md; decide whether to backfill them for /gsd-verify-work.
+
+## Update — camera settings parity (paused by owner, resume in ~2 hours)
+Commits since the first handoff: alerts review workflow, contract pull (camera_api 2026-11-04 drop, 10/49 files, ported),
+real camera 'Check connection', verification fixes, consistent camera online status, exposure/gain/white balance (cd302d1).
+
+Camera settings parity plan (owner asked for old-VMS camera settings; only build what camera_api defines):
+1. DONE: MAC on Details; exposure mode/time/gain + white balance (Image tab).
+2. NEXT: CBR/VBR — port from onvif_video_encoder_client.dart (Media2 VideoEncoder2Configuration, RateControl
+   ConstantBitRate attribute; options ConstantBitRateSupported). Python mirror: camera/onvif/media2.py.
+3. OSD date format, font size (OsdOptions fontSizeMin/Max), font colour/transparency (osd_client.dart).
+4. Detection tab: event preferences (PersonDetected/Loitering/Tamper), loitering duration, response actions
+   (siren/spotlight/warning) — event_preferences_client.dart, loitering_duration_client.dart,
+   event_response_actions_client.dart (not yet in the vendored inventory: add them to tools/vendor_contracts.py).
+5. Privacy masks (mask_client.dart) + rectangle drawing UI.
+6. Movement Protection (movement_protection_client.dart) + audio.
+7. Run sim/fake_camera instances for the demo so the settings tabs load.
+Blocked / owner decision: line crossing, intrusion zones, day/night time schedule, IR LED / Smart IR controls,
+strobe — NOT in camera_api (checked whole package + REST spec); ask firmware/camera_api owner.
+Bug to fix before any 'Remove camera' UI: DELETE /cameras/{serial} cascades segments/events/gallery even with
+keep_recordings=true (orphans footage). Needs a soft 'removed' camera state.
+Still the top priority overall: `nvr run` never starts MediaMTX/recorder services (see CRITICAL finding above).
+
+Running at pause: demo VMS on http://localhost:8800 (owner demo / demo-password-123; data .e2e/demo, seeded by
+scratchpad demo_seed.py with a 60 s segment feeder). Preview instance on 8767 stopped.

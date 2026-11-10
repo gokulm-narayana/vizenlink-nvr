@@ -66,3 +66,11 @@
 [data-slot="input"], [data-slot="select-trigger"] { min-height: 38px; }
 .vms-select { min-height: 40px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); padding: 8px 12px; max-width: 100%; }
 .vms-field { display: flex; flex-direction: column; gap: 8px; font-size: var(--text-sm); }
+
+/* Phase 10: scale the whole UI up on large monitors (1440p, 4K) so text stays readable. */
+@media (min-width: 2200px) {
+  html { font-size: 112.5%; }
+}
+@media (min-width: 3200px) {
+  html { font-size: 137.5%; }
+}

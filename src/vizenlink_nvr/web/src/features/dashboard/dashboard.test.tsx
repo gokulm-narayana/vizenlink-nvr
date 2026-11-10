@@ -165,54 +165,33 @@ describe("Dashboard Feature", () => {
     );
   };
 
-  describe("2x2 zones (old VMS layout)", () => {
-    it("renders the four zones with live numbers", () => {
+  describe("Recommended dashboard layout", () => {
+    it("shows key numbers, cameras with problems first, recent alerts, storage and system", () => {
       renderWithProviders(<DashboardPage />);
 
-      for (const title of ["Camera Summary", "System & Storage", "Camera Issues", "Active Alerts"]) {
-        expect(screen.getByText(title)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: `Configure ${title}` })).toBeInTheDocument();
-      }
+      const kpi = (label: string) => document.querySelector(`[data-kpi="${label}"]`) as HTMLElement;
+      expect(kpi("Cameras online")).toHaveTextContent("1 / 2");
+      expect(kpi("Recording")).toHaveTextContent("1 / 2");
+      expect(kpi("Footage kept for")).toHaveTextContent("14 days");
+      expect(kpi("Active alerts")).toHaveTextContent("1");
 
-      // Camera Summary: CAM-02 has an open outage, CAM-01 is continuous.
-      const summary = document.querySelector('[data-zone="zone1"]') as HTMLElement;
-      expect(within(summary).getByText("Total cameras").previousSibling).toHaveTextContent("2");
-      expect(within(summary).getByText("Online").previousSibling).toHaveTextContent("1");
-      expect(within(summary).getByText("Offline").previousSibling).toHaveTextContent("1");
-      expect(within(summary).getByText("Recording").previousSibling).toHaveTextContent("1 / 2");
+      // Backyard has an open outage, so it is listed first.
+      const list = screen.getByRole("list", { name: "Camera status" });
+      const items = within(list).getAllByRole("listitem");
+      expect(items[0]).toHaveAttribute("data-state", "offline");
+      expect(items[0]).toHaveTextContent("Backyard");
+      expect(within(items[0]).getByRole("link", { name: /^Backyard/ })).toHaveAttribute("href", "/cameras/CAM-02/health");
+      expect(within(items[0]).getByRole("link", { name: "Play back Backyard" })).toHaveAttribute("href", "/playback?camera=CAM-02");
 
-      // System & Storage: CPU, memory, services, uptime.
-      const system = document.querySelector('[data-zone="zone2"]') as HTMLElement;
-      expect(within(system).getByText("37%")).toBeInTheDocument();
-      expect(within(system).getByText("50%")).toBeInTheDocument();
-      expect(within(system).getByText("Database")).toBeInTheDocument();
-      expect(within(system).getByText("Video service")).toBeInTheDocument();
-      expect(within(system).getByText(/Uptime: 1d 1h/)).toBeInTheDocument();
-      expect(within(system).getByText(/14 days retention remaining/)).toBeInTheDocument();
-
-      // Camera Issues: Backyard is offline and links to its health page.
-      const issues = document.querySelector('[data-zone="zone3"]') as HTMLElement;
-      expect(within(issues).getByRole("link", { name: /Backyard/ })).toHaveAttribute("href", "/cameras/CAM-02/health");
-      expect(within(issues).getByText("Camera outage history")).toBeInTheDocument();
-
-      // Active Alerts: system alert and latest camera alert.
-      const alerts = document.querySelector('[data-zone="zone4"]') as HTMLElement;
+      const alerts = screen.getByRole("list", { name: "Recent alerts" });
       expect(within(alerts).getByText("Camera Front Door not recording")).toBeInTheDocument();
       expect(within(alerts).getByText("line crossing")).toBeInTheDocument();
-    });
 
-    it("hides a widget after it is switched off in the zone configuration and remembers it", async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<DashboardPage />);
-
-      await user.click(screen.getByRole("button", { name: "Configure System & Storage" }));
-      await user.click(screen.getByRole("switch", { name: "Show CPU load" }));
-      await user.click(screen.getByRole("button", { name: "Save widgets" }));
-
-      const system = document.querySelector('[data-zone="zone2"]') as HTMLElement;
-      expect(within(system).queryByText("CPU load")).toBeNull();
-      expect(within(system).getByText("Memory")).toBeInTheDocument();
-      expect(JSON.parse(localStorage.getItem("vizenlink_dashboard_widgets_v1") || "{}").zone2.cpu).toBe(false);
+      expect(screen.getByText("Camera outage history")).toBeInTheDocument();
+      expect(screen.getByText("37%")).toBeInTheDocument();
+      expect(screen.getByText("50%")).toBeInTheDocument();
+      expect(screen.getByText("Video service")).toBeInTheDocument();
+      expect(screen.getByText("Up 1d 1h")).toBeInTheDocument();
     });
   });
 
@@ -224,6 +203,7 @@ describe("Dashboard Feature", () => {
     expect(within(banner).getByText("Not recording")).toBeInTheDocument();
     expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
     expect(screen.getByText(/0 days retention \(not saving\)/)).toBeInTheDocument();
+    expect((document.querySelector('[data-kpi="Recording"]') as HTMLElement)).toHaveTextContent("0 / 2");
     expect(screen.getAllByRole("link", { name: /Review storage settings/ })[0]).toHaveAttribute("href", "/settings/recording");
   });
 

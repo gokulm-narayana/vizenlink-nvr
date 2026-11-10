@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -304,6 +304,21 @@ describe("LivePage & VideoTile", () => {
   it("numbers tiles as channels, shows empty channels, and moves a camera via the right-click menu", async () => {
     const user = userEvent.setup();
     GridStorage.save({ dimension: 2, page: 0, slotAssignments: {} });
+    // Landscape desktop: fit-to-screen grid with empty channel slots.
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("landscape"),
+      media: q,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    onTestFinished(() => {
+      window.matchMedia = original;
+    });
     renderLivePage(
       [
         { id: 1, serial: "CAM1", name: "Gate", state: "online" },

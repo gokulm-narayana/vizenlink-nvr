@@ -94,6 +94,17 @@ export const LivePage: React.FC = () => {
   const user = useCurrentUser();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  // Fit-to-screen grid only on landscape screens; portrait tablets/phones get 16:9 tiles that scroll.
+  const [isLandscape, setIsLandscape] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(orientation: landscape)").matches : true
+  );
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia("(orientation: landscape)");
+    const onChange = () => setIsLandscape(mq.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
   const viewMode = useUiStore((s) => s.viewMode);
   const isManager = user?.role === "operator" || user?.role === "owner";
 
@@ -273,7 +284,7 @@ export const LivePage: React.FC = () => {
       </div>
     );
 
-  const fitToScreen = !isMobile;
+  const fitToScreen = !isMobile && isLandscape;
   const cols = expanded ? 1 : dimension;
   const cells: Array<(typeof cameras)[number] | null> = expanded
     ? [expanded]
@@ -440,7 +451,10 @@ export const LivePage: React.FC = () => {
       ) : (
         <div
           data-slot="live-grid"
-          className={cn("grid min-h-0 gap-1", fitToScreen ? "flex-1" : "grid-cols-1 sm:grid-cols-2")}
+          className={cn(
+            "grid min-h-0 gap-1",
+            fitToScreen ? "flex-1" : dimension === 1 || expanded ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"
+          )}
           // dynamic-style: N×N grid that fills the available height (old VMS multiview).
           style={fitToScreen ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
         >

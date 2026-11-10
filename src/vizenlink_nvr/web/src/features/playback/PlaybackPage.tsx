@@ -167,7 +167,7 @@ export function PlaybackPage() {
       />
 
       {/* Video Area */}
-      <div className="dark relative flex aspect-video w-full max-h-[60dvh] items-center justify-center overflow-hidden rounded-lg border border-border bg-video-bg">
+      <div className="dark relative flex aspect-video w-full max-h-[45dvh] [@media(min-height:900px)]:max-h-[60dvh] items-center justify-center overflow-hidden rounded-lg border border-border bg-video-bg">
         <video
           ref={videoRef}
           playsInline

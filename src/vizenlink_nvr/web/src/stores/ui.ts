@@ -44,10 +44,15 @@ function getInitialSidebarOpen(): boolean {
     if (val === "collapsed") {
       return false;
     }
+    if (val) return true;
   } catch {
     // fallback
   }
-  return true; // absent means expanded (D-07)
+  // No saved choice: full sidebar on wide screens, icon rail on tablets / small laptops (Phase 10).
+  if (typeof window !== "undefined" && typeof window.innerWidth === "number" && window.innerWidth > 0) {
+    return window.innerWidth >= 1024;
+  }
+  return true;
 }
 
 function getInitialViewMode(): ViewMode {

@@ -179,12 +179,13 @@ async def test_outage_tracker_lifecycle_and_api(app_fixture) -> None:
     assert res_alerts.status_code == 200
     # CAM-OUT-02 is offline 7 min, but viewer cannot see it, only allowed camera alerts
     v_alerts = res_alerts.json()
-    assert not any("CAM-OUT-02" in a["title"] for a in v_alerts)
+    assert not any(a["source"] == "camera:CAM-OUT-02" for a in v_alerts)
 
     # Owner can see CAM-OUT-02 offline alert
     client.cookies.set("session_id", owner_session)
     res_owner_alerts = await client.get("/api/v1/health/alerts")
     assert res_owner_alerts.status_code == 200
     owner_alerts = res_owner_alerts.json()
-    assert any("CAM-OUT-02" in a["title"] for a in owner_alerts)
+    # Titles use the camera name (or serial when unnamed); the serial is always in source.
+    assert any(a["source"] == "camera:CAM-OUT-02" and a["title"].endswith("is offline") for a in owner_alerts)
 

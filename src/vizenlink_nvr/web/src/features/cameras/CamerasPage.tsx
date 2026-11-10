@@ -1,3 +1,4 @@
+import { isCameraOffline } from "@/lib/recorder-status";
 import React, { useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router";
 import { Cctv, TriangleAlert } from "lucide-react";
@@ -135,10 +136,8 @@ export const CamerasPage: React.FC = () => {
     );
   }
 
-  const isOnline =
-    selectedCamera.is_online !== false &&
-    selectedCamera.status !== "offline" &&
-    selectedCamera.state !== "offline";
+  // Same rule as the Dashboard (registry state "active" = reachable).
+  const isOnline = !isCameraOffline(selectedCamera);
   const isRecording = recordingSerials.has(selectedCamera.serial);
 
   const isNotConnected =
@@ -271,7 +270,11 @@ export const CamerasPage: React.FC = () => {
           </div>
         ) : settingsError ? (
           <InlineError
-            message="Couldn't load camera settings. Check your connection and try again."
+            message={
+              isOnline
+                ? `Couldn't read settings from ${selectedCamera.name}. The camera didn't answer; check it is powered and on the network, then try again.`
+                : `${selectedCamera.name} is offline, so its settings can't be read right now. They load again when the camera reconnects.`
+            }
             actionLabel="Reload settings"
             onAction={() => void refetchSettings()}
           />

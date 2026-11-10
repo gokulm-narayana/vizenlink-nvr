@@ -1,3 +1,4 @@
+import { isCameraOffline } from "@/lib/recorder-status";
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Input } from "@/components/ui/input";
@@ -93,7 +94,7 @@ export const CameraList: React.FC<CameraListProps> = ({
           <div className="flex flex-col gap-1">
             {filtered.map((cam) => {
               const isSelected = cam.serial === selectedSerial;
-              const isOnline = cam.is_online !== false && cam.status !== "offline" && cam.state !== "offline";
+              const isOnline = !isCameraOffline(cam);
 
               return (
                 <Link

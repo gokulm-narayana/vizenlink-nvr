@@ -10,7 +10,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vizenlink_nvr.db.models import CameraOutage
+from vizenlink_nvr.db.models import Camera, CameraOutage
 from vizenlink_nvr.services.storage import StorageHealthState, get_storage_config
 from vizenlink_nvr.timeutil import utc_now
 
@@ -50,6 +50,12 @@ class AlertService:
         # 1. Prolonged camera offline alerts
         stmt = select(CameraOutage).where(CameraOutage.ended_at.is_(None))
         open_outages = (await session.execute(stmt)).scalars().all()
+        # People know cameras by name ("Lobby"), not serial; fall back to the serial if unnamed.
+        names = {
+            serial: name
+            for serial, name in (await session.execute(select(Camera.serial, Camera.name))).all()
+            if name
+        }
 
         for outage in open_outages:
             offline_duration = (current_time - outage.started_at).total_seconds()
@@ -59,9 +65,9 @@ class AlertService:
                     InAppAlert(
                         id=f"camera_offline_{outage.camera_serial}",
                         severity="warning",
-                        title=f"Camera {outage.camera_serial} Offline",
+                        title=f"{names.get(outage.camera_serial, outage.camera_serial)} is offline",
                         message=(
-                            f"Camera '{outage.camera_serial}' has been offline for "
+                            f"Camera '{names.get(outage.camera_serial, outage.camera_serial)}' has been offline for "
                             f"{mins} minutes (since {outage.started_at.strftime('%H:%M:%S')})."
                         ),
                         timestamp=outage.started_at,

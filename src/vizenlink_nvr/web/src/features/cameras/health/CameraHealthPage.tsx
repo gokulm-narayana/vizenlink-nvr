@@ -1,3 +1,4 @@
+import { isCameraOffline } from "@/lib/recorder-status";
 import React from "react";
 import { useParams } from "react-router";
 import { useCameras } from "@/lib/queries";
@@ -16,7 +17,8 @@ export function CameraHealthPage() {
   }
 
   const camera = rawCameras.find((c) => c.serial === serial);
-  const isOnline = Boolean(camera?.is_online ?? camera?.state === "online");
+  // The API reports state "active" for reachable cameras; it never sends "online".
+  const isOnline = camera ? !isCameraOffline(camera) : false;
 
   return (
     <div className="flex flex-col h-full w-full p-4 md:p-6 gap-6 max-w-5xl mx-auto">

@@ -77,6 +77,9 @@ void main() {
               'loitering_duration_min_seconds': 10,
               'loitering_duration_max_seconds': 3600,
               'bbox_overlay_capable': true,
+              'accelerometer_capable': true,
+              'supported_movement_sensitivities': ['low', 'medium', 'high'],
+              'movement_sensitivity_descriptions': ['big', 'clear', 'small'],
             }),
       })),
     );
@@ -85,6 +88,9 @@ void main() {
     final result = await client.getCapabilities();
 
     final caps = (result as CameraSuccess<CameraCapabilities>).value;
+    expect(caps.accelerometerCapable, true);
+    expect(caps.supportedMovementSensitivities, ['low', 'medium', 'high']);
+    expect(caps.movementSensitivityDescriptions, ['big', 'clear', 'small']);
     expect(caps.loiteringDurationMinSeconds, 10);
     expect(caps.loiteringDurationMaxSeconds, 3600);
     expect(caps.bboxOverlayCapable, true);

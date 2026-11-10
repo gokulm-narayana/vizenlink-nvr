@@ -515,7 +515,7 @@ paths:
                       output:
                         type: object
                         additionalProperties: { type: boolean }
-                        example: { VideoModeChanged: true, PrivacyModeChanged: true, PersonDetected: true }
+                        example: { VideoModeChanged: true, PrivacyModeChanged: true, PersonDetected: true, Loitering: true, Tamper: true }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "428": { $ref: '#/components/responses/PasswordChangeRequired' }
@@ -1188,6 +1188,38 @@ paths:
                               Whether this build has a real detection pipeline to draw a box for
                               (FR-CF-151/FR-NE-123, gated on AI_DETECTIONS). The current on/off
                               value is GET/POST /nuraeye/events/bbox-overlay, not here.
+                          kvs_e2e_encryption:
+                            type: boolean
+                            description: >
+                              Whether the camera encrypts every video and audio frame it sends to the cloud for WAN live view
+                              and clips (FR-NE-134, build option KVS_E2E_ENCRYPTION). true = a client decrypts with the camera's
+                              shared key (GET /nuraeye/preview-key); false = plain video. Also in the short WAN GetCapabilities reply.
+                          accelerometer_capable:
+                            type: boolean
+                            description: >
+                              Accelerometer physical-tamper detection is built in and enabled
+                              (FR-CF-160/FR-NE-132, build option accelerometer, -DACCELEROMETER).
+                              NOT whether the sensor currently works -- that is `sensor` in
+                              GET /nuraeye/movement-protection. Show the Movement protection
+                              settings only when true.
+                          supported_movement_sensitivities:
+                            type: array
+                            items: { type: string }
+                            description: >
+                              The sensitivity level names this camera offers (FR-NE-132), least to
+                              most sensitive; empty when the accelerometer is not built in. The
+                              camera owns the table -- build the control from this list and never
+                              hardcode the names. The current level is `sensitivity` in
+                              GET /nuraeye/movement-protection.
+                          movement_sensitivity_descriptions:
+                            type: array
+                            items: { type: string }
+                            description: >
+                              One plain-language sentence per level, in the same order as
+                              supported_movement_sensitivities (FR-NE-132): what size of movement
+                              alerts at that level. Show the selected level's sentence next to the
+                              choice; do not write this text in the client. Empty when the
+                              accelerometer is not built in.
                           night_vision_color_capable: { type: boolean }
                           night_vision_smart_capable: { type: boolean }
                           supported_event_types:
@@ -1776,6 +1808,137 @@ paths:
                             type: integer
                             description: UTC epoch seconds clock became uncertain; 0 if synced
                           firmware_version: { type: string }
+                          motion_sensor:
+                            type: string
+                            enum: [none, ok, fault]
+                            description: >
+                              Accelerometer state (FR-HLT-025): none = no motion sensor in this
+                              build, ok = responding, fault = not responding. Health information
+                              only -- a fault is not sent as an alert.
+                          kvs_e2e_dropped:
+                            type: integer
+                            description: >
+                              Frames dropped since boot because they could not be encrypted (FR-NE-134). 0 is normal and the
+                              value for a build without KVS_E2E_ENCRYPTION; the camera never sends such a frame in the clear.
+                          tls_identity:
+                            type: string
+                            enum: [device, shared, fixed]
+                            description: >
+                              Which TLS identity the camera's local TLS servers present (FR-CF-165): device = this
+                              camera's own key (unique to it), shared = the fixed key every camera has (the camera
+                              has no key of its own yet, or could not make one), fixed = a fixed fallback
+                              certificate (the camera could not even build a certificate at boot).
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "428": { $ref: '#/components/responses/PasswordChangeRequired' }
+
+  /nuraeye/movement-protection:
+    get:
+      operationId: getMovementProtection
+      summary: Accelerometer movement-protection state (FR-HLT-023/024/025, FR-NE-132)
+      description: >-
+        Added 2026-10-22 (stage accelerometer-tamper). 501 on a camera whose
+        accelerometer_capable is false. Open to every role. A camera that has never been
+        calibrated reports no physical-tamper alerts.
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      output:
+                        type: object
+                        properties:
+                          sensor:
+                            type: string
+                            enum: [ok, fault]
+                            description: >
+                              fault = no response at start-up or several consecutive failed
+                              reads (FR-HLT-025); the camera retries about once a minute.
+                          calibrated: { type: boolean }
+                          calibrated_at:
+                            type: integer
+                            description: UTC epoch seconds of the last calibration; 0 if unknown or not calibrated
+                          sensitivity:
+                            type: string
+                            description: One of supported_movement_sensitivities in GET /nuraeye/capabilities
+                          moved:
+                            type: boolean
+                            description: A calibrated camera currently outside its saved position
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "428": { $ref: '#/components/responses/PasswordChangeRequired' }
+        "501": { $ref: '#/components/responses/NotImplemented' }
+    post:
+      operationId: setMovementProtectionSensitivity
+      summary: Sets the movement-protection sensitivity (FR-HLT-024, FR-NE-132)
+      description: >-
+        Administrator-only (route not classified as Operator). Sets the tilt threshold (about
+        35 / 25 / 15 degrees for low / medium / high) and the knock threshold (about 0.6 / 0.3 / 0.15 g) -- initial values,
+        to be tuned on the board. There is no WAN command for this yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sensitivity]
+              properties:
+                sensitivity:
+                  type: string
+                  description: One of supported_movement_sensitivities in GET /nuraeye/capabilities; anything else is a 400
+      responses:
+        "200": { description: Applied, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessEnvelope' } } } }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "428": { $ref: '#/components/responses/PasswordChangeRequired' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "501": { $ref: '#/components/responses/NotImplemented' }
+
+  /nuraeye/movement-protection/calibrate:
+    post:
+      operationId: calibrateMovementProtection
+      summary: Saves the camera's current position as the correct one (FR-HLT-024, FR-NE-132)
+      description: >-
+        Blocks for about 1.3 s while it takes about 16 readings. Refused (409 camera_moving)
+        if the readings vary by more than about 60 mg on any axis; nothing is saved and an
+        earlier calibration is unchanged. Clears any "moved" state. Administrator-only.
+        LOCAL NETWORK ONLY: there is deliberately no WAN command, so a stolen account token
+        cannot re-accept a tampered camera's new position remotely.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: Position saved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      output:
+                        type: object
+                        properties:
+                          calibrated_at:
+                            type: integer
+                            description: UTC epoch seconds; 0 if the camera clock was not valid
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409":
+          description: error_msg is "camera_moving" (readings not steady) or "busy" (sensor bus in use)
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        "428": { $ref: '#/components/responses/PasswordChangeRequired' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "501": { $ref: '#/components/responses/NotImplemented' }
+        "503":
+          description: error_msg is "sensor_fault" -- the accelerometer is not responding
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }

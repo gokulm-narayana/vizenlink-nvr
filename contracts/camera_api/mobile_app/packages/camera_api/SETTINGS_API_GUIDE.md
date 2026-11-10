@@ -398,8 +398,8 @@ connectivity itself was reached through — recovery requires re-onboarding on L
 
 **Concept:** whether the camera generates a given event *type* at all, device-wide
 (`FR-CF-143`, `FR-NE-111`) — a per-camera on/off switch per event type
-(`"VideoModeChanged"`/`"PrivacyModeChanged"`/`"PersonDetected"` today), not a per-detection-rule
-setting.
+(`"VideoModeChanged"`/`"PrivacyModeChanged"`/`"PersonDetected"`/`"Loitering"`, plus `"Tamper"` — the camera-moved alert — on a camera with the accelerometer; the list a given camera offers is `CameraCapabilities.supportedEventTypes`), not a per-detection-rule
+setting. Switching `"Tamper"` off only stops the alert: the camera still tracks the movement and [Movement Protection](#movement-protection-accelerometer) still reports it.
 
 **Not to be confused with:** the per-analytics-rule `mobile_notifications`/`buzzer_activation`
 flags reachable via `NuraeyeClient.call('...alert-rules...')` (no dedicated `camera_api` client
@@ -537,6 +537,25 @@ into `EventSettingsScreen`'s `"PersonDetected"` card as an inline switch (reveal
 card's own toggle is on), following this screen's usual pending/applied/Apply pattern — not a
 separate screen.
 
+## Movement Protection (accelerometer)
+
+**Concept:** the camera's accelerometer notices the camera body being knocked or tilted away from where it was mounted
+(`FR-HLT-023/024/025`, `FR-NE-132`). After installing or re-mounting the camera the user *calibrates* — the camera saves its
+current position — and from then on reports a `Tamper` alert when it is moved, at the user's chosen sensitivity. A camera
+whose sensor stops responding reports a `HardwareFault` alert instead.
+
+**Not to be confused with:** the picture-based tamper check (the image changing) — that is a different, separate signal.
+Rotation about the vertical axis (turning the camera left/right on its bracket) is not detectable by this sensor.
+
+**LAN:** `MovementProtectionClient` — `getStatus()`, `setSensitivity(String)`, `calibrate()`.
+
+**WAN:** none. Calibration is local-network only on purpose (a stolen account token must not be able to "accept" a moved camera).
+
+**Notes:** the sensor's own state is `MovementProtectionStatus.sensorOk` here and `HealthStatus.motionSensor` in [Camera Health](#camera-health); gated on `CameraCapabilities.accelerometerCapable`; the sensitivity choices come from
+`CameraCapabilities.supportedMovementSensitivities` — the camera owns the list, never hardcode `low/medium/high` — and the hint shown next to the selected level comes from `CameraCapabilities.movementSensitivityDescriptions` (same order). Setting the
+sensitivity and calibrating need the Administrator role. A calibration refused because the readings were not steady
+(`MovementCalibrationFailure.cameraMoving`) leaves the earlier calibration unchanged.
+
 ## Audio — Mic Gain / Recording Toggle / Test Tone
 
 **Concept:** microphone input gain level, whether the mic is actively capturing at all (distinct
@@ -636,6 +655,12 @@ caller must `stop()` when done, not a static URL).
 `startCloudStreaming` returns a per-viewer lease token, which `getCloudStreamingStatus` also
 refreshes (the heartbeat — call it at least every 30s or the camera drops the lease). See
 [STREAMING_GUIDE.md](STREAMING_GUIDE.md) §3 for the full sequence.
+
+**End-to-end encrypted video (`FEAT-250`, 2026-11-03):** when `getCapabilities()` reports `kvsE2eEncryption: true`, the camera encrypts every frame before it enters KVS and only a phone holding the camera's shared key (fetched over the LAN with `GetPreviewKey`, the same key as the WAN preview snapshot) can watch. The app must cache that capability and key on the LAN (`WanAuth.kvsE2eEncryptionProvider`, `previewSharedKeyProvider`); `startCloudStreaming` then fails with `kvsE2eNoKeyReason` if the key is missing, and a live session stops with `e2eKeyProblem` if the key is wrong or stale. Recorded-clip playback and export use the same decryptor.
+
+**Where the key comes from (`FR-MOB-135`, 2026-11-04):** (1) on the camera's own network, `GetPreviewKey` as above; (2) for a family member who is never on that network, the **owner's phone** locks the key for the member's phone and leaves it in the cloud — `CameraKeySharing.wrapForMembers` (owner) and `fetchForThisPhone` (member), see API_REFERENCE.md "Handing a camera's key to a family member's phone". The member's phone then reads whether the camera encrypts from `WanCapabilitiesClient.getCapabilities().kvsE2eEncryption` over the internet; it never comes from the cloud. A member who has not received the key yet sees a "waiting for the owner's phone" message (`CameraKeyFetchStatus.notYet`), not the "no valid key" one.
+
+**Entering a shared camera's account password with no local network:** `WanCapabilitiesClient.checkCredentials(thingName, username:, password:)` asks the camera over the internet whether it accepts the account, so the member does not have to be on the camera's Wi-Fi (`WanCredentialStatus`: `accepted`, `rejected`, `blocked`, `unreachable`).
 
 **Never call `startCloudStreaming`/`startMediaSession` just to check reachability or enable a UI
 element** — direct user hardware report 2026-09-18: each KVS stream is a real, individually-
@@ -878,7 +903,9 @@ report it — `HealthSettingsScreen` simply omits the row in that case, same "fi
 malformed" convention every other optional health field already follows.
 
 **LAN:** `HealthClient.getHealth()`. **WAN:** `WanHealthClient.getHealth()` — same
-`HealthStatus` type.
+`HealthStatus` type. `HealthStatus.tlsIdentity` (`FR-CF-165`) says whether the camera presents its own TLS key (`device`) or a shared one (`shared`/`fixed`) — only `device` identifies this camera. `HealthStatus.motionSensor` (`MotionSensorState.none`/`ok`/`fault`) reports the accelerometer (`FR-HLT-025`): a fault is health information only — no alert is sent — so `HealthSettingsScreen` shows a "Motion sensor" row and Movement Protection shows a banner.
+
+**WAN capabilities (short):** `WanCapabilitiesClient.getCapabilities()` reads `wan_command_capable`, `wan_live_view_capable` and `kvs_e2e_encryption` over the internet; the app calls it for a shared camera whose video mode it has never read on the local network (`FR-MOB-135`).
 
 **No capability gate** — unlike Storage/Privacy Masks, `/nuraeye/health` is unconditional (not
 behind a build flag), so `HealthSettingsScreen`'s `Camera Health` entry on

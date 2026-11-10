@@ -7,11 +7,22 @@ import 'package:xml/xml.dart';
 /// One raw WS-Discovery `ProbeMatch` result — not yet verified as a genuine NuraEye device
 /// (that's [NuraeyeClient.areYouNuraeyeDevice]'s job, run separately per candidate).
 class WsDiscoveryCandidate {
-  const WsDiscoveryCandidate({required this.scheme, required this.host, required this.port});
+  const WsDiscoveryCandidate({required this.scheme, required this.host, required this.port, this.mac});
 
   final String scheme;
   final String host;
   final int port;
+
+  /// The device's MAC address as announced in its discovery reply (`onvif://www.onvif.org/MAC/<mac>` scope), normalised by [normalizeMac]; null when the
+  /// device does not announce one (an NVR, for instance). Lets the app recognise a camera it has no serial number for (`CameraAddressRecovery`).
+  final String? mac;
+
+  /// Lower-case hex digits only, so `00:E0:4C:0D:BB:59`, `00-e0-4c-0d-bb-59` and `00e04c0dbb59` compare equal. Null for an empty/absent value.
+  static String? normalizeMac(String? value) {
+    if (value == null) return null;
+    final hex = value.toLowerCase().replaceAll(RegExp(r'[^0-9a-f]'), '');
+    return hex.length == 12 ? hex : null;
+  }
 
   Uri get deviceServiceUri => Uri(scheme: scheme, host: host, port: port, path: '/onvif/device_service');
 }
@@ -161,10 +172,15 @@ class WsDiscoveryClient {
           );
       if (firstAddr.isEmpty) return null;
       final uri = Uri.parse(firstAddr);
+      final scopesEl = doc.findAllElements('Scopes', namespace: '*');
+      final macScope = scopesEl.isEmpty
+          ? null
+          : RegExp(r'onvif://www\.onvif\.org/MAC/(\S+)', caseSensitive: false).firstMatch(scopesEl.first.innerText)?.group(1);
       return WsDiscoveryCandidate(
         scheme: uri.scheme,
         host: uri.host,
         port: uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80),
+        mac: WsDiscoveryCandidate.normalizeMac(macScope),
       );
     } on Exception {
       return null;

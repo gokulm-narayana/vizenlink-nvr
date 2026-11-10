@@ -3,9 +3,9 @@
   "upstream": {
     "nuraeye-rt": {
       "repo": "onchiptech/nuraeye-rt",
-      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "commit": "6b78d89a5808072efe6e5cc4fe037a1f0db544c6",
       "dirty_files": [],
-      "reviewed_on": "2026-10-26"
+      "reviewed_on": "2026-11-10"
     }
   },
   "files": [
@@ -22,7 +22,7 @@
     {
       "origin": "nuraeye-rt",
       "path": "mobile_app/packages/camera_api/test/capabilities_client_test.dart",
-      "sha256": "bd3a1537bb10c13c6e16f3db677083e254272963d07b791addc31913cc3eac16",
+      "sha256": "d048107f227a52fe58449ac5183b7fa822e986d24f94821e02b5f1c5bef5eaa0",
       "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/test/capabilities_client_test.dart",
       "mirrored_by": [],
       "behaviors": [

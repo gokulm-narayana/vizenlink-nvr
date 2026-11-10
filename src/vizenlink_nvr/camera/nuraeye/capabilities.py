@@ -1,5 +1,5 @@
 # mirrors: mobile_app/packages/camera_api/lib/src/recording_mode_types.dart@871a4cd15860
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart@109c790ed5ae
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/capabilities_client.dart@4e5f1e9ce278
 """Typed models and parser for NuraEye camera capabilities."""
 
 from enum import StrEnum
@@ -46,7 +46,17 @@ class Capabilities(BaseModel):
     night_vision_smart_capable: bool = False
     supported_event_types: list[str] = Field(default_factory=list)
     supported_event_deterrence_options: dict[str, list[str]] = Field(default_factory=dict)
+    # FR-CF-160 / FR-NE-132 / FR-NE-134 (camera_api 2026-11-04): default False/empty on older firmware.
+    accelerometer_capable: bool = False
+    kvs_e2e_encryption: bool = False
+    supported_movement_sensitivities: list[str] = Field(default_factory=list)
+    movement_sensitivity_descriptions: list[str] = Field(default_factory=list)
     missing_required: list[str] = Field(default_factory=list)
+
+
+def _str_list(value: Any) -> list[str]:
+    """Mirror of Dart `is List ? whereType<String>().toList() : const []`."""
+    return [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
 
 
 def parse_capabilities(
@@ -170,5 +180,9 @@ def parse_capabilities(
         night_vision_smart_capable=night_vision_smart_capable,
         supported_event_types=supported_event_types,
         supported_event_deterrence_options=supported_event_deterrence_options,
+        accelerometer_capable=output.get("accelerometer_capable") is True,
+        kvs_e2e_encryption=output.get("kvs_e2e_encryption") is True,
+        supported_movement_sensitivities=_str_list(output.get("supported_movement_sensitivities")),
+        movement_sensitivity_descriptions=_str_list(output.get("movement_sensitivity_descriptions")),
         missing_required=missing_required,
     )

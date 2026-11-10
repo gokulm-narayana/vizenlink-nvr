@@ -3,22 +3,22 @@
   "upstream": {
     "nuraeye-rt": {
       "repo": "onchiptech/nuraeye-rt",
-      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "commit": "6b78d89a5808072efe6e5cc4fe037a1f0db544c6",
       "dirty_files": [],
-      "reviewed_on": "2026-10-26"
+      "reviewed_on": "2026-11-10"
     },
     "mobilecctvapp": {
       "repo": "onchiptech/mobilecctvapp",
-      "commit": "abe32d7d2f8b909fd3ad44193bf8ebefe1b13a20",
+      "commit": "2c5057ba56f4a30f4d7df9b7014e478fb525445d",
       "dirty_files": [],
-      "reviewed_on": "2026-10-26"
+      "reviewed_on": "2026-11-10"
     }
   },
   "files": [
     {
       "origin": "mobilecctvapp",
       "path": "lib/app_state/camera_address_recovery.dart",
-      "sha256": "e222376b0b38935349ffd25a8a011f75aef0da5bc8daebe88b3570cd7e261198",
+      "sha256": "ced0a896b076b6b19b466717e93b3996290ea12129f68fe70e6e4a7e5cce47a5",
       "vendored_as": "contracts/mobile_app/lib/app_state/camera_address_recovery.dart",
       "mirrored_by": [],
       "behaviors": []

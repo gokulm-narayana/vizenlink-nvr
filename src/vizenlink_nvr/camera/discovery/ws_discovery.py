@@ -1,4 +1,4 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart@cf09c72d1da6
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/discovery/ws_discovery_client.dart@9c4d91a9fccd
 """WS-Discovery client for discovering ONVIF and VizenLink cameras on the local network."""
 
 import asyncio
@@ -182,7 +182,10 @@ def parse_probe_matches(data: bytes, source_host: str) -> list[DiscoveredDevice]
 
         for s in scopes:
             if s.startswith(MAC_SCOPE_PREFIX):
-                mac_hint = normalize_mac(s[len(MAC_SCOPE_PREFIX) :])
+                raw_mac = s[len(MAC_SCOPE_PREFIX) :]
+                # camera_api normalizeMac: only a 12-hex-digit MAC counts; anything else is no hint.
+                if len(re.sub(r"[^0-9A-Fa-f]", "", raw_mac)) == 12:
+                    mac_hint = normalize_mac(raw_mac)
             elif s.startswith(NAME_SCOPE_PREFIX):
                 name_hint = urllib.parse.unquote(s[len(NAME_SCOPE_PREFIX) :])
             elif s.startswith(LOCATION_SCOPE_PREFIX):

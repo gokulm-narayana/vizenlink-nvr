@@ -27,6 +27,10 @@ class CameraCapabilities {
     required this.loiteringDurationMinSeconds,
     required this.loiteringDurationMaxSeconds,
     required this.bboxOverlayCapable,
+    this.accelerometerCapable = false,
+    this.kvsE2eEncryption = false,
+    this.supportedMovementSensitivities = const [],
+    this.movementSensitivityDescriptions = const [],
     this.multiUser = false,
     this.maxUsers = 1,
     this.userRoles = const [],
@@ -97,6 +101,22 @@ class CameraCapabilities {
   /// overlay for). Gate `BboxOverlayClient`-driven UI on this, same as every other capability
   /// flag here — default `false` on firmware too old to report it.
   final bool bboxOverlayCapable;
+
+  /// `FR-CF-160`/`FR-NE-132`: this camera has a working-by-design accelerometer (movement protection) — NOT whether it currently responds
+  /// (that is `MovementProtectionClient.getStatus().sensor`). Gate the Movement Protection settings tile on this. Default `false` on older firmware.
+  final bool accelerometerCapable;
+
+  /// `FR-NE-134` / `FEAT-250`: the camera encrypts every frame of its WAN (KVS) video on the camera; the app must decrypt (`KvsFrameDecryptor`) and
+  /// refuse plain frames. `false` on firmware built without the option or older than the feature (then the stream is plain video).
+  final bool kvsE2eEncryption;
+
+  /// `FR-NE-132`: the sensitivity levels this camera offers, least to most sensitive (e.g. `low`, `medium`, `high`) — the camera owns the list;
+  /// build the sensitivity control from it only, never from a hardcoded set. Empty on older firmware or when not [accelerometerCapable].
+  final List<String> supportedMovementSensitivities;
+
+  /// `FR-NE-132`: one plain-language sentence per level, in the same order as [supportedMovementSensitivities], saying what size of movement alerts
+  /// (a lower level needs a bigger movement). Show the selected level's sentence next to the choice; never write this text in the app. Empty on older firmware.
+  final List<String> movementSensitivityDescriptions;
 
   /// `FR-CF-156`: the camera holds several accounts with roles (false on firmware that predates them: one account, treat as Administrator).
   final bool multiUser;
@@ -202,6 +222,14 @@ class CapabilitiesClient {
                       ? value['loitering_duration_max_seconds'] as int
                       : 0,
               bboxOverlayCapable: value['bbox_overlay_capable'] == true,
+              accelerometerCapable: value['accelerometer_capable'] == true,
+              kvsE2eEncryption: value['kvs_e2e_encryption'] == true,
+              supportedMovementSensitivities: value['supported_movement_sensitivities'] is List
+                  ? (value['supported_movement_sensitivities'] as List).whereType<String>().toList()
+                  : const <String>[],
+              movementSensitivityDescriptions: value['movement_sensitivity_descriptions'] is List
+                  ? (value['movement_sensitivity_descriptions'] as List).whereType<String>().toList()
+                  : const <String>[],
               multiUser: value['multi_user'] == true,
               maxUsers: value['max_users'] is int ? value['max_users'] as int : 1,
               userRoles: value['user_roles'] is List ? (value['user_roles'] as List).whereType<String>().toList() : const [],

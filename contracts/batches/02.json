@@ -3,9 +3,9 @@
   "upstream": {
     "nuraeye-rt": {
       "repo": "onchiptech/nuraeye-rt",
-      "commit": "a413efbe0ed804dc9b0f0e4b00701ba065af537b",
+      "commit": "6b78d89a5808072efe6e5cc4fe037a1f0db544c6",
       "dirty_files": [],
-      "reviewed_on": "2026-10-26"
+      "reviewed_on": "2026-11-10"
     }
   },
   "files": [
@@ -83,7 +83,7 @@
     {
       "origin": "nuraeye-rt",
       "path": "mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
-      "sha256": "2e06d2ad3a40ca56d9754e5b2b5de49d738f1de8edfe01983ad1197fa50e830d",
+      "sha256": "b73c4e96a462d7aa7a36ccc984632cd64cf2a1c325a54e9a6f371cd1d02ad11e",
       "vendored_as": "contracts/camera_api/mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart",
       "mirrored_by": [
         "src/vizenlink_nvr/camera/nuraeye/client.py"

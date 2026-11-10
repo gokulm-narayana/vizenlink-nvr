@@ -1,4 +1,4 @@
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart@2e06d2ad3a40
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart@b73c4e96a462
 """Session cache and single-flight login coordination for NuraEye cameras."""
 
 import asyncio

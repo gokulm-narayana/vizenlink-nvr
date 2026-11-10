@@ -182,6 +182,43 @@ class CameraAddressRecovery {
     }
   }
 
+  /// Called when the user opens a camera (`FR-MOB-116`, amended 2026-11-02):
+  /// makes sure the stored address still belongs to this camera *before* the
+  /// screen opens, instead of letting the first request fail and the
+  /// background recovery catch up later. Returns the connection to use: the
+  /// same one when the stored address answers as this camera (remembered for
+  /// [verifiedFor]), when no search is possible (not on Wi-Fi/Ethernet, no
+  /// serial known, a `cloud-<serial>` placeholder) or when the camera is not
+  /// found anywhere; the updated one (new address, same password) when it was
+  /// found elsewhere by serial. Unlike the background path this ignores the
+  /// retry backoff, because the user just asked for this camera.
+  Future<CameraConnection> ensureReachable(CameraConnection camera) async {
+    final id = camera.thingName;
+    if (id == null || camera.host.startsWith('cloud-')) return camera;
+    final verified = _verifiedUntil[id];
+    if (verified != null && _now().isBefore(verified)) return camera;
+    if (!await _isOnLan()) return camera;
+    final serialThere = await _readSerial(
+      WsDiscoveryCandidate(
+        scheme: 'https',
+        host: camera.host,
+        port: camera.httpsPort,
+      ),
+    );
+    if (serialThere == id) {
+      _verifiedUntil[id] = _now().add(verifiedFor);
+      _failures.remove(id);
+      _notBefore.remove(id);
+      return camera;
+    }
+    debugPrint(
+      '[CameraAddressRecovery] ensureReachable $id: ${camera.host} answered '
+      '"$serialThere" -> searching the network',
+    );
+    final moved = await locate(camera);
+    return moved ?? camera;
+  }
+
   /// Reports that [camera]'s stored address did not answer (a failed LAN
   /// check on the Dashboard, for instance). Same handling as an unreachable
   /// event from the HTTP client; safe to call often (one search per camera at

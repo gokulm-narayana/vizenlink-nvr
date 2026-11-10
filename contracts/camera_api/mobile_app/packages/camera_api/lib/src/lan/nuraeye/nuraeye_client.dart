@@ -268,6 +268,12 @@ class NuraeyeClient {
         return _get('/nuraeye/events/bbox-overlay', timeout);
       case 'SetBboxOverlayEnabled':
         return _post('/nuraeye/events/bbox-overlay', {'enabled': p['enabled']}, timeout);
+      case 'GetMovementProtection':
+        return _get('/nuraeye/movement-protection', timeout);
+      case 'SetMovementProtectionSensitivity':
+        return _post('/nuraeye/movement-protection', {'sensitivity': p['sensitivity']}, timeout);
+      case 'CalibrateMovementProtection':
+        return _post('/nuraeye/movement-protection/calibrate', const <String, dynamic>{}, timeout);
       default:
         return Future.value(CameraFailure('Unknown NuraEye REST action: $action'));
     }

@@ -114,7 +114,7 @@ below requires a minimum role:
 |---|---|
 | `User` | read settings and status, watch live video (`live-stream-uri`, `cloud/streaming`, `preview-key`), list and download recordings, `GET /snapshot` |
 | `Operator` | + change runtime behaviour: privacy mode, video image settings, audio settings/recording/test sound, buzzer/deterrence and their durations, event preferences/response actions, loitering duration, bounding-box overlay, alert rules, two-way talk (`talk-uri`) |
-| `Administrator` | + Wi-Fi (`/nuraeye/wifi`, which also exposes the passphrase), local storage, recording mode/clip duration/delete, cloud parameters, debug logs, firmware upgrade, accounts |
+| `Administrator` | + Wi-Fi (`/nuraeye/wifi`, which also exposes the passphrase), local storage, recording mode/clip duration/delete, cloud parameters, debug logs, movement-protection sensitivity and calibrate (`/nuraeye/movement-protection`, not yet classified so Administrator-only by default), firmware upgrade, accounts |
 
 A route that is not classified is Administrator-only. When an account's role is below the route's, the answer is **HTTP `403`** — never `401`, which means "log in again":
 
@@ -231,6 +231,8 @@ with this message as "try again after the camera has rebooted (~45 s)".
  - [`/nuraeye/deterrence/durations/options`](#nuraeyedeterrencedurationsoptions)
 - **[Health](#health)**
  - [`GET /nuraeye/health`](#get-nuraeyehealth)
+ - [`/nuraeye/movement-protection`](#nuraeyemovement-protection)
+ - [`POST /nuraeye/movement-protection/calibrate`](#post-nuraeyemovement-protectioncalibrate)
 
 ## Identity & Discovery
 
@@ -431,6 +433,14 @@ Authorization: Bearer <token>
     "loitering_duration_min_seconds": 5,
     "loitering_duration_max_seconds": 300,
     "bbox_overlay_capable": true,
+    "kvs_e2e_encryption": true,
+    "accelerometer_capable": true,
+    "supported_movement_sensitivities": ["low", "medium", "high"],
+    "movement_sensitivity_descriptions": [
+      "Alerts only on a big movement: about 35 degrees of tilt or a hard hit. Best outdoors or in wind.",
+      "Alerts on a clear movement: about 25 degrees of tilt or a firm knock.",
+      "Alerts on a small movement: about 15 degrees of tilt or a light touch. May give false alerts in wind."
+    ],
     "night_vision_color_capable": true,
     "night_vision_smart_capable": false,
     "supported_event_types": ["VideoModeChanged", "PrivacyModeChanged", "PersonDetected"],
@@ -471,6 +481,23 @@ does not see the field should assume the firmware predates the check and not rel
 build has a real detection pipeline to draw a box for — gated on the `AI_DETECTIONS` build
 config, unlike the loitering bounds. The current on/off *value* is read/
 written via `GET`/`POST /nuraeye/events/bbox-overlay` below, not here.
+
+`kvs_e2e_encryption` is `true` when the firmware was built with the option (the default) and every video and audio frame it sends to the cloud for WAN live view and clips is
+encrypted on the camera, `false` otherwise. A client reads it once on the local network and caches it: `true` means decrypt every frame with the camera's shared key (`GET /nuraeye/preview-key`) and drop a plain one; `false` means play the stream as plain video.
+The short WAN `GetCapabilities` reply (command 29) carries it too, so a phone that was never on the camera's network can read it over the internet.
+
+`accelerometer_capable` is `true` when the accelerometer is built in and enabled
+(build option `accelerometer: enabled`, `-DACCELEROMETER`) and `false` otherwise (`7299`, from
+). It does **not** say whether the sensor is currently working — that is `sensor` in
+`GET /nuraeye/movement-protection`. A client shows the Movement protection settings only when this is `true`.
+
+`supported_movement_sensitivities` is the list of sensitivity level names this camera offers — the camera is the single source of
+truth, so a client builds its control from this list and never hardcodes the names. Empty (`[]`) when the accelerometer is not built in.
+The current level is `sensitivity` in `GET /nuraeye/movement-protection`; a value for `POST` must be one of these names.
+
+`movement_sensitivity_descriptions` is a one-sentence plain-language hint for each level, in the same order as `supported_movement_sensitivities`
+. A client shows the hint of the selected level next to the choice so the user can tell what each level means (a lower level
+needs a bigger movement before an alert is sent), and never writes this text itself. Empty (`[]`) when the accelerometer is not built in.
 
 `supported_event_types` is the list of alert event
 strings this specific firmware build actually generates — the same identifiers used as this
@@ -565,11 +592,13 @@ Authorization: Bearer <token>
   "output": {
     "VideoModeChanged": true,
     "PrivacyModeChanged": true,
-    "PersonDetected": true
+    "PersonDetected": true,
+    "Loitering": true,
+    "Tamper": true
   }
 }
 ```
-Keys are exactly the strings `GET /nuraeye/capabilities`'s `supported_event_types` reports —
+(`Tamper` appears only on a camera with the accelerometer.) Keys are exactly the strings `GET /nuraeye/capabilities`'s `supported_event_types` reports —
 only alert types this build actually generates appear here.
 
 **POST** — **partial update**, only the keys
@@ -1693,7 +1722,117 @@ Authorization: Bearer <token>
     "uptime_seconds": 86412,
     "clock_sync_state": "synced",
     "uncertain_since": 0,
-    "firmware_version": "20260826094500"
+    "firmware_version": "20260826094500",
+    "motion_sensor": "ok",
+    "tls_identity": "device",
+    "kvs_e2e_dropped": 0
   }
 }
 ```
+
+`tls_identity` says which TLS identity the camera's local TLS servers present: `"device"` = the camera's own key (unique to this camera), `"shared"` = the fixed key every camera has (no own key yet, or it
+could not be made), `"fixed"` = a fixed fallback certificate (not even a certificate could be built at boot). A client should treat anything but `"device"` as "this connection does not prove which camera it is".
+
+`kvs_e2e_dropped` counts the frames the camera dropped since boot because they could not be encrypted (a key problem or no buffer room). The camera never sends a frame it could not encrypt in the clear, so a value above 0 means
+viewers missed that many frames; `0` is normal. It reads `0` on a build without. Also in the WAN `GetDeviceHealth` reply.
+
+`motion_sensor` is `"none"` when the camera has no accelerometer, `"ok"` when it responds and `"fault"` when it does not. A sensor fault is health
+information only: the camera sends no alert for it, so a client shows it where it shows the other health values and in the Movement protection settings.
+
+### `/nuraeye/movement-protection`
+
+`024`/`025`, /`161`, added 2026-10-22. Accelerometer physical-tamper detection:
+`GET` reads the state, `POST` sets the sensitivity. Calibration is the separate `POST.../calibrate` below. On a
+camera whose `accelerometer_capable` is `false` both answer **`501`** `"Movement protection is not supported on this
+camera"`. `GET` is open to every role; `POST` is Administrator-only (the route is not classified as Operator). There is no WAN command for either yet.
+
+**GET**:
+
+**Request:**
+```
+GET /nuraeye/movement-protection HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "error_msg": "Success",
+  "output": {
+    "sensor": "ok",
+    "calibrated": true,
+    "calibrated_at": 1798329600,
+    "sensitivity": "medium",
+    "moved": false
+  }
+}
+```
+`sensor` is `"ok"` or `"fault"` (: the sensor did not answer at start-up or failed several reads in a row; the camera
+retries about once a minute and reports `"ok"` again when it answers). `calibrated` is `false` on a camera that has never been
+calibrated, and such a camera reports no physical-tamper alerts. `calibrated_at` is the UTC epoch of the last calibration, `0` if the
+clock was not valid then or the camera is not calibrated. `sensitivity` is one of the names in `supported_movement_sensitivities` (`"medium"` by default). `moved` is `true`
+while a calibrated camera is outside its saved position; it clears after recalibration or after about 10 s back within half the
+threshold.
+
+**POST**:
+
+**Request:**
+```
+POST /nuraeye/movement-protection HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "sensitivity": "high"
+}
+```
+
+**Response:** shared success body. Missing/malformed `sensitivity` → `400` `"Missing or malformed sensitivity"`; a value that is not one of
+`supported_movement_sensitivities` → `400` `"sensitivity is not one of supported_movement_sensitivities"`; save failure → `500` `"Failed to save configuration"`.
+Each level sets a tilt threshold and a knock threshold (initial values for the shipped levels: tilt 35° / 25° / 15° for Low / Medium / High and knock 0.6 g / 0.3 g / 0.15 g, to be tuned
+on the board; the numbers are not reported over the API, but the descriptions in `GET /nuraeye/capabilities` state them in words).
+
+**Alerts** this feature publishes on the MQTT alert topic (documented in
+[Camera-WAN-MQTT-API.md](camera-wan-mqtt-api.md) §8):
+
+**Example alert (physical tamper):**
+```json
+{
+  "event": "Tamper",
+  "timestamp": 1798329600,
+  "cause": ["tilt", "knock"]
+}
+```
+
+A sensor fault sends no alert (removed 2026-10-23): it is reported as `motion_sensor` in `GET /nuraeye/health` and in the movement-protection state.
+
+### `POST /nuraeye/movement-protection/calibrate`
+
+Measures the camera's position (about 16 readings over roughly 1.3 s, so the call
+**blocks that long**), refuses if the readings are not steady, otherwise saves the averaged position and marks the camera calibrated.
+A successful calibration also clears any "moved" state. **Local network only: there is deliberately no WAN command for it**, so a
+stolen account token cannot re-accept a tampered camera's new position remotely. Administrator-only. Handler.
+
+**Request:**
+```
+POST /nuraeye/movement-protection/calibrate HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{}
+```
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "error_msg": "Success",
+  "output": {
+    "calibrated_at": 1798329600
+  }
+}
+```
+Failures use the error shape above: `409` `"camera_moving"` (the readings varied by more than about 60 mg on an axis; nothing is saved
+and any earlier calibration is unchanged), `409` `"busy"` (the sensor bus is in use), `503` `"sensor_fault"`, `501` (not supported),
+`500` `"Failed to save configuration"` (position measured but not persisted).

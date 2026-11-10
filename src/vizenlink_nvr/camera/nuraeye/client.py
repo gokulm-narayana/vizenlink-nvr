@@ -1,5 +1,5 @@
 # mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/rest_identity_discovery_client.dart@49ec7db1d149
-# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart@2e06d2ad3a40
+# mirrors: mobile_app/packages/camera_api/lib/src/lan/nuraeye/nuraeye_client.dart@b73c4e96a462
 """NuraEye REST client for identity probe, device discovery, session login, and capabilities."""
 
 import asyncio
@@ -271,6 +271,28 @@ class NuraeyeClient:
         if isinstance(parsed, Failure):
             return parsed
         return Success(parsed)
+
+    # --- Movement protection (camera_api 2026-11-04, FR-NE-132 / FEAT-091). LAN only. ---
+    # Raw dispatch parity with NuraeyeClient.call('GetMovementProtection' | 'SetMovementProtectionSensitivity'
+    # | 'CalibrateMovementProtection'). Gate on Capabilities.accelerometer_capable.
+
+    async def get_movement_protection(self, timeout: float = 8.0) -> CameraResult[Any]:
+        """GET /nuraeye/movement-protection (status: sensor, calibrated, sensitivity, moved)."""
+        return await self._authed("GET", "/nuraeye/movement-protection", timeout=timeout)
+
+    async def set_movement_protection_sensitivity(
+        self, sensitivity: str, timeout: float = 8.0
+    ) -> CameraResult[Any]:
+        """POST /nuraeye/movement-protection {sensitivity}; one of supported_movement_sensitivities."""
+        return await self._authed(
+            "POST", "/nuraeye/movement-protection", payload={"sensitivity": sensitivity}, timeout=timeout
+        )
+
+    async def calibrate_movement_protection(self, timeout: float = 15.0) -> CameraResult[Any]:
+        """POST /nuraeye/movement-protection/calibrate (camera blocks ~1.5 s)."""
+        return await self._authed(
+            "POST", "/nuraeye/movement-protection/calibrate", payload={}, timeout=timeout
+        )
 
     async def get_live_stream_uri(
         self,

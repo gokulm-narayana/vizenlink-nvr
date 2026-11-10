@@ -61,6 +61,7 @@ lib/
         nuraeye_client.dart         — core dispatcher (hand-written, everything else calls through it)
         audio_volume_client.dart
         bbox_overlay_client.dart
+        movement_protection_client.dart
         event_preferences_client.dart
         event_response_actions_client.dart
         capabilities_client.dart
@@ -84,6 +85,14 @@ lib/
         rest_result.dart            — GENERATED (RestResult/RestSuccess/RestFailure/RestTimeout)
       discovery/
         ws_discovery_client.dart    — WS-Discovery UDP client (find cameras on the LAN)
+    cloud/                         — the account's cloud camera list and everything on the registry API (HTTPS, signed-in account)
+      camera_cloud_registry.dart   — CameraCloudRegistry: the low-level calls (list/put/delete, shares, family, push devices, phone keys and wrapped camera keys)
+      account_camera_list.dart     — AccountCameraList: sealed camera list, merge and sync rules
+      camera_registry_sync.dart    — the sync engine behind it
+      camera_share.dart            — CameraShare and the owner's share calls
+      family.dart                  — FamilyClient and the family types
+      share_cleanup.dart           — CleanupTask: camera accounts that must go when a share ends
+      camera_key_sharing.dart      — CameraKeySharing: hands a camera's key from the owner's phone to a member's phone (FR-MOB-135)
     wan/                           — AWS IoT MQTT command relay + KVS playback
       wan_auth.dart                — app-supplied auth/config hooks (set once at startup)
       iot_command_client.dart      — low-level command-relay transport
@@ -92,6 +101,11 @@ lib/
         mkv_demuxer.dart            — streaming EBML/MKV parser (KVS GetMedia wire format)
         kvs_get_media_client.dart   — signed POST /getMedia, returns the raw MKV byte stream
         kvs_media_live_view_session.dart — orchestrates the above + a local HTTP loopback server
+        kvs_frame_decryptor.dart    — opens the camera's end-to-end encrypted frames (FEAT-250)
+        kvs_frame_decryptor_factory.dart — decides plain / decrypt / no key for a camera
+      keyshare/
+        camera_key_share.dart       — PhoneKeyPair, CameraKeyShare: lock a camera key for one phone, open it (FR-MOB-135)
+      wan_capabilities_client.dart — the short WAN GetCapabilities and the over-the-internet camera-account check
       wan_live_view_client.dart    — WanLiveViewClient interface
       aws_wan_live_view_client.dart — concrete WanLiveViewClient implementation
       wan_audio_volume_client.dart
@@ -144,6 +158,7 @@ network as the camera.
     - [NuraeyeClient](#nuraeyeclient)
     - [AudioVolumeClient](#audiovolumeclient)
     - [BboxOverlayClient](#bboxoverlayclient)
+    - [MovementProtectionClient](#movementprotectionclient)
     - [EventPreferencesClient](#eventpreferencesclient)
     - [EventResponseActionsClient](#eventresponseactionsclient)
     - [DeterrenceClient](#deterrenceclient)
@@ -170,6 +185,7 @@ network as the camera.
   - [IotCommandClient](#iotcommandclient)
   - [KvsMediaViewerCredentialsClient](#kvsmediaviewercredentialsclient)
   - [KvsGetMediaClient](#kvsgetmediaclient)
+  - [KvsFrameDecryptor / KvsFrameDecryptorFactory](#kvsframedecryptor--kvsframedecryptorfactory-end-to-end-encrypted-wan-video-feat-250)
   - [KvsMediaStreamSession](#kvsmediastreamsession)
   - [WanLiveViewClient / AwsWanLiveViewClient](#wanliveviewclient--awswanliveviewclient)
   - [WanAudioVolumeClient](#wanaudiovolumeclient)
@@ -190,11 +206,14 @@ network as the camera.
   - [WanLocalStorageClient](#wanlocalstorageclient)
   - [WanRecordingModeClient](#wanrecordingmodeclient)
   - [WanHealthClient](#wanhealthclient)
+  - [WanCapabilitiesClient](#wancapabilitiesclient)
   - [WanRecordingsClient](#wanrecordingsclient)
   - [WanClipPlaybackClient](#wanclipplaybackclient)
   - [WanPrivacyModeClient](#wanprivacymodeclient)
   - [WanVideoEncoderClient](#wanvideoencoderclient)
   - [WanPreviewSnapshotClient](#wanpreviewsnapshotclient)
+- [Cloud camera list](#cloud-camera-list-accountcameralist-cameraregistrysync-cameracloudregistry--fr-ci-007--fr-mob-121)
+- [Handing a camera's key to a family member's phone](#handing-a-cameras-key-to-a-family-members-phone-camerakeyshare-camerakeysharing--fr-ci-013--fr-mob-135)
 - [Shared types](#shared-types)
 - [Getting started](#getting-started)
 
@@ -724,7 +743,10 @@ or with no local-storage capability at all), `loiteringDurationMinSeconds`/`MaxS
 `LoiteringDurationClient.setLoiteringDuration`; `0`/`0` on firmware too old to report them), and
 `bboxOverlayCapable` (`FR-CF-151`, added 2026-08-26 — whether this build supports the
 bounding-box overlay toggle at all, `false` on a build without `AI_DETECTIONS`; gate
-`BboxOverlayClient`-driven UI on this). **Always a live network call as of 2026-08-28** — no
+`BboxOverlayClient`-driven UI on this), `accelerometerCapable` (`FR-CF-160`, 2026-10-22 — this camera
+has the accelerometer; gate `MovementProtectionClient`-driven UI on it) and
+`supportedMovementSensitivities` (`FR-NE-132` — the sensitivity levels the camera offers, least to most
+sensitive; build the control from this list only) and `movementSensitivityDescriptions` (one sentence per level, same order, shown next to the choice). **Always a live network call as of 2026-08-28** — no
 `forceRefresh` param any more, since there's nothing left in this package to bypass; the app-level
 `NetworkAnswerCache` is what a caller should check first for a normal load, and simply not check
 (call this directly) for an explicit re-probe — see `storage_settings_screen.dart`'s
@@ -807,6 +829,25 @@ BboxOverlayClient(NuraeyeClient nuraeye)
 carrying `bbox` in their event payload regardless of this toggle; it only controls whether a
 box is visibly burned into the video everyone watches/records. Gate the toggle on
 `CapabilitiesClient`'s `bboxOverlayCapable`, not a hardcoded assumption.
+
+#### MovementProtectionClient
+
+`lan/nuraeye/movement_protection_client.dart` — `GetMovementProtection`/`SetMovementProtectionSensitivity`/
+`CalibrateMovementProtection` (`FR-HLT-023/024/025`, `FR-NE-132`, `FEAT-091`). **LAN only** — calibration is deliberately
+not reachable over the internet; there is no WAN counterpart yet.
+
+```dart
+MovementProtectionClient(NuraeyeClient nuraeye)
+```
+
+| Method | Params | Returns | Description |
+|---|---|---|---|
+| `getStatus` | `{Duration timeout}` | `CameraResult<MovementProtectionStatus>` | `sensorOk`, `calibrated`, `calibratedAt` (null if unknown), `sensitivity`, `moved`. |
+| `setSensitivity` | `String sensitivity, {Duration timeout}` | `CameraResult<void>` | One of `CameraCapabilities.supportedMovementSensitivities`; Administrator only. |
+| `calibrate` | `{Duration timeout = 15 s}` | `CameraResult<MovementCalibrationResult>` | Saves the current position (camera blocks ~1.5 s). `MovementCalibrated(calibratedAt)` or `MovementCalibrationRefused(failure, reason)` for `cameraMoving` (nothing saved), `busy`, `sensorFault`, `notCapable`; anything else is a `CameraFailure`. Administrator only. |
+
+Gate on `CapabilitiesClient`'s `accelerometerCapable`. `moved` is only ever true for a calibrated camera; a camera that has
+never been calibrated reports nothing. `sensorOk == false` means the sensor stopped responding (physical-tamper protection is off).
 
 #### DeterrenceClient
 
@@ -983,7 +1024,7 @@ HealthClient(NuraeyeClient nuraeye)
 
 | Method | Params | Returns | Description |
 |---|---|---|---|
-| `getHealth` | `{Duration timeout}` | `CameraResult<HealthStatus>` | `rebootCount`, `lastRebootUtc` (UTC epoch seconds; `0` = not yet corrected this boot), `rebootReason` (why the current boot happened, e.g. `"Firmware Upgrade"`/`"Factory Reset"`/`"HTTP Server Failure"`/`"Unknown / Crash"` — `BUG-048`, free text not a closed enum, empty on older firmware), `uptimeSeconds`, `clockSyncState` (`ClockSyncState.synced`/`.uncertain`), `uncertainSince` (UTC epoch seconds; `0` if synced), `firmwareVersion` (duplicates `OnvifDeviceClient.getDeviceInformation()`'s value). A reboot-loop flag and AI-model version are `FR-HLT-009`'s remaining, unimplemented scope; last-recording-segment timestamp isn't implemented either. |
+| `getHealth` | `{Duration timeout}` | `CameraResult<HealthStatus>` | `rebootCount`, `lastRebootUtc` (UTC epoch seconds; `0` = not yet corrected this boot), `rebootReason` (why the current boot happened, e.g. `"Firmware Upgrade"`/`"Factory Reset"`/`"HTTP Server Failure"`/`"Unknown / Crash"` — `BUG-048`, free text not a closed enum, empty on older firmware), `uptimeSeconds`, `clockSyncState` (`ClockSyncState.synced`/`.uncertain`), `uncertainSince` (UTC epoch seconds; `0` if synced), `firmwareVersion` (duplicates `OnvifDeviceClient.getDeviceInformation()`'s value), `motionSensor` (`MotionSensorState.none`/`.ok`/`.fault`, `FR-HLT-025` — the accelerometer; `none` on a camera without it or on older firmware; a fault is health information only, the camera sends no alert for it), `tlsIdentity` (`TlsIdentityLevel.device`/`.shared`/`.fixed`/`.unknown`, `FR-CF-165` — which TLS identity the camera presents: its own key, the key every camera shares, or a fixed fallback certificate; `unknown` on older firmware). A reboot-loop flag and AI-model version are `FR-HLT-009`'s remaining, unimplemented scope; last-recording-segment timestamp isn't implemented either. |
 
 See `wan/wan_health_client.dart`'s `WanHealthClient` for the WAN counterpart.
 
@@ -1206,6 +1247,7 @@ in `main.dart`).
 | `awsIotEndpoint` | `String?` | AWS IoT Core data-plane endpoint (no scheme, e.g. `xxxxx-ats.iot.ap-south-1.amazonaws.com`) — fleet-wide, same value the camera firmware connects to. Backs `IotCommandClient`. |
 | `awsRegion` | `String?` | AWS region the Identity Pool / IoT endpoint live in (e.g. `ap-south-1`) — needed for SigV4 signing. Backs `IotCommandClient`. |
 | `previewSharedKeyProvider` | `Future<Uint8List?> Function(String thingName)?` | Returns this device's cached copy of `thingName`'s camera-generated shared AES-256 preview key, or `null` if never fetched. Backs `WanPreviewSnapshotClient`. Redesigned 2026-08-21 from a single device-wide RSA private key to a per-camera shared symmetric key — see `PreviewKeyStore`'s doc. |
+| `kvsE2eEncryptionProvider` | `Future<bool?> Function(String thingName)?` | Whether `thingName`'s camera encrypts its WAN video end to end (`kvs_e2e_encryption` in its capabilities, `FR-NE-134`), as the app cached it on the LAN. `true`: every frame must decrypt with `previewSharedKeyProvider`'s key and plain frames are refused; `false`/`null`: plain video. Read by `KvsFrameDecryptorFactory.forCamera` (`FEAT-250`, `FR-MOB-134`). |
 | `onPreviewKeyNeedsRegistration` | `void Function(String thingName)?` | Called when the camera reports its previously-generated preview key is gone (e.g. after a factory reset) — the app should flag that camera for automatic re-fetch next time it's reachable on LAN. |
 
 `AccountAwsCredentials` (`wan/wan_auth.dart`) is a minimal `{accessKeyId, secretKey, sessionToken}`
@@ -1286,9 +1328,23 @@ KvsGetMediaClient({http.Client? client})
 | `getMedia` | `{required KvsMediaViewerCredentials credentials, required String streamName}` | `Future<Stream<List<int>>>` | Opens a `GetMedia` connection starting from the live edge (`StartSelectorType: "NOW"` — the only selector this class supports; KVS's other selectors, for archived-fragment playback, aren't used here). Throws on a non-200 response. The returned stream stays open and keeps delivering bytes for as long as the camera keeps streaming — there is no natural end-of-stream for a live session; the caller must cancel its subscription (or call `close()`) to end the connection. |
 | `close` | — | `void` | Closes the underlying HTTP client. |
 
+### KvsFrameDecryptor / KvsFrameDecryptorFactory (end-to-end encrypted WAN video, `FEAT-250`)
+
+`wan/kvs_media/kvs_frame_decryptor.dart`, `kvs_frame_decryptor_factory.dart` — pure Dart (`pointycastle`). When the camera encrypts its WAN video (`CameraCapabilities.kvsE2eEncryption`, `FR-NE-134`), every MKV block's data is `version (1) | session id (8) | counter (4) | ciphertext | tag (16)`; key = HKDF-SHA-256(shared preview key, salt = session id, info `vizenlink-kvs-e2e-v1`); AES-256-GCM; the authenticated data is the 13 header bytes + track type + key-frame flag (video only) + the container timestamp (`MkvSample.containerTimestampMs`, no player-side offset). Layout and camera side: `design/stages/kvs-e2e-encryption/DESIGN.md`.
+
+| Member | Meaning |
+|---|---|
+| `KvsFrameDecryptor(Uint8List sharedKey)` | One per stream. `decrypt(frame, {isVideo, isKeyFrame, timestampMs})` returns the plain frame or throws `KvsFrameDecryptException(failure)` (`malformed`, `unsupportedVersion`, `authFailed`, `replay`). Frames may arrive slightly out of counter order; only an already-seen counter is refused. Speed (pure Dart, AES-GCM): about 1.7 MB/s AOT on a desktop CPU; measure on the phone before relying on it for the high stream. |
+| `KvsFrameDecryptorFactory.forCamera(thingName)` | Reads `WanAuth.kvsE2eEncryptionProvider` and `previewSharedKeyProvider` and returns a `KvsFrameDecryptorChoice`: `.decryptor` (encrypted, key present), `.noKey` (encrypted, no key: do not start the stream; the app is told to re-fetch the key on the LAN via `onPreviewKeyNeedsRegistration`), or plain (`decryptor == null`, `noKey == false`). |
+| `kvsE2eNoKeyReason` | The message to show when there is no valid key. |
+| `KvsFrameDecryptFailure` | Why a frame was refused: `malformed`, `unsupportedVersion`, `authFailed`, `replay` (a counter already seen; counters may arrive out of order inside a window of 1024). |
+| `KvsMediaStreamSessionKeyLimit.frames` | 10: frames in a row that may fail to decrypt before the session stops with `e2eKeyProblem` (live and clip export alike). |
+
+`AwsWanLiveViewClient.startCloudStreaming` returns `CameraFailure(kvsE2eNoKeyReason)` without contacting the camera when it needs a key the phone does not have; `startMediaSession` and `WanClipExportSource.fetch` use the decryptor automatically.
+
 ### KvsMediaStreamSession
 
-`wan/kvs_media/kvs_media_stream_session.dart` — one WAN playback session: fetches
+`wan/kvs_media/kvs_media_stream_session.dart` — one WAN playback session (new 2026-11-03: optional `frameDecryptor` for end-to-end encrypted streams — every frame must decrypt, a frame that does not is dropped; after `e2eKeyProblemThreshold` (10) failures in a row, or an encrypted video frame on a session started as plain, the session stops, `e2eKeyProblem` becomes true and `onE2eKeyProblem` is called — see [KvsFrameDecryptor](#kvsframedecryptor--kvsframedecryptorfactory-end-to-end-encrypted-wan-video-feat-250)): fetches
 `KvsMediaViewerCredentials`, opens a direct signed `POST /getMedia` connection to AWS KVS via
 [KvsGetMediaClient](#kvsgetmediaclient), demuxes the raw MKV stream (`mkv_demuxer.dart`'s `MkvDemuxer`)
 and remuxes it into fragmented MP4, exposed as an `Fmp4Source` (`chunks` + `initSegment`). **Data only —
@@ -1785,6 +1841,19 @@ WanHealthClient(String thingName, {IotCommandClient? iotCommandClient})
 |---|---|---|---|
 | `getHealth` | `{Duration timeout}` | `CameraResult<HealthStatus>` | Same fields as the LAN client. |
 
+### WanCapabilitiesClient
+
+`wan/wan_capabilities_client.dart` — the short WAN `GetCapabilities` (command `29`, `FR-NE-092`). The long LAN `CapabilitiesClient` stays LAN-only; this one lets a phone that was never on the camera's local network (a family member) learn what it needs before its first stream. Read-only.
+
+```dart
+WanCapabilitiesClient(String thingName, {IotCommandClient? iotCommandClient})
+```
+
+| Method | Params | Returns | Description |
+|---|---|---|---|
+| `checkCredentials` (static) | `thingName, {username, password, IotTransport? transport}` | `Future<WanCredentialResult>` | Asks the camera over the internet whether it accepts this camera account and password (a family member who is never on the camera's network), signed with the given account and no stored one. `WanCredentialStatus`: `accepted` (also for 403/428: the account is right), `rejected` (401), `blocked` (429, `WanCredentialResult.retryAfter`), `unreachable` (no answer, wrong camera, firmware update). A wrong password counts toward the camera's sign-in block. |
+| `getCapabilities` | `{Duration timeout, bool retryOnTimeout}` | `CameraResult<WanCapabilities>` | `WanCapabilities {bool? wanCommandCapable, bool? wanLiveViewCapable, bool? kvsE2eEncryption}`; a field is `null` on firmware too old to send it. `kvsE2eEncryption` (`FR-NE-134`) says whether to decrypt the WAN video (`true`) or play it as plain video (`false`). |
+
 ### WanPrivacyModeClient
 
 `wan/wan_privacy_mode_client.dart` — WAN counterpart to `PrivacyModeClient`. Same `PrivacyMode`
@@ -1916,8 +1985,8 @@ and a WAN client pair share them:
   (value-equality: `mode`, `schedule`, `eventTriggerSourceConfigured`). Shared by
   `RecordingModeClient`/`WanRecordingModeClient`.
 - **`health_types.dart`** — `HealthStatus` (`rebootCount`, `lastRebootUtc`, `rebootReason`,
-  `uptimeSeconds`, `clockSyncState`, `uncertainSince`, `firmwareVersion`) and
-  `enum ClockSyncState { synced, uncertain }`. Shared by `HealthClient`/`WanHealthClient`.
+  `uptimeSeconds`, `clockSyncState`, `uncertainSince`, `firmwareVersion`, `motionSensor`, `tlsIdentity`) and
+  `enum ClockSyncState { synced, uncertain }`, `enum MotionSensorState { none, ok, fault }`, `enum TlsIdentityLevel { unknown, device, shared, fixed }`. Shared by `HealthClient`/`WanHealthClient`.
 - **`recordings_types.dart`** — `RecordingClip` (`id`, `start`, `end`, `sizeBytes`, `active`,
   `trigger`) and `RecordingsList` (`storageAvailable`, `cardPresent`, `truncated`, `clips`). LAN
   only for now — `RecordingsClient` is the sole client using these, no WAN counterpart exists
@@ -2097,6 +2166,7 @@ final list = await cameras.cameras();              // always served from the loc
 - **Offline:** changes other than removal are queued (one pending change per camera) and sent by `flush()` / `sync()`. A queued claim lost to another account is dropped and
   reported in `RegistrySyncReport.droppedAsOwnedByOthers`. A camera the cloud no longer lists is removed locally and reported in `removed` — the caller then
   deletes its stored passwords (`CameraCredentials` / `CameraSecureStorage.removeWithPrefix`).
+- **Share access cleanup** (`FR-CI-012`, [share-access-cleanup/DESIGN.md](../../../design/stages/share-access-cleanup/DESIGN.md)): `CameraCloudRegistry.cleanups({serial})` → `RegistryResult<List<CleanupTask>>`, `finishCleanup(shareId, {waive})`, and `delete(serial, {unreachable})`, which answers `RegistryFailure(409, 'cleanup_pending')` (with `data['pending']`) while people may still hold a camera account on the camera; `AccountCameraList.remove(connection, {unreachable})` maps that to `RemoveOutcome.cleanupPending`, and `AccountCameraList.cleanups/finishCleanup` wrap the calls. `CleanupTask` (`shareId`, `serial`, `cameraUser`, `memberName`, `reason`, `status`, `isPending`) is exported from `camera_api.dart`. The deleting of the camera account on the camera itself is the app's job (`lib/core/share_access_cleanup.dart`): the cloud holds no camera credential.
 - **Low level:** `CameraCloudRegistry.list/put/delete/putProfile/deleteAccount` (and the push calls below) return `RegistryResult` (`RegistryOk`, `RegistryAlreadyRegistered`,
   `RegistryVersionConflict`, `RegistryNotSignedIn`, `RegistryOffline`, `RegistryFailure`).
 
@@ -2151,6 +2221,43 @@ There is no accept call: a shared camera arrives with the normal `refresh()`/`sy
 
 Rules the library enforces: a shared camera never uploads name/location/role (only the member's own sealed details); `remove` on a shared camera is a *leave* (the owner's claim and item are untouched, the owner is
 pushed); a non-`admin` login never claims or backs up a camera; a camera the owner removed or revoked disappears at the next sync (`RegistrySyncReport.removed`).
+
+## Handing a camera's key to a family member's phone (`CameraKeyShare`, `CameraKeySharing`) — FR-CI-013 / FR-MOB-135
+
+A family member who watches a shared camera only over the internet has never been on its network, so they cannot fetch the camera's shared key (`GetPreviewKey`) themselves. The **owner's phone** locks the key
+for the member's phone and leaves it in the cloud; the **member's phone** downloads it and opens it. The cloud holds only public keys and locked copies and cannot open one. Contract:
+[Cloud-Camera-Registry-API.md](../../../design/Cloud-Camera-Registry-API.md); design: [e2e-key-sharing/DESIGN.md](../../../design/stages/e2e-key-sharing/DESIGN.md). Pure Dart (`pointycastle`).
+
+### CameraKeyShare / PhoneKeyPair
+
+`wan/keyshare/camera_key_share.dart` — the lock. P-256 key pair per phone (private 32 bytes, public 65 bytes uncompressed); ECDH, HKDF-SHA-256 (salt = one-time public key | member public key, info `vizenlink kvs key share v1`),
+AES-256-GCM with the camera serial and the phone id as authenticated data. A locked copy is 126 bytes: `0x01 | one-time public key (65) | nonce (12) | ciphertext (32) | tag (16)`. Reference: `testing_utilities/keyshare_crypto_test.py`.
+
+| Member | Meaning |
+|---|---|
+| `PhoneKeyPair.generate()` | A new key pair; `privateKey`, `publicKey`, `fingerprint` (`1A2B 3C4D 5E6F 7081`: first 8 bytes of SHA-256 of the public key, for the owner and member to compare by phone). The private key never leaves the phone. |
+| `CameraKeyShare.wrap({cameraKey, memberPublicKey, serial, phoneId})` | Owner side. Returns the 126-byte copy. Throws `KeyShareException` for a key of the wrong size or a public key that is not on the curve. (`debugEphemeralPrivate`/`debugNonce` exist only for known-answer tests.) |
+| `CameraKeyShare.unwrap({wrapped, privateKey, publicKey, serial, phoneId})` | Member side. Returns the 32-byte camera key, or throws `KeyShareException` for anything that is not a valid copy made for this phone and camera (wrong size/version, wrong phone, wrong camera, tampered). |
+| `CameraKeyShare.keyId(cameraKey)` | An 8-byte label of the key (not a secret) so the owner's app can tell which key a stored copy is for. |
+| `CameraKeyShare.fingerprint(publicKey)` | The same string as `PhoneKeyPair.fingerprint`. |
+
+### CameraKeySharing
+
+`cloud/camera_key_sharing.dart` — the flow on top of `CameraCloudRegistry`. Constructor: `CameraKeySharing({required CameraCloudRegistry registry, required PhoneKeyStorage storage})`. `PhoneKeyStorage` (`load`/`save`/`clear`) is where
+this phone keeps its id and key pair: the app supplies a secure-storage version (`lib/core/phone_key_storage.dart`), tests use `MemoryPhoneKeyStorage`.
+
+| Method | Who | Returns / does |
+|---|---|---|
+| `registerThisPhone()` | any phone, at sign-in and at every start | Makes the phone id and key pair if there are none and registers the public key. `true` on success; `false` if the cloud refused (a fourth phone: `409 phone_limit`) or was unreachable. |
+| `forgetThisPhone()` | sign-out, account deletion | Forgets the key at the cloud (while the session is valid) and deletes it from the phone. |
+| `thisPhoneFingerprint()` | member | The fingerprint of this phone's key, for the member's own screen. |
+| `memberPhones(serial)` | owner | `List<MemberPhone>?` (`memberId`, `memberName`, `phoneId`, `publicKey`, `fingerprint`, `wrapped`, `keyIdB64`) for every phone of every person the camera is shared with; `null` if the cloud could not be reached. |
+| `wrapForMembers(serial, cameraKey)` | owner | Locks the key for every member phone that has no copy for this key yet; returns how many copies were written, or `null` if unreachable. A phone with a junk key is skipped, never blocking the others. |
+| `fetchForThisPhone(serial)` | member | `CameraKeyFetchResult(status, key, detail)`; `CameraKeyFetchStatus`: `obtained` (`key` holds the 32 bytes), `notYet` (the owner has not sent it; also when this phone was not registered yet, so it is now and the owner is asked), `invalidCopy` (does not open on this phone), `unavailable` (cloud unreachable or refused). |
+
+The camera's **video mode** (whether it encrypts) is not carried by the cloud: the phone reads it from the camera over the internet with [`WanCapabilitiesClient`](#wancapabilitiesclient) (`kvsE2eEncryption`).
+`CameraCloudRegistry` calls underneath (all return `RegistryResult<Map<String, dynamic>>`, errors as `RegistryFailure(status, code)`): `registerPhoneKey(phoneId, pubB64)`, `forgetPhoneKey(phoneId)`, `listKeywraps(serial)`,
+`putKeywrap(serial, memberId, phoneId, {keyIdB64, wrappedB64})`, `getKeywrap(serial, phoneId)` (`404 not_yet` while the owner has not sent the copy).
 
 ## RTSPS streaming clients — `RtspLiveViewSession`, `RtspReplaySession` (`lib/src/rtsp/`)
 

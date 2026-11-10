@@ -32,6 +32,14 @@
 - Phase 10 remaining: (1) camera issue page actions (retry/reboot/refresh stream/reduce quality) on /cameras/:serial/health; (2) Profile: active sessions list + log out other devices, default start page; (3) evidence review step after snapshot/clip; (4) multi-camera synced playback (PLAY-X1).
 - Then Phases 11-13 (see ROADMAP scope blocks).
 
+## CRITICAL finding (verification 2026-11-10)
+- `nvr run` (and the systemd/launchd/WinSW services, which call `run`) starts ONLY the web/API server and mDNS.
+  Nothing starts MediaMTX, the recording reconciler, segment indexing, the retention janitor, the gap watchdog,
+  the event subscription supervisor, or camera reachability/outage tracking (OutageTracker.record_offline/online
+  are only called from tests). On the owner's machine only port 8000 listens; no MediaMTX ports.
+  => The product as launched records nothing and live view (WHEP) cannot work. Components exist and are unit
+  tested; the runtime wiring (app lifespan supervisor) is missing. Recommended as the top priority before more UI.
+
 ## Open questions / waiting on
 - Owner restart of the NVR and choice of storage folder.
 - Phase 10 has no PLAN.md/SUMMARY.md; decide whether to backfill them for /gsd-verify-work.

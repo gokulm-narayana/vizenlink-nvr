@@ -291,18 +291,63 @@ async def reprobe_camera_endpoint(
     serial: str,
     user: RequireOperator,
     db: DbSession,
+    request: Request,
 ) -> dict[str, Any]:
-    """Trigger camera reprobe (Operator or Owner only)."""
+    """Check the camera connection now (old VMS "Retry connection").
+
+    Verifies the camera at its stored address, follows it if DHCP moved it, and refreshes
+    capabilities and streams. Never accepts a changed certificate automatically.
+    """
     cam = await get_camera(db, serial)
     if cam is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Camera '{serial}' not found",
         )
+    runtime = getattr(request.app.state, "runtime", None)
+    if runtime is None or getattr(runtime, "settings", None) is None or not hasattr(runtime, "sessions"):
+        # No live runtime (e.g. tests): report the stored state without contacting the camera.
+        return {"serial": serial, "reprobed": False, "status": cam.state, "kind": None, "warnings": []}
+
+    from vizenlink_nvr.camera.layer import CameraLayer
+    from vizenlink_nvr.services.recovery import make_healer
+    from vizenlink_nvr.services.reprobe import reprobe_camera
+
+    layer = CameraLayer.create(runtime.clock)
+    healer = make_healer(runtime, layer, runtime.settings)
+    try:
+        report = await asyncio.wait_for(reprobe_camera(runtime, layer, healer, serial), timeout=45.0)
+    except TimeoutError:
+        return {
+            "serial": serial,
+            "reprobed": True,
+            "status": cam.state,
+            "kind": "UNREACHABLE",
+            "address": f"{cam.host}:{cam.https_port}",
+            "warnings": ["The camera did not answer within 45 seconds."],
+        }
+    finally:
+        await healer.aclose()
+        await layer.aclose()
+
+    await AuditService.record_event(
+        session=db,
+        action="camera.reprobe",
+        resource_type="camera",
+        resource_id=serial,
+        actor_id=user.id,
+        actor_username=user.username,
+        details={"kind": str(report.kind)},
+        commit=True,
+    )
+    fresh = await get_camera(db, serial)
     return {
         "serial": serial,
         "reprobed": True,
-        "status": cam.state,
+        "status": fresh.state if fresh else cam.state,
+        "kind": str(report.kind),
+        "address": report.address,
+        "warnings": report.warnings,
     }
 
 

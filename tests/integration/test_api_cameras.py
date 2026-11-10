@@ -165,7 +165,10 @@ async def test_camera_crud_and_rbac_filtering(app_fixture) -> None:
     client.cookies.set("session_id", owner_session)
     res_reprobe = await client.post("/api/v1/cameras/CAM-PERMITTED/reprobe")
     assert res_reprobe.status_code == 200
-    assert res_reprobe.json()["reprobed"] is True
+    # Phase 10: the endpoint now really probes the camera. Without a live runtime (this test
+    # app has none) it must say it did NOT probe, instead of the old stub's "reprobed": true.
+    assert res_reprobe.json()["reprobed"] is False
+    assert res_reprobe.json()["status"] == "active"
 
     # 10. Owner deletes CAM-SECRET
     res_del = await client.delete("/api/v1/cameras/CAM-SECRET?keep_recordings=true")

@@ -325,3 +325,72 @@ Success criteria:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 10 to break down)
+
+### Phase 11: Footage Protection
+
+**Goal:** Every recorded minute is protected and provable: storage problems are caught at setup, disks are watched, gaps are reported, and config can be backed up from the UI.
+**Requirements**: TBD
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+Scope (owner-approved 2026-11-10):
+- Storage setup wizard: choose a disk/folder, test write access, warn about the system disk
+- Disk health (SMART where available) and a "disk full by" forecast
+- Recording coverage report: % recorded per camera per day, with gaps listed
+- Config backup/restore from the UI (backend exists since Phase 8)
+- NVR clock (NTP) sanity warning (HLTH-X1)
+
+Success criteria:
+1. An unwritable storage path is rejected at setup with a clear fix, never accepted silently.
+2. The UI warns before the disk fills or reports SMART failure.
+3. The owner can see, per camera and day, how much was recorded and where the gaps are.
+4. The owner can download and restore a config backup from the web UI.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11 to break down)
+
+### Phase 12: Find Footage Faster
+
+**Goal:** Owners and guards find the moment they need in seconds, across cameras, and can export it as trustworthy evidence.
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Scope (owner-approved 2026-11-10):
+- Timeline thumbnail previews while scrubbing
+- "Events only" playback that skips quiet periods; bookmarks with notes
+- Evidence export: SHA-256 manifest, multi-clip zip, export queue (PLAY-X2)
+- Alert review status and grouping of repeated events (EVT-X1)
+
+Success criteria:
+1. Scrubbing the timeline shows a preview image for the hovered time.
+2. Playback can jump event to event and save bookmarks.
+3. Exports include a verifiable SHA-256 manifest and can bundle several clips.
+4. Repeated events are grouped and alerts can be marked reviewed.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
+
+### Phase 13: Daily Operations and Admin
+
+**Goal:** The NVR works well at a guard desk and for site administrators.
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Scope (owner-approved 2026-11-10):
+- Guard / kiosk mode: fixed layout, stays signed in as a viewer, no settings access
+- Camera tours (auto-cycle pages) and digital zoom on live view (LIVE-X1)
+- On-screen alarm (sound + flashing) for critical alerts
+- Batch add of discovered cameras (CAM-X2); detect cameras claimed by another NVR (CAM-X1)
+- Audit log page; time-limited access grants (AUTH-X2)
+- HTTPS on the LAN; About / update-check page
+
+Success criteria:
+1. A guard screen can run unattended in kiosk mode with tours and alarms.
+2. Several discovered cameras can be added in one step with per-camera results.
+3. Owners can read the audit log and grant access that expires.
+4. The web UI works over HTTPS on the LAN, including Safari/iOS live view.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)

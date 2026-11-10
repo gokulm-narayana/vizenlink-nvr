@@ -64,7 +64,7 @@ test.describe("16-camera 4x4 Live grid performance & style backstop", () => {
     });
 
     // 3. Open /
-    await page.goto("/");
+    await page.goto("/live"); // Phase 10: Multiview moved from / to /live
 
     // 4. Wait for all 16 tiles to render
     const tiles = page.locator('div[role="group"][aria-label*="Perf Camera"]');

@@ -390,7 +390,7 @@ async def test_alert_review_workflow(app_fixture) -> None:
     assert (await client.post("/api/v1/events/1/hide")).json() == {"hidden": True}
     listed = (await client.get("/api/v1/events")).json()
     assert [i["id"] for i in listed["items"]] == [2] and listed["total"] == 1
-    assert (await client.get("/api/v1/events/1/acknowledge")).status_code in (404, 405)
+    assert (await client.get("/api/v1/events/1")).status_code == 404
     assert (await client.post("/api/v1/events/1/acknowledge")).status_code == 404
 
     # Audit trail records the review actions

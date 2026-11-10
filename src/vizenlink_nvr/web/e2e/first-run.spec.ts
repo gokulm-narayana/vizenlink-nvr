@@ -20,8 +20,8 @@ test.describe("First-run setup", () => {
     // 3. Click Create owner account
     await page.click('button:has-text("Create owner account")');
 
-    // 4. Expect the URL / and the top-bar heading "Live"
+    // 4. Expect the URL / and the top-bar heading "Dashboard" (Phase 10: Dashboard is the start page)
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Live View" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
   });
 });

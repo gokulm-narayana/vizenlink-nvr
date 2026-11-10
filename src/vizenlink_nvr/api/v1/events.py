@@ -251,9 +251,9 @@ async def get_event_detail(
     user: CurrentUser,
     db: DbSession,
 ) -> EventItemResponse:
-    """Retrieve event detail by ID."""
+    """Retrieve event detail by ID (removed/hidden alerts are not found, same as the lists)."""
     event = await db.get(Event, event_id)
-    if event is None:
+    if event is None or event.hidden_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Event {event_id} not found")
 
     if user.role not in ("owner", "operator"):

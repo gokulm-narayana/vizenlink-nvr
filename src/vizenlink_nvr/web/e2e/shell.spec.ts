@@ -1,14 +1,16 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Shell sidebar e2e", () => {
+  // Phase 10 (owner: "all screen sizes"): full sidebar from 1024px; tablets (768-1023px) default to the icon rail.
   const desktopWidths = [
-    { width: 1280, smoke: true },
-    { width: 900, smoke: false },
-    { width: 768, smoke: false },
+    { width: 1280, smoke: true, expected: "expanded" },
+    { width: 1024, smoke: false, expected: "expanded" },
+    { width: 900, smoke: false, expected: "collapsed" },
+    { width: 768, smoke: false, expected: "collapsed" },
   ];
 
-  for (const { width, smoke } of desktopWidths) {
-    const title = `desktop sidebar is expanded by default at ${width}px on / and /dashboard${smoke ? " @smoke" : ""}`;
+  for (const { width, smoke, expected } of desktopWidths) {
+    const title = `desktop sidebar is ${expected} by default at ${width}px on / and /dashboard${smoke ? " @smoke" : ""}`;
     test(title, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
 
@@ -18,11 +20,11 @@ test.describe("Shell sidebar e2e", () => {
       await page.reload();
 
       const desktopSidebar = page.locator('div[data-slot="sidebar"][data-state]');
-      await expect(desktopSidebar).toHaveAttribute("data-state", "expanded");
+      await expect(desktopSidebar).toHaveAttribute("data-state", expected);
 
       // Repeat on /dashboard
       await page.goto("/dashboard");
-      await expect(desktopSidebar).toHaveAttribute("data-state", "expanded");
+      await expect(desktopSidebar).toHaveAttribute("data-state", expected);
     });
   }
 

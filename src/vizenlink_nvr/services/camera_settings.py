@@ -238,6 +238,11 @@ class CameraSettingsService:
                     "ir_cut_filter": img_curr.ir_cut_filter or "AUTO",
                     "wdr_mode": img_curr.wdr_mode or "OFF",
                     "wdr_level": img_curr.wdr_level if img_curr.wdr_level is not None else 0.0,
+                    # Phase 10 (old VMS parity, FR-MOB-062): null when the camera does not report them.
+                    "exposure_mode": img_curr.exposure_mode,
+                    "exposure_time": img_curr.exposure_time,
+                    "exposure_gain": img_curr.exposure_gain,
+                    "white_balance_mode": img_curr.white_balance_mode,
                     "night_vision_type": night_vision_type,
                     "mirror_flip": mirror_flip,
                     "anti_flicker": anti_flicker,
@@ -250,6 +255,10 @@ class CameraSettingsService:
                     "ir_cut_filter_modes": list(img_opts.ir_cut_filter_modes),
                     "wdr_supported": img_opts.wdr_supported,
                     "wdr_level_range": img_opts.wdr_level_range,
+                    "exposure_modes": list(img_opts.exposure_modes),
+                    "exposure_time_range": img_opts.exposure_time_range,
+                    "exposure_gain_range": img_opts.exposure_gain_range,
+                    "white_balance_modes": list(img_opts.white_balance_modes),
                     "night_vision_color_capable": color_capable,
                     "night_vision_smart_capable": smart_capable,
                 },
@@ -435,9 +444,7 @@ class CameraSettingsService:
             width=width if width is not None else curr.width,
             height=height if height is not None else curr.height,
             quality=quality if quality is not None else curr.quality,
-            frame_rate_limit=(
-                frame_rate_limit if frame_rate_limit is not None else curr.frame_rate_limit
-            ),
+            frame_rate_limit=(frame_rate_limit if frame_rate_limit is not None else curr.frame_rate_limit),
             bitrate_limit_kbps=(
                 bitrate_limit_kbps if bitrate_limit_kbps is not None else curr.bitrate_limit_kbps
             ),
@@ -509,6 +516,10 @@ class CameraSettingsService:
         night_vision_type: str | None = None,
         mirror_flip: str | None = None,
         anti_flicker: str | None = None,
+        exposure_mode: str | None = None,
+        exposure_time: float | None = None,
+        exposure_gain: float | None = None,
+        white_balance_mode: str | None = None,
         actor_id: int | None = None,
         actor_username: str | None = None,
         ip_address: str | None = None,
@@ -562,6 +573,26 @@ class CameraSettingsService:
                     raise SettingsValidationError(
                         f"WDR level {wdr_level} outside allowed range {opts.wdr_level_range}"
                     )
+            # Exposure / white balance: only values the camera itself offers (camera owns the lists).
+            if exposure_mode is not None and opts.exposure_modes and exposure_mode not in opts.exposure_modes:
+                raise SettingsValidationError(
+                    f"Exposure mode '{exposure_mode}' not supported. Allowed: {list(opts.exposure_modes)}"
+                )
+            for label, value, rng in (
+                ("Exposure time", exposure_time, opts.exposure_time_range),
+                ("Gain", exposure_gain, opts.exposure_gain_range),
+            ):
+                if value is not None and rng is not None and not (rng[0] <= value <= rng[1]):
+                    raise SettingsValidationError(f"{label} {value} outside allowed range {rng}")
+            if (
+                white_balance_mode is not None
+                and opts.white_balance_modes
+                and white_balance_mode not in opts.white_balance_modes
+            ):
+                raise SettingsValidationError(
+                    f"White balance mode '{white_balance_mode}' not supported. "
+                    f"Allowed: {list(opts.white_balance_modes)}"
+                )
 
         # 2. Validate and set NuraEye night vision type
         updated: dict[str, Any] = {}
@@ -597,8 +628,21 @@ class CameraSettingsService:
         # 5. ONVIF Imaging parameters
         has_imaging_update = any(
             x is not None
-            for x in (brightness, contrast, color_saturation, sharpness, ir_cut_filter, wdr_mode, wdr_level)
+            for x in (
+                brightness,
+                contrast,
+                color_saturation,
+                sharpness,
+                ir_cut_filter,
+                wdr_mode,
+                wdr_level,
+                exposure_mode,
+                white_balance_mode,
+            )
         )
+        if (exposure_time is not None or exposure_gain is not None) and exposure_mode is None:
+            # ONVIF carries time/gain inside <Exposure><Mode>; Dart only sends them with a mode.
+            raise SettingsValidationError("Choose an exposure mode to set exposure time or gain")
         if has_imaging_update:
             new_img = ImagingSettings(
                 brightness=brightness,
@@ -608,6 +652,10 @@ class CameraSettingsService:
                 ir_cut_filter=ir_cut_filter,
                 wdr_mode=wdr_mode,
                 wdr_level=wdr_level,
+                exposure_mode=exposure_mode,
+                exposure_time=exposure_time,
+                exposure_gain=exposure_gain,
+                white_balance_mode=white_balance_mode,
             )
             set_img_res = await imaging_client.set_imaging_settings(video_source_token, new_img)
             if isinstance(set_img_res, (Failure, Timeout)):
@@ -627,6 +675,14 @@ class CameraSettingsService:
                 updated["wdr_mode"] = wdr_mode
             if wdr_level is not None:
                 updated["wdr_level"] = wdr_level
+            for key, val in (
+                ("exposure_mode", exposure_mode),
+                ("exposure_time", exposure_time),
+                ("exposure_gain", exposure_gain),
+                ("white_balance_mode", white_balance_mode),
+            ):
+                if val is not None:
+                    updated[key] = val
 
         await AuditService.record_event(
             session=session,

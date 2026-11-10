@@ -1,7 +1,10 @@
+# Ported from camera_api lib/src/lan/onvif/onvif_imaging_client.dart
+# (exposure + white balance, FR-MOB-062; file not yet in the vendored contract set).
 """ONVIF Imaging service client and models for camera image settings (SET-03, SET-08)."""
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
 from vizenlink_nvr.camera.connection import CameraConnection
@@ -24,6 +27,44 @@ class ImagingSettings:
     ir_cut_filter: str | None = None  # "ON", "OFF", "AUTO"
     wdr_mode: str | None = None  # "ON", "OFF"
     wdr_level: float | None = None
+    exposure_mode: str | None = None  # "AUTO", "MANUAL"
+    exposure_time: float | None = None
+    exposure_gain: float | None = None
+    white_balance_mode: str | None = None  # e.g. "AUTO", "MANUAL"
+
+
+def _first(root: ET.Element | None, local_name: str) -> ET.Element | None:
+    """First descendant element with the given local name (namespace-agnostic)."""
+    if root is None:
+        return None
+    for el in root.iter():
+        if el.tag.split("}")[-1] == local_name:
+            return el
+    return None
+
+
+def _text_in(el: ET.Element | None, local_name: str) -> str | None:
+    """find_text scoped to an element; None when absent (find_text returns '')."""
+    return (find_text(el, local_name) or None) if el is not None else None
+
+
+def _float_in(el: ET.Element | None, local_name: str) -> float | None:
+    raw = _text_in(el, local_name)
+    return float(raw) if raw else None
+
+
+def _modes_in(el: ET.Element | None) -> tuple[str, ...]:
+    if el is None:
+        return ()
+    return tuple(
+        m.text.strip() for m in el.iter() if m.tag.split("}")[-1] == "Mode" and m.text and m.text.strip()
+    )
+
+
+def _range_in(el: ET.Element | None, local_name: str) -> tuple[float, float] | None:
+    sub = _first(el, local_name)
+    lo, hi = _float_in(sub, "Min"), _float_in(sub, "Max")
+    return (lo, hi) if lo is not None and hi is not None else None
 
 
 @dataclass(frozen=True)
@@ -37,6 +78,11 @@ class ImagingOptions:
     ir_cut_filter_modes: tuple[str, ...] = ("AUTO", "ON", "OFF")
     wdr_supported: bool = False
     wdr_level_range: tuple[float, float] = (0.0, 100.0)
+    # Empty / None when the camera does not report them (Dart: const [] / null).
+    white_balance_modes: tuple[str, ...] = ()
+    exposure_modes: tuple[str, ...] = ()
+    exposure_time_range: tuple[float, float] | None = None
+    exposure_gain_range: tuple[float, float] | None = None
 
 
 class OnvifImagingClient:
@@ -83,18 +129,27 @@ class OnvifImagingClient:
             c_str = find_text(root, "Contrast")
             sh_str = find_text(root, "Sharpness")
             irc_str = find_text(root, "IrCutFilter")
-            wdr_m = find_text(root, "Mode")
-            wdr_l = find_text(root, "Level")
+            # Each Mode is read inside its own element (WDR, Exposure, WhiteBalance), as in Dart.
+            # Before: WDR mode was "the first Mode anywhere", which could be the exposure mode.
+            wdr_el = _first(root, "WideDynamicRange")
+            wdr_m = _text_in(wdr_el, "Mode")
+            wdr_l = _text_in(wdr_el, "Level")
+            exp_el = _first(root, "Exposure")
+            wb_el = _first(root, "WhiteBalance")
 
             return Success(
                 ImagingSettings(
-                    brightness=float(b_str) if b_str is not None else None,
-                    color_saturation=float(s_str) if s_str is not None else None,
-                    contrast=float(c_str) if c_str is not None else None,
-                    sharpness=float(sh_str) if sh_str is not None else None,
-                    ir_cut_filter=irc_str,
+                    brightness=float(b_str) if b_str else None,
+                    color_saturation=float(s_str) if s_str else None,
+                    contrast=float(c_str) if c_str else None,
+                    sharpness=float(sh_str) if sh_str else None,
+                    ir_cut_filter=irc_str or None,
                     wdr_mode=wdr_m,
-                    wdr_level=float(wdr_l) if wdr_l is not None else None,
+                    wdr_level=float(wdr_l) if wdr_l else None,
+                    exposure_mode=_text_in(exp_el, "Mode"),
+                    exposure_time=_float_in(exp_el, "ExposureTime"),
+                    exposure_gain=_float_in(exp_el, "Gain"),
+                    white_balance_mode=_text_in(wb_el, "Mode"),
                 )
             )
         except Exception as exc:
@@ -161,6 +216,9 @@ class OnvifImagingClient:
             if not ir_modes:
                 ir_modes = ["AUTO", "ON", "OFF"]
 
+            exp_opts = _first(root, "Exposure")
+            wb_opts = _first(root, "WhiteBalance")
+
             return Success(
                 ImagingOptions(
                     brightness_range=brightness_range,
@@ -170,6 +228,10 @@ class OnvifImagingClient:
                     ir_cut_filter_modes=tuple(ir_modes),
                     wdr_supported=wdr_supported,
                     wdr_level_range=wdr_level_range,
+                    white_balance_modes=_modes_in(wb_opts),
+                    exposure_modes=_modes_in(exp_opts),
+                    exposure_time_range=_range_in(exp_opts, "ExposureTime"),
+                    exposure_gain_range=_range_in(exp_opts, "Gain"),
                 )
             )
         except Exception as exc:
@@ -202,6 +264,17 @@ class OnvifImagingClient:
             if settings.wdr_level is not None:
                 wdr_inner += f"<tt:Level>{settings.wdr_level}</tt:Level>"
             elements.append(f"<tt:WideDynamicRange>{wdr_inner}</tt:WideDynamicRange>")
+        if settings.exposure_mode is not None:
+            exp_inner = f"<tt:Mode>{xml_escape(settings.exposure_mode)}</tt:Mode>"
+            if settings.exposure_time is not None:
+                exp_inner += f"<tt:ExposureTime>{settings.exposure_time}</tt:ExposureTime>"
+            if settings.exposure_gain is not None:
+                exp_inner += f"<tt:Gain>{settings.exposure_gain}</tt:Gain>"
+            elements.append(f"<tt:Exposure>{exp_inner}</tt:Exposure>")
+        if settings.white_balance_mode is not None:
+            elements.append(
+                f"<tt:WhiteBalance><tt:Mode>{xml_escape(settings.white_balance_mode)}</tt:Mode></tt:WhiteBalance>"
+            )
 
         inner_xml = "".join(elements)
         persist_str = "true" if force_persistence else "false"

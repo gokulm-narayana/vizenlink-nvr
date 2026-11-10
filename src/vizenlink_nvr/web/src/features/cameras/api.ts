@@ -50,6 +50,11 @@ export interface CameraSettingsData {
       night_vision_type: string;
       mirror_flip: string;
       anti_flicker: string;
+      // Phase 10: null when the camera does not report them.
+      exposure_mode?: string | null;
+      exposure_time?: number | null;
+      exposure_gain?: number | null;
+      white_balance_mode?: string | null;
     };
     options: {
       brightness_range: [number, number];
@@ -61,6 +66,10 @@ export interface CameraSettingsData {
       wdr_level_range: [number, number];
       night_vision_color_capable: boolean;
       night_vision_smart_capable: boolean;
+      exposure_modes?: string[];
+      exposure_time_range?: [number, number] | null;
+      exposure_gain_range?: [number, number] | null;
+      white_balance_modes?: string[];
     };
   };
   osd: Array<{
@@ -164,6 +173,10 @@ export interface ImagingPayload {
   night_vision_type: string;
   mirror_flip: string;
   anti_flicker: string;
+  exposure_mode?: string;
+  exposure_time?: number;
+  exposure_gain?: number;
+  white_balance_mode?: string;
 }
 
 export function useSaveImaging(serial: string) {

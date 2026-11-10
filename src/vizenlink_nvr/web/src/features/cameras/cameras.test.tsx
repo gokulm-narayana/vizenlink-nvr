@@ -38,6 +38,8 @@ vi.mock("@/lib/queries", () => ({
   }),
 }));
 
+const { mockSaveImagingFn } = vi.hoisted(() => ({ mockSaveImagingFn: vi.fn() }));
+
 vi.mock("./api", () => ({
   useCameraSettings: (serial: string) => ({
     data: mockSettingsData,
@@ -65,7 +67,7 @@ vi.mock("./api", () => ({
     isPending: false,
   }),
   useSaveImaging: (serial: string) => ({
-    mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
+    mutateAsync: mockSaveImagingFn.mockResolvedValue({ ok: true }),
     isPending: false,
   }),
   useSaveOsd: (serial: string) => ({
@@ -411,6 +413,51 @@ describe("Cameras Feature", () => {
       expect(
         screen.queryByText("Changing WDR switches the sensor mode and may restart the camera briefly.")
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Exposure & White Balance (old VMS parity)", () => {
+    it("is hidden when the camera reports no exposure or white balance options", () => {
+      renderWithRouter(["/cameras/CAM-01?tab=image"]);
+      expect(screen.queryByText("Exposure & White Balance")).not.toBeInTheDocument();
+    });
+
+    it("offers only the camera's modes, shows time/gain in manual, and saves them", async () => {
+      const user = userEvent.setup();
+      const original = structuredClone(mockSettingsData.imaging);
+      Object.assign(mockSettingsData.imaging.current, {
+        exposure_mode: "AUTO",
+        exposure_time: 10000,
+        exposure_gain: 5,
+        white_balance_mode: "AUTO",
+      });
+      Object.assign(mockSettingsData.imaging.options, {
+        exposure_modes: ["AUTO", "MANUAL"],
+        exposure_time_range: [10, 40000],
+        exposure_gain_range: [0, 100],
+        white_balance_modes: ["AUTO", "MANUAL"],
+      });
+      try {
+        mockSaveImagingFn.mockClear();
+        renderWithRouter(["/cameras/CAM-01?tab=image"]);
+        expect(screen.getByText("Exposure & White Balance")).toBeInTheDocument();
+        expect(screen.queryByLabelText("Exposure Time (µs)")).not.toBeInTheDocument();
+
+        await user.selectOptions(screen.getByLabelText("Exposure Control"), "MANUAL");
+        expect(screen.getByLabelText("Exposure Time (µs)")).toBeInTheDocument();
+        expect(screen.getByLabelText("Gain")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Save changes" }));
+        await waitFor(() => expect(mockSaveImagingFn).toHaveBeenCalled());
+        expect(mockSaveImagingFn.mock.calls[0][0]).toMatchObject({
+          exposure_mode: "MANUAL",
+          exposure_time: 10000,
+          exposure_gain: 5,
+          white_balance_mode: "AUTO",
+        });
+      } finally {
+        mockSettingsData.imaging = original;
+      }
     });
   });
 });

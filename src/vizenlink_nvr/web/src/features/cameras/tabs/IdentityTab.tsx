@@ -1,3 +1,4 @@
+import { useCameras } from "@/lib/queries";
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +33,9 @@ export const IdentityTab: React.FC<IdentityTabProps> = ({
 }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const saveMutation = useSaveIdentity(serial);
+  // Old VMS showed the MAC; the NVR registry already stores it (from onboarding / discovery).
+  const { data: cameras } = useCameras();
+  const macAddress = (Array.isArray(cameras) ? cameras : []).find((c) => c.serial === serial)?.mac as string | undefined;
 
   const {
     register,
@@ -220,7 +224,12 @@ export const IdentityTab: React.FC<IdentityTabProps> = ({
             </span>
           </div>
 
-          <div className="flex flex-col gap-0.5 sm:col-span-2">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-muted-foreground font-normal">MAC Address</span>
+            <span className="font-semibold text-foreground font-mono">{macAddress || "Unknown"}</span>
+          </div>
+
+          <div className="flex flex-col gap-0.5">
             <span className="text-muted-foreground font-normal">Hardware ID</span>
             <span className="font-semibold text-foreground font-mono break-all">
               {settings.device_info.hardware_id || "Unknown"}

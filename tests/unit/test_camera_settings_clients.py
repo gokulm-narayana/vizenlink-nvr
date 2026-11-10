@@ -519,3 +519,100 @@ async def test_nuraeye_timezones_catalog(fake_conn: CameraConnection, fake_http:
         res_fb = await client.get_supported_timezones()
         assert isinstance(res_fb, Success)
         assert res_fb.value == FALLBACK_TIMEZONES
+
+
+# -----------------------------------------------------------------------------
+# Phase 10: exposure / gain / white balance (camera_api onvif_imaging_client.dart)
+# -----------------------------------------------------------------------------
+
+_SOAP = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>'
+    '<timg:{op}Response xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl" '
+    'xmlns:tt="http://www.onvif.org/ver10/schema">{body}</timg:{op}Response>'
+    "</s:Body></s:Envelope>"
+)
+
+
+@pytest.mark.asyncio
+async def test_imaging_exposure_white_balance_parse_without_mixing_modes(
+    fake_conn: CameraConnection, fake_http: CameraHttp
+) -> None:
+    client = OnvifImagingClient(fake_conn, fake_http, SystemClock())
+    # Exposure comes BEFORE WideDynamicRange: the old parser took the first <Mode> as WDR mode.
+    body = (
+        "<timg:ImagingSettings>"
+        "<tt:Exposure><tt:Mode>MANUAL</tt:Mode><tt:ExposureTime>20000</tt:ExposureTime><tt:Gain>12</tt:Gain></tt:Exposure>"
+        "<tt:WideDynamicRange><tt:Mode>OFF</tt:Mode><tt:Level>0</tt:Level></tt:WideDynamicRange>"
+        "<tt:WhiteBalance><tt:Mode>AUTO</tt:Mode></tt:WhiteBalance>"
+        "</timg:ImagingSettings>"
+    )
+    with patch("vizenlink_nvr.camera.onvif.imaging.post_soap", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success(_SOAP.format(op="GetImagingSettings", body=body))
+        res = await client.get_imaging_settings("VideoSource_1")
+    assert isinstance(res, Success)
+    s = res.value
+    assert s.wdr_mode == "OFF"
+    assert (s.exposure_mode, s.exposure_time, s.exposure_gain) == ("MANUAL", 20000.0, 12.0)
+    assert s.white_balance_mode == "AUTO"
+    assert s.brightness is None or isinstance(s.brightness, float)
+
+
+@pytest.mark.asyncio
+async def test_imaging_options_exposure_white_balance(
+    fake_conn: CameraConnection, fake_http: CameraHttp
+) -> None:
+    client = OnvifImagingClient(fake_conn, fake_http, SystemClock())
+    body = (
+        "<timg:ImagingOptions>"
+        "<tt:Exposure><tt:Mode>AUTO</tt:Mode><tt:Mode>MANUAL</tt:Mode>"
+        "<tt:ExposureTime><tt:Min>10</tt:Min><tt:Max>40000</tt:Max></tt:ExposureTime>"
+        "<tt:Gain><tt:Min>0</tt:Min><tt:Max>100</tt:Max></tt:Gain></tt:Exposure>"
+        "<tt:WhiteBalance><tt:Mode>AUTO</tt:Mode><tt:Mode>MANUAL</tt:Mode></tt:WhiteBalance>"
+        "</timg:ImagingOptions>"
+    )
+    with patch("vizenlink_nvr.camera.onvif.imaging.post_soap", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success(_SOAP.format(op="GetOptions", body=body))
+        res = await client.get_imaging_options("VideoSource_1")
+    assert isinstance(res, Success)
+    o = res.value
+    assert o.exposure_modes == ("AUTO", "MANUAL")
+    assert o.exposure_time_range == (10.0, 40000.0)
+    assert o.exposure_gain_range == (0.0, 100.0)
+    assert o.white_balance_modes == ("AUTO", "MANUAL")
+
+
+@pytest.mark.asyncio
+async def test_imaging_options_absent_exposure_is_empty(
+    fake_conn: CameraConnection, fake_http: CameraHttp
+) -> None:
+    client = OnvifImagingClient(fake_conn, fake_http, SystemClock())
+    with patch("vizenlink_nvr.camera.onvif.imaging.post_soap", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success(_SOAP.format(op="GetOptions", body="<timg:ImagingOptions/>"))
+        res = await client.get_imaging_options("VideoSource_1")
+    assert isinstance(res, Success)
+    assert res.value.exposure_modes == () and res.value.exposure_time_range is None
+    assert res.value.white_balance_modes == ()
+
+
+@pytest.mark.asyncio
+async def test_imaging_set_exposure_white_balance_xml(
+    fake_conn: CameraConnection, fake_http: CameraHttp
+) -> None:
+    client = OnvifImagingClient(fake_conn, fake_http, SystemClock())
+    with patch("vizenlink_nvr.camera.onvif.imaging.post_soap", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success("<ok/>")
+        await client.set_imaging_settings(
+            "VideoSource_1",
+            ImagingSettings(
+                exposure_mode="MANUAL", exposure_time=20000.0, exposure_gain=12.0, white_balance_mode="AUTO"
+            ),
+        )
+        body = mock_post.call_args.args[3]
+    # Same element order and shape as the Dart client.
+    assert (
+        "<tt:Exposure><tt:Mode>MANUAL</tt:Mode><tt:ExposureTime>20000.0</tt:ExposureTime>"
+        "<tt:Gain>12.0</tt:Gain></tt:Exposure>"
+    ) in body
+    assert "<tt:WhiteBalance><tt:Mode>AUTO</tt:Mode></tt:WhiteBalance>" in body
+    assert "<timg:ForcePersistence>true</timg:ForcePersistence>" in body

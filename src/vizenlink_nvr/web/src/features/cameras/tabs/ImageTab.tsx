@@ -37,6 +37,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
     nightVisionType: current?.night_vision_type ?? "grey",
     mirrorFlip: current?.mirror_flip ?? "off",
     antiFlicker: current?.anti_flicker ?? "Auto",
+    exposureMode: current?.exposure_mode ?? "",
+    exposureTime: current?.exposure_time ?? 0,
+    exposureGain: current?.exposure_gain ?? 0,
+    whiteBalanceMode: current?.white_balance_mode ?? "",
   });
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
@@ -54,6 +58,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
         nightVisionType: current.night_vision_type,
         mirrorFlip: current.mirror_flip,
         antiFlicker: current.anti_flicker,
+        exposureMode: current.exposure_mode ?? "",
+        exposureTime: current.exposure_time ?? 0,
+        exposureGain: current.exposure_gain ?? 0,
+        whiteBalanceMode: current.white_balance_mode ?? "",
       });
       setIsDirty(false);
       setErrorMessage(null);
@@ -74,6 +82,13 @@ export const ImageTab: React.FC<ImageTabProps> = ({
     ? options.ir_cut_filter_modes
     : ["AUTO", "DAY", "NIGHT"];
 
+  // Exposure / white balance (old VMS parity): the camera owns the choice lists.
+  const exposureModes = options.exposure_modes ?? [];
+  const whiteBalanceModes = options.white_balance_modes ?? [];
+  const isManualExposure = form.exposureMode.toUpperCase() === "MANUAL";
+  const showExposureCard = exposureModes.length > 0 || whiteBalanceModes.length > 0;
+  const modeLabel = (m: string) => m.charAt(0) + m.slice(1).toLowerCase();
+
   const handleFieldChange = (field: keyof typeof form, val: any) => {
     setForm((prev) => ({ ...prev, [field]: val }));
     setIsDirty(true);
@@ -91,6 +106,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
       nightVisionType: current.night_vision_type,
       mirrorFlip: current.mirror_flip,
       antiFlicker: current.anti_flicker,
+      exposureMode: current.exposure_mode ?? "",
+      exposureTime: current.exposure_time ?? 0,
+      exposureGain: current.exposure_gain ?? 0,
+      whiteBalanceMode: current.white_balance_mode ?? "",
     });
     setIsDirty(false);
     setErrorMessage(null);
@@ -110,6 +129,11 @@ export const ImageTab: React.FC<ImageTabProps> = ({
         night_vision_type: form.nightVisionType,
         mirror_flip: form.mirrorFlip,
         anti_flicker: form.antiFlicker,
+        // Only send what the camera offers; time/gain only apply in manual exposure.
+        ...(exposureModes.length && form.exposureMode ? { exposure_mode: form.exposureMode } : {}),
+        ...(isManualExposure && options.exposure_time_range ? { exposure_time: Number(form.exposureTime) } : {}),
+        ...(isManualExposure && options.exposure_gain_range ? { exposure_gain: Number(form.exposureGain) } : {}),
+        ...(whiteBalanceModes.length && form.whiteBalanceMode ? { white_balance_mode: form.whiteBalanceMode } : {}),
       });
       toast(CAMERAS_COPY.SETTINGS_SAVED);
       setIsDirty(false);
@@ -353,6 +377,93 @@ export const ImageTab: React.FC<ImageTabProps> = ({
           </div>
         </CardContent>
       </Card>
+      {showExposureCard && (
+        <Card className="border-border bg-card p-4 flex flex-col gap-4">
+          <CardHeader className="p-0 pb-2 border-b border-border">
+            <CardTitle className="text-sm font-semibold text-foreground">Exposure &amp; White Balance</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {exposureModes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="img-exposure-mode" className="text-xs font-semibold text-foreground">
+                  Exposure Control
+                </label>
+                <select
+                  id="img-exposure-mode"
+                  value={form.exposureMode}
+                  onChange={(e) => handleFieldChange("exposureMode", e.target.value)}
+                  className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {!form.exposureMode && <option value="">Camera default</option>}
+                  {exposureModes.map((m) => (
+                    <option key={m} value={m}>
+                      {modeLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {whiteBalanceModes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="img-wb-mode" className="text-xs font-semibold text-foreground">
+                  White Balance Mode
+                </label>
+                <select
+                  id="img-wb-mode"
+                  value={form.whiteBalanceMode}
+                  onChange={(e) => handleFieldChange("whiteBalanceMode", e.target.value)}
+                  className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {!form.whiteBalanceMode && <option value="">Camera default</option>}
+                  {whiteBalanceModes.map((m) => (
+                    <option key={m} value={m}>
+                      {modeLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {isManualExposure && options.exposure_time_range && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="img-exposure-time" className="text-xs font-semibold text-foreground">
+                    Exposure Time (µs)
+                  </label>
+                  <span className="text-xs font-mono text-muted-foreground">{form.exposureTime}</span>
+                </div>
+                <input
+                  id="img-exposure-time"
+                  type="range"
+                  min={options.exposure_time_range[0]}
+                  max={options.exposure_time_range[1]}
+                  value={form.exposureTime}
+                  onChange={(e) => handleFieldChange("exposureTime", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer accent-primary"
+                />
+              </div>
+            )}
+            {isManualExposure && options.exposure_gain_range && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="img-exposure-gain" className="text-xs font-semibold text-foreground">
+                    Gain
+                  </label>
+                  <span className="text-xs font-mono text-muted-foreground">{form.exposureGain}</span>
+                </div>
+                <input
+                  id="img-exposure-gain"
+                  type="range"
+                  min={options.exposure_gain_range[0]}
+                  max={options.exposure_gain_range[1]}
+                  value={form.exposureGain}
+                  onChange={(e) => handleFieldChange("exposureGain", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer accent-primary"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </SettingsForm>
   );
 };

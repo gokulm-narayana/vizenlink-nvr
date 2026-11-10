@@ -61,13 +61,14 @@ class AlertService:
             offline_duration = (current_time - outage.started_at).total_seconds()
             if offline_duration >= offline_threshold_seconds:
                 mins = int(offline_duration // 60)
+                cam_label = names.get(outage.camera_serial, outage.camera_serial)
                 alerts.append(
                     InAppAlert(
                         id=f"camera_offline_{outage.camera_serial}",
                         severity="warning",
-                        title=f"{names.get(outage.camera_serial, outage.camera_serial)} is offline",
+                        title=f"{cam_label} is offline",
                         message=(
-                            f"Camera '{names.get(outage.camera_serial, outage.camera_serial)}' has been offline for "
+                            f"Camera '{cam_label}' has been offline for "
                             f"{mins} minutes (since {outage.started_at.strftime('%H:%M:%S')})."
                         ),
                         timestamp=outage.started_at,

@@ -84,6 +84,10 @@ class ImagingUpdateRequest(BaseModel):
     wdr_mode: str | None = None
     wdr_level: float | None = None
     night_vision_type: str | None = None
+    exposure_mode: str | None = None
+    exposure_time: float | None = None
+    exposure_gain: float | None = None
+    white_balance_mode: str | None = None
     mirror_flip: str | None = None
     anti_flicker: str | None = None
 
@@ -255,6 +259,10 @@ async def update_imaging_endpoint(
             night_vision_type=payload.night_vision_type,
             mirror_flip=payload.mirror_flip,
             anti_flicker=payload.anti_flicker,
+            exposure_mode=payload.exposure_mode,
+            exposure_time=payload.exposure_time,
+            exposure_gain=payload.exposure_gain,
+            white_balance_mode=payload.white_balance_mode,
             actor_id=user.id,
             actor_username=user.username,
             ip_address=client_ip,

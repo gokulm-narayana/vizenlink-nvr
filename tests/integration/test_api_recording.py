@@ -170,3 +170,45 @@ async def test_retention_can_be_cleared_without_changing_other_limit(app_fixture
     assert response.json()["retention_max_gb"] == 500
     response = await client.patch("/api/v1/recording/CAM-REC-1", json={"retention_max_gb": None})
     assert response.json()["retention_max_gb"] is None
+
+
+@pytest.mark.asyncio
+async def test_recording_status_reports_real_recording_not_just_policy(app_fixture, tmp_path: Path) -> None:
+    """Phase 10: is_recording is True only with a recent segment; policy alone is not proof."""
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    from vizenlink_nvr.db.models import Segment
+
+    client, owner_session, _ = app_fixture
+    app = client._transport.app  # type: ignore[attr-defined]
+    sessions = app.state.session_factory
+    now = utc_now()
+    async with sessions() as db:
+        # CAM-REC-2 was added long ago and never wrote a segment.
+        await db.execute(
+            update(Camera).where(Camera.serial == "CAM-REC-2").values(added_at=now - timedelta(hours=1))
+        )
+        db.add(
+            Segment(
+                camera_serial="CAM-REC-1",
+                stream_type="main",
+                file_path=str(tmp_path / "seg1.mp4"),
+                start_time=now - timedelta(seconds=70),
+                end_time=now - timedelta(seconds=10),
+                duration_seconds=60.0,
+                file_size_bytes=1024,
+                status="active",
+            )
+        )
+        await db.commit()
+
+    client.cookies.set("session_id", owner_session)
+    items = {i["camera_serial"]: i for i in (await client.get("/api/v1/recording/status")).json()}
+    assert items["CAM-REC-1"]["mode"] == "continuous"
+    assert items["CAM-REC-1"]["is_recording"] is True
+    assert items["CAM-REC-1"]["last_segment_at"] is not None
+    assert items["CAM-REC-2"]["mode"] == "continuous"
+    assert items["CAM-REC-2"]["is_recording"] is False
+    assert "No footage" in items["CAM-REC-2"]["recording_detail"]

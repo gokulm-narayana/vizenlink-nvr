@@ -6,6 +6,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelative } from "@/lib/time";
 import type { ViewMode } from "@/stores/ui";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { cn } from "cn";
 import { TileOverlay } from "./TileOverlay";
 import { LIVE_COPY } from "./copy";
 
@@ -17,6 +19,17 @@ interface VideoTileProps {
   lastSeenAt?: string | null;
   viewMode: ViewMode;
   onToggleMaximize: () => void;
+  /** Old VMS channel number shown on the tile ("CH 3"). */
+  channel?: number;
+  /** Fill the grid cell instead of keeping a 16:9 box (Multiview fit-to-screen). */
+  fill?: boolean;
+  /** Extra hover actions (favourite, playback, settings) shown bottom-left. */
+  actions?: React.ReactNode;
+  /** Right-click menu items; receives the tile's own snapshot/fullscreen actions. */
+  renderMenu?: (tile: { snapshot: () => void; fullscreen: () => void }) => React.ReactNode;
+  /** Drag-to-swap between channels. */
+  onDragStartTile?: () => void;
+  onDropTile?: () => void;
 }
 
 export const VideoTile: React.FC<VideoTileProps> = ({
@@ -27,7 +40,14 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   lastSeenAt,
   viewMode,
   onToggleMaximize,
+  channel,
+  fill = false,
+  actions,
+  renderMenu,
+  onDragStartTile,
+  onDropTile,
 }) => {
+  const [dragOver, setDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<TilePlayer | null>(null);
@@ -105,6 +125,14 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     }
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      void containerRef.current?.requestFullscreen?.();
+    } else {
+      void document.exitFullscreen?.();
+    }
+  };
+
   const handleToggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
@@ -119,14 +147,38 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     }
   };
 
-  return (
+  const tile = (
     <div
       ref={containerRef}
       role="group"
       aria-label={`${name}, ${playerState}`}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="dark relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-video-bg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      onDoubleClick={onToggleMaximize}
+      draggable={Boolean(onDragStartTile)}
+      onDragStart={(e) => {
+        if (!onDragStartTile) return;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", serial);
+        onDragStartTile();
+      }}
+      onDragOver={(e) => {
+        if (!onDropTile) return;
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        if (!onDropTile) return;
+        e.preventDefault();
+        setDragOver(false);
+        onDropTile();
+      }}
+      className={cn(
+        "dark relative flex w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-video-bg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        fill ? "h-full min-h-0" : "aspect-video",
+        dragOver && "ring-2 ring-primary"
+      )}
     >
       {/* Video Element */}
       <video
@@ -191,7 +243,24 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         onSnapshot={handleSnapshot}
         onToggleMute={handleToggleMute}
         onToggleMaximize={onToggleMaximize}
+        channel={channel}
       />
+
+      {actions && (
+        <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+          {actions}
+        </div>
+      )}
     </div>
+  );
+
+  if (!renderMenu) return tile;
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{tile}</ContextMenuTrigger>
+      <ContextMenuContent aria-label={`${name} actions`}>
+        {renderMenu({ snapshot: handleSnapshot, fullscreen: toggleFullscreen })}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };

@@ -19,6 +19,13 @@ export interface RecorderStatusResult {
 const ACTIVE_MODES = new Set(["continuous", "scheduled", "event"]);
 const OK_STORAGE = new Set(["ok", "healthy"]);
 
+/** A camera is offline when the API says so, or its registry state is not "active". */
+export function isCameraOffline(cam: CameraInfo, openOutageSerials?: Set<string>): boolean {
+  if (cam.is_online === false) return true;
+  if (typeof cam.state === "string" && cam.state !== "active") return true;
+  return Boolean(openOutageSerials?.has(cam.serial));
+}
+
 /** Serials that are really recording now; falls back to policy only if the API omits is_recording. */
 export function recordingSerials(recList: RecordingStatusItem[]): Set<string> {
   const serials = new Set<string>();
@@ -69,7 +76,7 @@ export function evaluateRecorderStatus(input: {
       detail: health.db_ok === false ? "The recorder database is unreachable." : "The video service is not running.",
     };
   }
-  const offline = cameras.filter((c) => c.is_online === false || openOutageSerials?.has(c.serial)).length;
+  const offline = cameras.filter((c) => isCameraOffline(c, openOutageSerials)).length;
   if (offline > 0 || recordingCount < cameraCount || (health?.status && health.status !== "healthy")) {
     const parts: string[] = [];
     if (offline > 0) parts.push(`${offline} camera${offline === 1 ? "" : "s"} offline`);

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -12,6 +14,7 @@ from vizenlink_nvr.api.dependencies import (
     RequireOperator,
 )
 from vizenlink_nvr.db.models import Camera
+from vizenlink_nvr.services.health import RecordingState
 from vizenlink_nvr.services.recording_settings import (
     AudioNotSupportedError,
     get_or_create_recording_settings,
@@ -20,6 +23,7 @@ from vizenlink_nvr.services.recording_settings import (
     set_recording_retention,
     set_recording_schedule,
 )
+from vizenlink_nvr.services.watchdog import check_camera_gaps
 
 recording_router = APIRouter(prefix="/recording", tags=["recording"])
 
@@ -33,6 +37,10 @@ class RecordingStatusItem(BaseModel):
     audio_enabled: bool
     retention_days: int | None = None
     retention_max_gb: int | None = None
+    # Phase 10 honest status: what is actually happening, not just the policy.
+    is_recording: bool | None = None
+    last_segment_at: datetime | None = None
+    recording_detail: str | None = None
 
 
 class RecordingSettingsUpdate(BaseModel):
@@ -56,9 +64,16 @@ async def get_all_recording_status(
         allowed = {p.camera_serial for p in user.permissions}
         cams = [c for c in cams if c.serial in allowed]
 
+    # Evidence of recording = a recent indexed segment (same rule as the gap watchdog).
+    try:
+        live_state = await check_camera_gaps(db)
+    except Exception:
+        live_state = {}
+
     items: list[RecordingStatusItem] = []
     for cam in cams:
         rec_settings = await get_or_create_recording_settings(db, cam.serial)
+        health = live_state.get(cam.serial)
         items.append(
             RecordingStatusItem(
                 camera_serial=rec_settings.camera_serial,
@@ -67,6 +82,9 @@ async def get_all_recording_status(
                 audio_enabled=rec_settings.audio_enabled,
                 retention_days=rec_settings.retention_days,
                 retention_max_gb=rec_settings.retention_max_gb,
+                is_recording=(health.recording_state == RecordingState.RECORDING) if health else None,
+                last_segment_at=health.last_segment_at if health else None,
+                recording_detail=health.details if health else None,
             )
         )
     return items

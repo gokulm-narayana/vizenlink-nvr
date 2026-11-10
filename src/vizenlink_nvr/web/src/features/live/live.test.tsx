@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { LivePage } from "./LivePage";
+import { LivePage, swapChannels } from "./LivePage";
 import { useUiStore } from "@/stores/ui";
 import { GridStorage } from "@/services/grid_storage";
 
@@ -296,4 +296,48 @@ describe("LivePage & VideoTile", () => {
     expect(screen.getByText("Entrance")).toBeInTheDocument();
   });
 
+  it("swapChannels swaps two cameras and ignores unknown serials", () => {
+    expect(swapChannels(["A", "B", "C"], "A", "C")).toEqual(["C", "B", "A"]);
+    expect(swapChannels(["A", "B"], "A", "Z")).toEqual(["A", "B"]);
+  });
+
+  it("numbers tiles as channels, shows empty channels, and moves a camera via the right-click menu", async () => {
+    const user = userEvent.setup();
+    GridStorage.save({ dimension: 2, page: 0, slotAssignments: {} });
+    renderLivePage(
+      [
+        { id: 1, serial: "CAM1", name: "Gate", state: "online" },
+        { id: 2, serial: "CAM2", name: "Yard", state: "online" },
+        { id: 3, serial: "CAM3", name: "Lobby", state: "online" },
+      ],
+      "owner"
+    );
+    await screen.findByText("Gate");
+    expect(screen.getByText("CH 1")).toBeInTheDocument();
+    expect(screen.getByText("CH 3")).toBeInTheDocument();
+    // 2x2 grid with 3 cameras leaves CH 4 empty, like the old VMS.
+    expect(screen.getByText("Empty channel")).toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByRole("group", { name: /Gate/ }));
+    const menu = await screen.findByRole("menu", { name: "Gate actions" });
+    expect(menu).toHaveTextContent("Full screen");
+    expect(menu).toHaveTextContent("Take snapshot");
+    expect(menu).toHaveTextContent("Replay last 5 minutes");
+
+    await user.click(screen.getByRole("menuitem", { name: /Move to channel/ }));
+    // Keyboard selection (Radix sub-menu items ignore synthetic pointer clicks in jsdom).
+    const target = await screen.findByRole("menuitem", { name: "CH 3 · Lobby" });
+    target.focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem("vizenlink_live_order_1") || "[]")).toEqual(["CAM3", "CAM2", "CAM1"]);
+    });
+  });
+
+  it("offers a whole-grid full screen button", async () => {
+    renderLivePage([{ id: 1, serial: "CAM1", name: "Gate", state: "online" }], "viewer");
+    await screen.findByText("Gate");
+    expect(screen.getByRole("button", { name: "Full screen grid" })).toBeInTheDocument();
+  });
 });

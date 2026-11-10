@@ -34,6 +34,9 @@ export interface CameraInfo {
 export interface RecordingStatusItem {
   camera_serial: string;
   mode: string;
+  /** Phase 10: true only when a recent segment exists (not just the policy). */
+  last_segment_at?: string | null;
+  recording_detail?: string | null;
   is_recording?: boolean;
   [key: string]: any;
 }

@@ -30,6 +30,7 @@ interface TileOverlayProps {
   onSnapshot: () => void;
   onToggleMute: () => void;
   onToggleMaximize: () => void;
+  channel?: number;
 }
 
 export const TileOverlay: React.FC<TileOverlayProps> = ({
@@ -44,6 +45,7 @@ export const TileOverlay: React.FC<TileOverlayProps> = ({
   onSnapshot,
   onToggleMute,
   onToggleMaximize,
+  channel,
 }) => {
   const renderStateBadge = () => {
     switch (state) {
@@ -84,7 +86,12 @@ export const TileOverlay: React.FC<TileOverlayProps> = ({
   return (
     <>
       {/* Top Left: Camera Name */}
-      <div className="absolute top-2 left-2 max-w-[60%] pointer-events-none z-10">
+      <div className="absolute top-2 left-2 max-w-[60%] pointer-events-none z-10 flex items-center gap-1">
+        {channel !== undefined && (
+          <span className="shrink-0 rounded bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground tabular-nums">
+            CH {channel}
+          </span>
+        )}
         <div
           title={name}
           className="truncate rounded bg-video-overlay px-2 py-0.5 text-xs font-semibold text-video-fg"
@@ -100,7 +107,7 @@ export const TileOverlay: React.FC<TileOverlayProps> = ({
 
       {/* Bottom Left: REC Indicator */}
       {isRecording && (
-        <div className="absolute bottom-2 left-2 pointer-events-none z-10">
+        <div className="absolute top-8 right-2 pointer-events-none z-10">
           <div className="flex items-center gap-1.5 rounded bg-video-overlay px-2 py-0.5 text-xs font-semibold text-video-fg">
             <span className="h-2 w-2 rounded-full bg-rec animate-pulse motion-reduce:animate-none" />
             <span>{LIVE_COPY.REC_BADGE}</span>

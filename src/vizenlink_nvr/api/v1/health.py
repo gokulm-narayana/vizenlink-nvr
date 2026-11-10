@@ -14,7 +14,6 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from vizenlink_nvr import __version__
-
 from vizenlink_nvr.api.dependencies import CurrentUser, DbSession
 from vizenlink_nvr.services.alert_service import AlertService
 from vizenlink_nvr.services.health import RecorderHealthService

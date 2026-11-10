@@ -41,7 +41,7 @@ import {
   type CameraInfo,
 } from "@/lib/queries";
 import { formatDateTime, formatRelative, useSiteTimeZone } from "@/lib/time";
-import { evaluateRecorderStatus, recordingSerials as toRecordingSerials } from "@/lib/recorder-status";
+import { evaluateRecorderStatus, isCameraOffline, recordingSerials as toRecordingSerials } from "@/lib/recorder-status";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "cn";
 import { useOutages, useStorageStatus, useSystemMetrics } from "./api";
@@ -262,8 +262,14 @@ export function deriveCameraIssues(
   const issues: CameraIssue[] = [];
   for (const cam of cameras) {
     const outageStart = openOutages.get(cam.serial);
-    if (cam.is_online === false || outageStart) {
-      issues.push({ camera: cam, kind: "offline", text: "Camera offline", since: outageStart ?? cam.last_seen_at ?? null });
+    if (isCameraOffline(cam) || outageStart) {
+      const text =
+        cam.state === "auth_failed"
+          ? "Camera rejected the saved password"
+          : cam.state === "tls_changed"
+            ? "Camera security certificate changed"
+            : "Camera offline";
+      issues.push({ camera: cam, kind: "offline", text, since: outageStart ?? cam.last_seen_at ?? null });
     } else if (storageBroken || !recording.has(cam.serial)) {
       issues.push({
         camera: cam,
@@ -322,7 +328,7 @@ export const DashboardPage: React.FC = () => {
     openOutageSerials: new Set(openOutageMap.keys()),
   });
 
-  const offlineCount = cameras.filter((c) => c.is_online === false || openOutageMap.has(c.serial)).length;
+  const offlineCount = cameras.filter((c) => isCameraOffline(c, new Set(openOutageMap.keys()))).length;
   const issues = deriveCameraIssues(cameras, recordingSet, openOutageMap, status.storageBroken);
   const systemAlerts = (Array.isArray(allAlerts) ? allAlerts : []).filter((a) => !dismissedAlertIds.has(a.id));
   const latestEvents = (Array.isArray(recentEvents?.items) ? recentEvents.items : []).slice(0, 5);

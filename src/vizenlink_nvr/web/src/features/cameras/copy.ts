@@ -1,7 +1,7 @@
 export const CAMERAS_COPY = {
   EMPTY_HEADING: "No cameras yet",
   EMPTY_BODY:
-    "Add a camera by entering its details. The web app can't scan your network, so to find cameras automatically, run `nvr cameras scan` on the NVR host.",
+    "Connect your first camera. Find cameras on the recorder's network or enter their details yourself.",
   EMPTY_ACTION: "Add camera",
   LIST_CAPTION: "Cameras",
   ADD_CAMERA: "Add camera",

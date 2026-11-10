@@ -9,6 +9,7 @@ import {
   Cctv,
   Users,
   Smartphone,
+  Settings,
 } from "lucide-react";
 import { cn } from "cn";
 import {
@@ -63,26 +64,25 @@ function hasRole(userRole: string | undefined, minRole: Role): boolean {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Watch",
+    label: "Your workspace",
     items: [
-      { title: "Live", path: "/", icon: LayoutGrid, minRole: "viewer", shortcut: "G then L" },
+      { title: "Live View", path: "/", icon: LayoutGrid, minRole: "viewer", shortcut: "G then L" },
       { title: "Playback", path: "/playback", icon: History, minRole: "viewer", shortcut: "G then P" },
       { title: "Events", path: "/events", icon: Bell, minRole: "viewer", shortcut: "G then E" },
-      { title: "Gallery", path: "/gallery", icon: Images, minRole: "viewer", shortcut: "G then G" },
+      { title: "Saved Media", path: "/gallery", icon: Images, minRole: "viewer", shortcut: "G then G" },
     ],
   },
   {
-    label: "Monitor",
+    label: "Recorder",
     items: [
-      { title: "Dashboard", path: "/dashboard", icon: Activity, minRole: "viewer", shortcut: "G then D" },
+      { title: "System Health", path: "/dashboard", icon: Activity, minRole: "viewer", shortcut: "G then D" },
     ],
   },
   {
     label: "Manage",
     items: [
       { title: "Cameras", path: "/cameras", icon: Cctv, minRole: "operator" },
-      { title: "Users", path: "/users", icon: Users, minRole: "owner" },
-      { title: "Mobile devices", path: "/devices", icon: Smartphone, minRole: "owner" },
+      { title: "Settings", path: "/settings", icon: Settings, minRole: "viewer" },
     ],
   },
 ];
@@ -90,7 +90,7 @@ const NAV_GROUPS: NavGroup[] = [
 export const AppSidebar: React.FC = () => {
   const currentUser = useCurrentUser();
   const location = useLocation();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
 
   const { data: rawAlerts = [] } = useAlerts();
@@ -179,6 +179,7 @@ export const AppSidebar: React.FC = () => {
                           <SidebarMenuButton asChild tooltip={tooltipContent}>
                             <NavLink
                               to={targetPath}
+                              onClick={() => { if (isMobile) setOpenMobile(false); }}
                               className={({ isActive }) =>
                                 cn(
                                   "relative flex items-center gap-2",

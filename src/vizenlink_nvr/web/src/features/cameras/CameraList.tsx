@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,11 +18,13 @@ export const CameraList: React.FC<CameraListProps> = ({
   selectedSerial,
 }) => {
   const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const filtered = cameras.filter(c => `${c.name} ${c.location || ""} ${c.serial}`.toLowerCase().includes(search.toLowerCase()));
   const [searchParams] = useSearchParams();
   const tab = searchParams.get("tab");
 
   const buildCameraUrl = (serial: string) => {
-    return tab ? `/cameras/${serial}?tab=${encodeURIComponent(tab)}` : `/cameras/${serial}`;
+    return tab ? `/cameras/${encodeURIComponent(serial)}?tab=${encodeURIComponent(tab)}` : `/cameras/${encodeURIComponent(serial)}`;
   };
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -84,9 +87,11 @@ export const CameraList: React.FC<CameraListProps> = ({
           </Button>
         </div>
 
+        <Input aria-label="Search camera settings" placeholder="Search cameras or locations…" value={search} onChange={e => setSearch(e.target.value)} className="mb-4" />
         <ScrollArea className="flex-1 -mr-4 pr-4">
+          {filtered.length === 0 && <p className="py-4 text-sm text-muted-foreground">No cameras match your search.</p>}
           <div className="flex flex-col gap-1">
-            {cameras.map((cam) => {
+            {filtered.map((cam) => {
               const isSelected = cam.serial === selectedSerial;
               const isOnline = cam.is_online !== false && cam.status !== "offline" && cam.state !== "offline";
 
@@ -97,7 +102,7 @@ export const CameraList: React.FC<CameraListProps> = ({
                   className={cn(
                     "flex items-center justify-between rounded-md px-2 py-2 text-xs transition-colors",
                     isSelected
-                      ? "bg-muted text-foreground font-semibold"
+                      ? "bg-selected text-selected-foreground font-semibold"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >

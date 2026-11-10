@@ -100,7 +100,7 @@ export const UserMenu: React.FC = () => {
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
 
-        <div className="md:hidden">
+        <div>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
             View
@@ -110,10 +110,10 @@ export const UserMenu: React.FC = () => {
             onValueChange={(val) => setViewMode(val as ViewMode)}
           >
             <DropdownMenuRadioItem value="simple">
-              <span>Simple</span>
+              <span>Everyday view</span>
             </DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="advanced">
-              <span>Advanced</span>
+              <span>Show technical details</span>
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
         </div>

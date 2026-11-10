@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, OctagonAlert, TriangleAlert } from "lucide-react";
+import { Bell, OctagonAlert, TriangleAlert, CircleCheck } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAlerts } from "@/lib/queries";
@@ -17,7 +17,7 @@ export const AlertsCard: React.FC = () => {
   const activeAlerts = allAlerts.filter((a) => !dismissedAlertIds.has(a.id));
 
   return (
-    <Card className="flex flex-col justify-between border-border bg-card">
+    <Card className="flex flex-col gap-0 border-border bg-card py-0">
       <CardHeader className="flex flex-row items-center justify-between border-b border-border p-4">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-muted-foreground" />
@@ -33,10 +33,10 @@ export const AlertsCard: React.FC = () => {
         )}
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-4 p-4 flex-1">
+      <CardContent className="flex flex-col gap-4 p-4">
         {activeAlerts.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-xs text-muted-foreground">
-            {DASHBOARD_COPY.ALERTS_EMPTY}
+          <div className="flex items-center gap-3 py-2 text-sm text-muted-foreground">
+            <CircleCheck className="size-5 shrink-0 text-success" />{DASHBOARD_COPY.ALERTS_EMPTY}
           </div>
         ) : (
           <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto pr-1">

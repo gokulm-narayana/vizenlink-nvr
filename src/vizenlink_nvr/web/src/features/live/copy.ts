@@ -9,7 +9,7 @@ export const LIVE_COPY = {
   // Empty states
   EMPTY_HEADING_OPERATOR: "No cameras yet",
   EMPTY_BODY_OPERATOR:
-    "Add a camera by entering its details. The web app can't scan your network, so to find cameras automatically, run nvr cameras scan on the NVR host.",
+    "Connect your first camera to start watching. Search the recorder's network or enter the camera details yourself.",
   EMPTY_ACTION_ADD: "Add camera",
   EMPTY_HEADING_VIEWER: "No cameras assigned",
   EMPTY_BODY_VIEWER: "Ask the NVR owner to give you access to a camera.",

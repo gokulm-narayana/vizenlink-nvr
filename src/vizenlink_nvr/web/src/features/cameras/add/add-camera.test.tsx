@@ -18,6 +18,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/lib/queries", () => ({
+  useCameras: () => ({ data: [] }),
   useCurrentUser: () => ({
     id: 1,
     username: "operator1",
@@ -160,7 +161,7 @@ describe("Add Camera Feature", () => {
       renderWizard();
 
       expect(screen.getByRole("heading", { name: ADD_CAMERA_COPY.TITLE })).toBeInTheDocument();
-      expect(screen.getByText(ADD_CAMERA_COPY.PAGE_NOTE_CMD)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Find cameras" })).toBeInTheDocument();
       expect(screen.getByText(ADD_CAMERA_COPY.STEP_CAPTION(1, 3))).toBeInTheDocument();
       expect(screen.getByLabelText(ADD_CAMERA_COPY.SERIAL_LABEL)).toBeInTheDocument();
       expect(screen.getByLabelText(ADD_CAMERA_COPY.HOST_LABEL)).toBeInTheDocument();

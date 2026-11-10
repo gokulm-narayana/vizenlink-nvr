@@ -45,40 +45,21 @@ export const CamerasTable: React.FC<CamerasTableProps> = ({
 
   if (cameras.length === 0) {
     return (
-      <Card className="border-border bg-card">
-        <CardContent className="p-8">
-          <Empty className="border border-dashed border-border bg-card/50">
-            <EmptyMedia>
-              <Cctv className="h-6 w-6 text-muted-foreground" />
-            </EmptyMedia>
-            <EmptyTitle>
-              {isOperatorOrOwner
-                ? DASHBOARD_COPY.CAMERAS_EMPTY_OPERATOR_TITLE
-                : DASHBOARD_COPY.CAMERAS_EMPTY_VIEWER_TITLE}
-            </EmptyTitle>
-            <EmptyDescription>
-              {isOperatorOrOwner
-                ? DASHBOARD_COPY.CAMERAS_EMPTY_OPERATOR_DESC
-                : DASHBOARD_COPY.CAMERAS_EMPTY_VIEWER_DESC}
-            </EmptyDescription>
-            {isOperatorOrOwner && (
-              <EmptyContent>
-                <Button size="sm" asChild className="gap-1.5 font-semibold text-xs">
-                  <Link to="/cameras/add">
-                    <Plus className="h-4 w-4" />
-                    <span>{DASHBOARD_COPY.CAMERAS_ADD_BUTTON}</span>
-                  </Link>
-                </Button>
-              </EmptyContent>
-            )}
-          </Empty>
-        </CardContent>
-      </Card>
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-4">
+          <div className="rounded-lg bg-selected p-3 text-primary"><Cctv className="size-6" /></div>
+          <div>
+            <h2 className="font-semibold">{isOperatorOrOwner ? DASHBOARD_COPY.CAMERAS_EMPTY_OPERATOR_TITLE : DASHBOARD_COPY.CAMERAS_EMPTY_VIEWER_TITLE}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{isOperatorOrOwner ? DASHBOARD_COPY.CAMERAS_EMPTY_OPERATOR_DESC : DASHBOARD_COPY.CAMERAS_EMPTY_VIEWER_DESC}</p>
+          </div>
+        </div>
+        {isOperatorOrOwner && <Button asChild><Link to="/cameras/add"><Plus className="size-4" />{DASHBOARD_COPY.CAMERAS_ADD_BUTTON}</Link></Button>}
+      </section>
     );
   }
 
   return (
-    <Card className="border-border bg-card overflow-hidden">
+    <Card className="border-border bg-card overflow-hidden gap-0 py-0">
       <CardHeader className="border-b border-border p-4">
         <CardTitle className="text-sm font-semibold text-foreground">
           {DASHBOARD_COPY.CAMERAS_TITLE}
@@ -123,7 +104,7 @@ export const CamerasTable: React.FC<CamerasTableProps> = ({
                       <StatusBadge kind={isOnline ? "online" : "offline"} />
                     </TableCell>
                     <TableCell>
-                      <StatusBadge kind={isRecording ? "recording" : "not-recording"} />
+                      <StatusBadge kind={isRecording ? "online" : "not-recording"} label={isRecording ? "Enabled" : "Off"} />
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground" title={lastSeenAbsolute}>
                       {lastSeenRelative}
@@ -162,7 +143,7 @@ export const CamerasTable: React.FC<CamerasTableProps> = ({
 
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge kind={isOnline ? "online" : "offline"} />
-                  <StatusBadge kind={isRecording ? "recording" : "not-recording"} />
+                  <StatusBadge kind={isRecording ? "online" : "not-recording"} label={isRecording ? "Enabled" : "Off"} />
                 </div>
 
                 <div className="flex items-center justify-between pt-1">

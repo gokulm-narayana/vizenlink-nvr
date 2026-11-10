@@ -11,10 +11,10 @@ export const TIMELINE_COPY = {
   TABLE_HEADER_END: "End Time",
   TABLE_HEADER_DURATION: "Duration",
 
-  MARKERS_LABEL: "Export markers:",
-  MARKER_SET_IN: "Set In Marker",
-  MARKER_SET_OUT: "Set Out Marker",
-  MARKER_CLEAR: "Clear markers",
+  MARKERS_LABEL: "Clip selection:",
+  MARKER_SET_IN: "Set clip start",
+  MARKER_SET_OUT: "Set clip end",
+  MARKER_CLEAR: "Clear clip selection",
 
   TOOLTIP_RECORDED: "Recorded",
   TOOLTIP_OUTAGE: "Recording outage",

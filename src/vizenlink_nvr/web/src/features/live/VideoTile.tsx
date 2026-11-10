@@ -67,6 +67,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
   // Handle keyboard events (Enter to maximize, F for fullscreen, Esc to restore)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
     if (e.key === "Enter") {
       e.preventDefault();
       onToggleMaximize();

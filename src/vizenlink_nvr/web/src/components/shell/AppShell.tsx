@@ -4,7 +4,6 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "./AppSidebar";
 import { UserMenu } from "./UserMenu";
-import { ViewModeToggle } from "./ViewModeToggle";
 import { AlertsBell } from "./AlertsBell";
 import { AlertStack } from "./AlertStack";
 import { RefetchBar } from "./RefetchBar";
@@ -28,6 +27,19 @@ export const AppShell: React.FC = () => {
   const handle = (currentMatch?.handle as RouteHandle) || {};
   const pageTitle = handle.title || "VizenLink NVR";
   const isFullBleed = Boolean(handle.fullBleed);
+  const descriptions: Record<string, string> = {
+    "Live View": "Your cameras, together. Choose a view or find a camera to get started.",
+    Playback: "Find a moment, review the footage, and save what matters.",
+    Events: "Review detections and jump straight to the recorded moment.",
+    "Saved Media": "Your saved snapshots and exported video clips, in one place.",
+    "System Health": "Check camera connections, storage, and issues that need attention.",
+    Cameras: "Choose a camera to update its picture, video, or connection settings.",
+    Users: "Manage who can access your recorder and which cameras they can see.",
+    "Mobile devices": "Connect your phone and manage devices with remote access.",
+    Profile: "Manage your account and sign-in details.",
+    Settings: "Set up your cameras, recording preferences, and access.",
+    "Recording & Storage": "Choose when to record and how long to keep footage.",
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -43,7 +55,7 @@ export const AppShell: React.FC = () => {
         <div className="flex min-h-dvh w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-1 flex-col min-w-0">
-          <header className="relative flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
             <div className="flex items-center gap-2 min-w-0">
               <SidebarTrigger />
               <Link
@@ -60,7 +72,7 @@ export const AppShell: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <AlertsBell />
-              <ViewModeToggle />
+
               <UserMenu />
             </div>
             <RefetchBar />
@@ -80,6 +92,7 @@ export const AppShell: React.FC = () => {
               <Outlet />
             ) : (
               <div className="max-w-320 mx-auto w-full">
+                {descriptions[pageTitle] && <p className="mb-6 text-sm text-muted-foreground">{descriptions[pageTitle]}</p>}
                 <Outlet />
               </div>
             )}

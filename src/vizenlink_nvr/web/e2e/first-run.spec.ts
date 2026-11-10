@@ -22,6 +22,6 @@ test.describe("First-run setup", () => {
 
     // 4. Expect the URL / and the top-bar heading "Live"
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Live" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Live View" })).toBeVisible();
   });
 });

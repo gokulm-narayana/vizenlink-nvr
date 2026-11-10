@@ -504,7 +504,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div
           // dynamic-style: playhead line percentage position
           style={{ left: `${playheadPct}%` }}
-          className="absolute top-0 bottom-8 w-0.5 bg-foreground pointer-events-none z-30"
+          className="absolute top-0 bottom-8 w-0.5 bg-primary-foreground shadow-[0_0_0_1px_var(--foreground)] pointer-events-none z-30"
         >
           {/* Triangular head */}
           <div className="absolute top-0 left-[-5px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-foreground" />

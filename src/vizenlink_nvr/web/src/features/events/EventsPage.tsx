@@ -113,14 +113,14 @@ export const EventsPage: React.FC = () => {
 
   // Filter client-side by unread if active in Advanced view
   const displayedItems = useMemo(() => {
-    if (viewMode === "advanced" && unreadOnly) {
+    if (unreadOnly) {
       return allItems.filter((evt) => !readEventIds.has(evt.id));
     }
     return allItems;
   }, [allItems, viewMode, unreadOnly, readEventIds]);
 
   const isFiltered = Boolean(
-    selectedCamera || selectedType || fromParam || toParam || (viewMode === "advanced" && unreadOnly)
+    selectedCamera || selectedType || fromParam || toParam || (unreadOnly)
   );
 
   // Filter Handlers

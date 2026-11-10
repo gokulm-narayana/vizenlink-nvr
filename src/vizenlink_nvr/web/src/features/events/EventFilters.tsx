@@ -150,7 +150,7 @@ export const EventFilters: React.FC<EventFiltersProps> = ({
       </div>
 
       {/* Advanced View: Unread Only Switch */}
-      {viewMode === "advanced" && (
+      {(
         <div className="flex items-center gap-2">
           <Switch
             id="unread-only-switch"

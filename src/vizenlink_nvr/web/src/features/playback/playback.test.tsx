@@ -437,8 +437,8 @@ describe("Playback Toolbar & TransportBar behavior", () => {
     expect(exportBtn).toBeDisabled();
 
     // Mark in and Mark out buttons exist
-    const markInBtn = screen.getByRole("button", { name: "Mark in" });
-    const markOutBtn = screen.getByRole("button", { name: "Mark out" });
+    const markInBtn = screen.getByRole("button", { name: "Set clip start" });
+    const markOutBtn = screen.getByRole("button", { name: "Set clip end" });
     expect(markInBtn).toBeInTheDocument();
     expect(markOutBtn).toBeInTheDocument();
 

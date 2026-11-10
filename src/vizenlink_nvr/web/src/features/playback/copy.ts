@@ -15,7 +15,7 @@ export const PLAYBACK_COPY = {
   exportClip: "Export clip",
   exportDialogTitle: "Export clip",
   exportSuccessToast: "Clip exported",
-  openInGallery: "Open in Gallery",
+  openInGallery: "Open in Saved Media",
   keepEditingClip: "Keep editing clip",
   retryExportClip: "Retry export clip",
   exportError: "Couldn't export the clip. Check your connection and that the time range has footage, then try again.",
@@ -36,7 +36,7 @@ export const PLAYBACK_COPY = {
   mute: "Mute",
   unmute: "Unmute",
   snapshot: "Take snapshot",
-  markIn: "Mark in",
-  markOut: "Mark out",
+  markIn: "Set clip start",
+  markOut: "Set clip end",
   fullscreen: "Toggle fullscreen",
 } as const;

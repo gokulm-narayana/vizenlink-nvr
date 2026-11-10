@@ -1,5 +1,5 @@
 export const GALLERY_COPY = {
-  TITLE: "Gallery",
+  TITLE: "Saved Media",
   TAB_SNAPSHOTS: "Snapshots",
   TAB_CLIPS: "Clips",
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,28 @@ def create_app(
     runtime: Any | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application instance."""
+
+    @asynccontextmanager
+    async def lifespan(fastapi_app: FastAPI):
+        has_sf = getattr(fastapi_app.state, "session_factory", None) is not None
+        has_rt = getattr(fastapi_app.state, "runtime", None) is not None
+        if not has_sf and not has_rt:
+            from vizenlink_nvr.config import load_settings
+            from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
+            from vizenlink_nvr.paths import db_path, ensure_data_dir
+
+            settings = load_settings()
+            ensure_data_dir(settings)
+            db_p = db_path(settings)
+            upgrade_to_head(db_p)
+            engine = create_engine_for(db_p)
+            fastapi_app.state.engine = engine
+            fastapi_app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        yield
+        engine = getattr(fastapi_app.state, "engine", None)
+        if engine is not None:
+            await engine.dispose()
+
     app = FastAPI(
         title="VizenLink NVR API",
         description="VizenLink Network Video Recorder REST API",
@@ -37,6 +60,7 @@ def create_app(
         openapi_url="/api/v1/openapi.json",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # Attach database session factory or runtime

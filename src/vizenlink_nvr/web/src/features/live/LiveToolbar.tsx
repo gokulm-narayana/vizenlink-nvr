@@ -26,7 +26,7 @@ export const LiveToolbar: React.FC<LiveToolbarProps> = ({
   viewMode,
 }) => {
   const allowedDimensions: GridDimension[] =
-    viewMode === "advanced" ? [1, 2, 3, 4] : [1, 2, 3];
+    [1, 2, 3, 4];
 
   const handleToggle = (val: string) => {
     if (!val) return;
@@ -37,7 +37,7 @@ export const LiveToolbar: React.FC<LiveToolbarProps> = ({
   };
 
   return (
-    <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+    <div className="sticky top-0 z-10 flex min-h-14 flex-wrap gap-3 py-2 shrink-0 items-center justify-between border-b border-border bg-card px-4">
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold text-muted-foreground">
           {LIVE_COPY.TOOLBAR_LAYOUT}

@@ -94,11 +94,17 @@ async def update_recording_settings(
             await set_recording_schedule(db, serial, payload.schedule_json)
         if payload.audio_enabled is not None:
             await set_recording_audio(db, serial, payload.audio_enabled)
-        if payload.retention_days is not None or payload.retention_max_gb is not None:
+        if {"retention_days", "retention_max_gb"} & payload.model_fields_set:
             current = await get_or_create_recording_settings(db, serial)
-            days = payload.retention_days if payload.retention_days is not None else current.retention_days
+            days = (
+                payload.retention_days
+                if "retention_days" in payload.model_fields_set
+                else current.retention_days
+            )
             max_gb = (
-                payload.retention_max_gb if payload.retention_max_gb is not None else current.retention_max_gb
+                payload.retention_max_gb
+                if "retention_max_gb" in payload.model_fields_set
+                else current.retention_max_gb
             )
             await set_recording_retention(db, serial, days, max_gb)
 

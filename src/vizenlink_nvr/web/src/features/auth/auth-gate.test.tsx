@@ -261,7 +261,7 @@ describe("AuthGate routing", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Account menu for admin" })
       ).toBeInTheDocument();

@@ -14,3 +14,4 @@
 - `uv run pytest tests/integration/test_phase8_tracer.py -v` (1 passed in 0.27s).
 - `uv run python tools/phase_gate.py` (15/15 passed).
 - All linters, type checks, schema checks, contract locks, and tracers passed cleanly.
+

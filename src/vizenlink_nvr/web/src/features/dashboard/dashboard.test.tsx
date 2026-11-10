@@ -11,6 +11,7 @@ import { CamerasTable } from "./CamerasTable";
 import { OutageHistoryDialog } from "./OutageHistoryDialog";
 import { useUiStore } from "@/stores/ui";
 
+let mockStorageHealth = "ok";
 let mockCurrentUser: { id: number; username: string; role: string; permissions: string[] } | null = {
   id: 1,
   username: "operator1",
@@ -75,7 +76,7 @@ vi.mock("./api", () => ({
       storage_path: "/var/lib/vizenlink-nvr/recordings",
       allow_system_disk: false,
       reserve_bytes: 21474836480, // 20 GiB
-      health_state: "ok",
+      health_state: mockStorageHealth,
       telemetry: {
         total_bytes: 107374182400, // 100 GiB
         used_bytes: 75161927680, // 70 GiB (70%)
@@ -114,6 +115,7 @@ vi.mock("./api", () => ({
 describe("Dashboard Feature", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStorageHealth = "ok";
     localStorage.clear();
     mockCurrentUser = {
       id: 1,
@@ -146,15 +148,15 @@ describe("Dashboard Feature", () => {
 
       // Recorder status displays Healthy
       expect(screen.getByText("Recorder status")).toBeInTheDocument();
-      expect(screen.getByText("Healthy", { selector: ".text-display" })).toBeInTheDocument();
+      expect(screen.getByText("Healthy", { selector: ".text-xl" })).toBeInTheDocument();
 
       // Cameras online (CAM-01 is online, CAM-02 has open outage so offline)
       expect(screen.getByText("Cameras online")).toBeInTheDocument();
       expect(screen.getByText("1 / 2")).toHaveClass("text-xl");
 
       // Recording now (CAM-01 is continuous, CAM-02 is off)
-      expect(screen.getByText("Recording now")).toBeInTheDocument();
-      const recordingCard = screen.getByText("Recording now").closest('[data-slot="card"]');
+      expect(screen.getByText("Recording enabled")).toBeInTheDocument();
+      const recordingCard = screen.getByText("Recording enabled").closest('[data-slot="card"]');
       expect(within(recordingCard! as HTMLElement).getByText("1")).toHaveClass("text-xl");
 
       // Storage used (70%)
@@ -167,6 +169,14 @@ describe("Dashboard Feature", () => {
       expect(within(alertsCard! as HTMLElement).getByText("1")).toHaveClass("text-xl");
       expect(screen.getByText("Camera outage history")).toBeInTheDocument();
     });
+  });
+
+  it("never reports Healthy when the configured storage folder is unavailable", () => {
+    mockStorageHealth = "unmounted";
+    renderWithProviders(<DashboardPage />);
+    expect(screen.getByText("Needs attention")).toBeInTheDocument();
+    expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Review storage settings/ })).toHaveAttribute("href", "/settings/recording");
   });
 
   describe("StorageCard", () => {
@@ -200,7 +210,8 @@ describe("Dashboard Feature", () => {
       expect(screen.getByText("Storage")).toBeInTheDocument();
       expect(screen.getByText("30.0 GiB")).toBeInTheDocument();
       expect(screen.getByText("14 days")).toBeInTheDocument();
-      expect(screen.getByText("20.0 GiB")).toBeInTheDocument();
+      expect(screen.getByText("Reserved space: 20.0 GiB")).toBeInTheDocument();
+      await user.click(screen.getByText("Storage details"));
 
       const copyBtn = screen.getByRole("button", { name: "Copy storage path" });
       await user.click(copyBtn);
@@ -223,7 +234,7 @@ describe("Dashboard Feature", () => {
       );
 
       expect(screen.getByText("Storage volume is read-only")).toBeInTheDocument();
-      expect(screen.getByText("critical")).toBeInTheDocument();
+      expect(screen.getByText("Action needed")).toBeInTheDocument();
     });
   });
 

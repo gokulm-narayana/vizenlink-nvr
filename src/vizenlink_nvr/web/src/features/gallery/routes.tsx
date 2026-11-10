@@ -5,7 +5,7 @@ import type { ShellRoute } from "@/app/routes";
 export const routes: ShellRoute[] = [
   {
     path: "/gallery",
-    title: "Gallery",
+    title: "Saved Media",
     minRole: "viewer",
     element: <GalleryPage />,
   },

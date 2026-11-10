@@ -1,160 +1,51 @@
-import React, { useState, useRef } from "react";
-import { Copy, HardDrive } from "lucide-react";
+import React, { useState } from "react";
+import { Link } from "react-router";
+import { Copy, HardDrive, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { StatusBadge } from "@/components/StatusBadge";
+import { useCurrentUser } from "@/lib/queries";
 import type { StorageStatusResponse } from "./api";
 import { DASHBOARD_COPY } from "./copy";
 
-export interface StorageCardProps {
-  storage: StorageStatusResponse | null;
-}
-
+export interface StorageCardProps { storage: StorageStatusResponse | null }
 export function middleEllipsis(str: string, maxLen = 32): string {
   if (!str || str.length <= maxLen) return str;
   const half = Math.floor((maxLen - 3) / 2);
   return `${str.slice(0, half)}...${str.slice(-half)}`;
 }
-
 export function bytesToGiB(bytes?: number | null): string {
-  if (!bytes || bytes <= 0) return "0.0 GiB";
-  const gib = bytes / (1024 * 1024 * 1024);
-  return `${gib.toFixed(1)} GiB`;
+  return `${(Math.max(0, bytes || 0) / (1024 ** 3)).toFixed(1)} GiB`;
 }
-
-export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
-  const [showFallback, setShowFallback] = useState(false);
-  const pathRef = useRef<HTMLSpanElement>(null);
-
-  const handleCopy = async () => {
-    if (!storage?.storage_path) return;
-    if (navigator?.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(storage.storage_path);
-        toast(DASHBOARD_COPY.STORAGE_PATH_COPIED_TOAST);
-        setShowFallback(false);
-        return;
-      } catch {
-        // fallback on insecure context
-      }
-    }
-    // Fallback for plain HTTP LAN environments
-    setShowFallback(true);
-    if (pathRef.current && window.getSelection) {
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(pathRef.current);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
+export function storageSummary(storage: StorageStatusResponse): string {
+  if (storage.health_reason?.toLowerCase().includes("permission denied")) return "The recorder cannot write to this folder. Choose a recording folder it can access.";
+  const messages: Record<string, string> = {
+    unmounted: "The recording drive or folder is unavailable. Reconnect the drive or choose another folder.",
+    read_only: "The recording drive is read-only. Choose a writable drive to resume recording.",
+    full: "The recording drive is full. Free up space or choose another drive.",
+    system_disk_refused: "This folder is on the system disk. Choose a recording drive or explicitly allow this disk in storage settings.",
   };
-
-  const path = storage?.storage_path || "/var/lib/vizenlink-nvr/recordings";
-  const isHealthy = storage?.health_state === "ok" || storage?.health_state === "healthy";
-  const freeBytes = storage?.telemetry?.free_bytes ?? 0;
-  const reserveBytes = storage?.reserve_bytes ?? storage?.telemetry?.reserve_bytes ?? 0;
-  const retentionDays = storage?.estimated_retention_days;
-
-  return (
-    <Card className="flex flex-col justify-between border-border bg-card">
-      <CardHeader className="flex flex-row items-center justify-between border-b border-border p-4">
-        <div className="flex items-center gap-2">
-          <HardDrive className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold text-foreground">
-            {DASHBOARD_COPY.STORAGE_TITLE}
-          </CardTitle>
-        </div>
-
-        {!isHealthy && storage?.health_state && (
-          <StatusBadge kind="critical" label={storage.health_state} />
-        )}
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-4 p-4 text-xs font-normal">
-        {/* Storage Failure Notice if unhealthy */}
-        {!isHealthy && storage?.health_reason && (
-          <div className="rounded-md border border-critical/30 bg-critical-subtle p-2 text-foreground font-semibold">
-            {storage.health_reason}
-          </div>
-        )}
-
-        {/* Path with Middle Ellipsis & Copy Button */}
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground">Path</span>
-          <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    ref={pathRef}
-                    className="font-mono text-xs font-semibold text-foreground truncate cursor-help"
-                  >
-                    {middleEllipsis(path)}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-mono text-xs">{path}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label={DASHBOARD_COPY.STORAGE_PATH_COPY_LABEL}
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCopy}
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span className="sr-only">{DASHBOARD_COPY.STORAGE_PATH_COPY_LABEL}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">{DASHBOARD_COPY.STORAGE_PATH_COPY_LABEL}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          {showFallback && (
-            <span className="text-xs text-muted-foreground italic">
-              {DASHBOARD_COPY.STORAGE_PATH_FALLBACK_CAPTION}
-            </span>
-          )}
-        </div>
-
-        {/* Telemetry Metrics */}
-        <div className="grid grid-cols-3 gap-2 border-t border-border pt-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-muted-foreground">{DASHBOARD_COPY.STORAGE_FREE}</span>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {bytesToGiB(freeBytes)}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-muted-foreground">
-              {DASHBOARD_COPY.STORAGE_ESTIMATED_RETENTION}
-            </span>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {retentionDays !== null && retentionDays !== undefined
-                ? `${retentionDays} days`
-                : "N/A"}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-muted-foreground">{DASHBOARD_COPY.STORAGE_RESERVE}</span>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {bytesToGiB(reserveBytes)}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return messages[storage.health_state] || "Recording storage needs attention. Check the drive and recording folder.";
+}
+export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
+  const user = useCurrentUser();
+  const [showFallback, setShowFallback] = useState(false);
+  const healthy = !!storage && ["ok", "healthy"].includes(storage.health_state);
+  const manage = user?.role === "owner" || user?.role === "operator";
+  const handleCopy = async () => {
+    if (!storage) return;
+    try { await navigator.clipboard.writeText(storage.storage_path); toast(DASHBOARD_COPY.STORAGE_PATH_COPIED_TOAST); }
+    catch { setShowFallback(true); }
+  };
+  return <Card className="min-w-0 gap-0 border-border bg-card py-0">
+    <CardHeader className="flex flex-row items-center justify-between border-b border-border p-4">
+      <div className="flex items-center gap-2"><HardDrive className="size-4 text-muted-foreground" /><CardTitle>{DASHBOARD_COPY.STORAGE_TITLE}</CardTitle></div>
+      <span className={`text-xs ${healthy ? "text-success" : "text-warning"}`}>{storage ? healthy ? "Ready to record" : "Action needed" : "Unavailable"}</span>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-4 p-4">
+      {!healthy && storage && <div className="border-l-2 border-warning pl-3"><p className="font-semibold">Recording storage is not ready</p><p className="mt-1 text-sm text-muted-foreground">{storageSummary(storage)}</p>{manage && <Button asChild variant="outline" size="sm" className="mt-3"><Link to="/settings/recording">Review storage settings<ArrowUpRight className="size-4" /></Link></Button>}</div>}
+      {healthy && storage && <div className="grid grid-cols-2 gap-4"><div><p className="text-xs text-muted-foreground">{DASHBOARD_COPY.STORAGE_FREE}</p><p className="mt-1 text-xl font-semibold">{storage.telemetry ? bytesToGiB(storage.telemetry.free_bytes) : "Unavailable"}</p></div><div><p className="text-xs text-muted-foreground">{DASHBOARD_COPY.STORAGE_ESTIMATED_RETENTION}</p><p className="mt-1 text-xl font-semibold">{storage.estimated_retention_days != null ? `${storage.estimated_retention_days} days` : "Not estimated"}</p></div></div>}
+      {storage && <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Storage details</summary><div className="mt-3 flex flex-col gap-3"><div className="flex min-w-0 items-center gap-2"><span className="min-w-0 flex-1 break-all font-mono text-xs">{storage.storage_path}</span><Button variant="ghost" size="icon" aria-label={DASHBOARD_COPY.STORAGE_PATH_COPY_LABEL} onClick={handleCopy}><Copy className="size-4" /></Button></div>{showFallback && <><input readOnly aria-label="Storage path to copy" value={storage.storage_path} onFocus={e => e.target.select()} className="w-full rounded border border-input bg-background p-2" /><span>{DASHBOARD_COPY.STORAGE_PATH_FALLBACK_CAPTION}</span></>}<p className="text-xs text-muted-foreground">Reserved space: {bytesToGiB(storage.reserve_bytes)}</p>{!healthy && storage.health_reason && <p className="break-words text-xs text-muted-foreground">{storage.health_reason}</p>}</div></details>}
+    </CardContent>
+  </Card>;
 };

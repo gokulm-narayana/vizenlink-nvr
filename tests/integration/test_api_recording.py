@@ -81,9 +81,7 @@ async def app_fixture(tmp_path: Path):
             created_at=utc_now(),
             updated_at=utc_now(),
         )
-        viewer.permissions.append(
-            UserCameraPermission(camera_serial="CAM-REC-1", created_at=utc_now())
-        )
+        viewer.permissions.append(UserCameraPermission(camera_serial="CAM-REC-1", created_at=utc_now()))
 
         session.add_all([cam1, cam2, owner, viewer])
         await session.commit()
@@ -157,3 +155,18 @@ async def test_recording_status_and_update(app_fixture) -> None:
     )
     assert res_bad.status_code == 400
 
+
+@pytest.mark.asyncio
+async def test_retention_can_be_cleared_without_changing_other_limit(app_fixture) -> None:
+    client, owner_session, _ = app_fixture
+    client.cookies.set("session_id", owner_session)
+    response = await client.patch(
+        "/api/v1/recording/CAM-REC-1", json={"retention_days": 14, "retention_max_gb": 500}
+    )
+    assert response.status_code == 200
+    response = await client.patch("/api/v1/recording/CAM-REC-1", json={"retention_days": None})
+    assert response.status_code == 200
+    assert response.json()["retention_days"] is None
+    assert response.json()["retention_max_gb"] == 500
+    response = await client.patch("/api/v1/recording/CAM-REC-1", json={"retention_max_gb": None})
+    assert response.json()["retention_max_gb"] is None

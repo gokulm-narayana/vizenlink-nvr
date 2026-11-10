@@ -38,7 +38,7 @@ export const CamerasPage: React.FC = () => {
   const recordingSerials = useMemo(() => {
     return new Set(
       recordingStatus
-        .filter((r) => r.is_recording || r.mode === "continuous" || r.mode === "motion")
+        .filter((r) => r.is_recording === true)
         .map((r) => r.camera_serial)
     );
   }, [recordingStatus]);
@@ -51,7 +51,7 @@ export const CamerasPage: React.FC = () => {
 
   // Tab computation
   const tabParam = searchParams.get("tab") || "identity";
-  const isAdvanced = viewMode === "advanced";
+  const isAdvanced = true;
 
   const visibleTabs = useMemo(() => {
     if (isAdvanced) {
@@ -149,7 +149,7 @@ export const CamerasPage: React.FC = () => {
   const showNotConnectedWarning = isNotConnected || hasLastError;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-full max-w-[1280px]">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-full max-w-[1280px]">
       {/* Master List */}
       <CameraList cameras={rawCameras} selectedSerial={selectedCamera.serial} />
 
@@ -168,7 +168,7 @@ export const CamerasPage: React.FC = () => {
 
           <div className="flex items-center gap-2 shrink-0">
             <StatusBadge kind={isOnline ? "online" : "offline"} />
-            <StatusBadge kind={isRecording ? "recording" : "not-recording"} />
+            {isRecording ? <StatusBadge kind="recording" /> : <span className="text-xs text-muted-foreground">Recording policy: {recordingStatus.find(r => r.camera_serial === selectedCamera.serial)?.mode || "unknown"}</span>}
           </div>
         </div>
 
@@ -212,7 +212,7 @@ export const CamerasPage: React.FC = () => {
               value="identity"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
             >
-              Identity
+              Details
             </TabsTrigger>
 
             {isAdvanced && (
@@ -233,7 +233,7 @@ export const CamerasPage: React.FC = () => {
                   value="overlays"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
                 >
-                  Overlays
+                  On-screen text
                 </TabsTrigger>
               </>
             )}

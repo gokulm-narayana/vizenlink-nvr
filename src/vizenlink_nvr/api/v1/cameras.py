@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -93,6 +94,36 @@ def _resolve_vault(request: Request) -> Vault:
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="Camera credentials can't be stored because the NVR credential vault is unavailable.",
     )
+
+
+@cameras_router.post("/discover")
+async def discover_cameras_endpoint(user: RequireOperator, request: Request) -> dict[str, Any]:
+    """Discover cameras from the recorder's LAN without terminal access."""
+    from vizenlink_nvr.services.scan import run_scan
+
+    runtime = getattr(request.app.state, "runtime", None)
+    if runtime is None or getattr(runtime, "settings", None) is None:
+        raise HTTPException(
+            status_code=503, detail="Camera discovery requires the NVR service to be running."
+        )
+    if getattr(request.app.state, "camera_scan_running", False):
+        raise HTTPException(status_code=409, detail="A camera search is already running. Try again shortly.")
+    request.app.state.camera_scan_running = True
+    try:
+        report = await asyncio.wait_for(run_scan(runtime.settings, timeout=2.0), timeout=30.0)
+        return report.model_dump()
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=504, detail="The camera search timed out. Check the network and try again."
+        ) from exc
+    except OSError as exc:
+        logger.warning("Camera discovery network failure: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="Couldn't search the recorder's network. Check its connection and try again.",
+        ) from exc
+    finally:
+        request.app.state.camera_scan_running = False
 
 
 @cameras_router.get("", response_model=list[CameraView])

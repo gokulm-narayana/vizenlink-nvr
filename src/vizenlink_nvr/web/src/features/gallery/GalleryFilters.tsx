@@ -109,7 +109,7 @@ export const GalleryFilters: React.FC<GalleryFiltersProps> = ({
         </Popover>
 
         {/* Advanced View: User Filter */}
-        {viewMode === "advanced" && (
+        {(
           <Select
             value={selectedUser || "all"}
             onValueChange={(val) => onUserChange(val === "all" ? "" : val)}

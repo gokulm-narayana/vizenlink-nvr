@@ -104,10 +104,10 @@ describe("AppShell tracer & navigation", () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
-    const activeLink = screen.getByRole("link", { name: "Live" });
+    const activeLink = screen.getByRole("link", { name: "Live View" });
     expect(activeLink).toHaveAttribute("aria-current", "page");
   });
 
@@ -116,7 +116,7 @@ describe("AppShell tracer & navigation", () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
     const trigger = screen.getByRole("button", { name: /toggle sidebar/i });
@@ -130,7 +130,7 @@ describe("AppShell tracer & navigation", () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
     expect(useUiStore.getState().sidebarOpen).toBe(true);
@@ -157,7 +157,7 @@ describe("AppShell tracer & navigation", () => {
     const { unmount } = renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("AppShell tracer & navigation", () => {
 
     renderShellApp(["/dashboard"]);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "System Health" })).toBeInTheDocument();
     });
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
   });

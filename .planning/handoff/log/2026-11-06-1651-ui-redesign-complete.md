@@ -45,3 +45,4 @@
   1. MediaMTX loopback restriction for external browsers.
   2. Uppercase camera serial path sensitivity with upstream MediaMTX.
   3. Calendar footage-day boundary alignment to site timezone.
+

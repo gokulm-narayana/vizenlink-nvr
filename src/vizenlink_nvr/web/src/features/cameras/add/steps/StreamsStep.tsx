@@ -32,7 +32,7 @@ export const StreamsStep: React.FC<StreamsStepProps> = ({ form, disabled = false
   } = form;
 
   const viewMode = useUiStore((s) => s.viewMode);
-  const isAdvanced = viewMode === "advanced";
+  const isAdvanced = true;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const hasSubStream = watch("has_sub_stream");

@@ -18,12 +18,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <Card
       className={cn(
-        "flex flex-col justify-between gap-2 p-4 bg-card border-border min-w-[220px]",
+        "flex min-w-0 flex-col justify-between gap-2 p-4 bg-card border-border",
         className
       )}
     >
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-normal text-muted-foreground uppercase tracking-wider">
+        <span className="text-sm font-normal text-muted-foreground">
           {label}
         </span>
         <div className="flex items-center gap-2">

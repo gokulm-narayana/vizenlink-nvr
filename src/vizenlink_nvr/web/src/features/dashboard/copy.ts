@@ -5,7 +5,7 @@ export const DASHBOARD_COPY = {
 
   METRIC_RECORDER_STATUS: "Recorder status",
   METRIC_CAMERAS_ONLINE: "Cameras online",
-  METRIC_RECORDING_NOW: "Recording now",
+  METRIC_RECORDING_NOW: "Recording enabled",
   METRIC_STORAGE_USED: "Storage used",
   METRIC_ACTIVE_ALERTS: "Active alerts",
 

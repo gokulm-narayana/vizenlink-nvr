@@ -246,7 +246,7 @@ describe("Cameras Feature", () => {
       renderWithRouter(["/cameras"]);
 
       expect(screen.getByText("No cameras yet")).toBeInTheDocument();
-      expect(screen.getByText(/Add a camera by entering its details/i)).toBeInTheDocument();
+      expect(screen.getByText(/Connect your first camera/i)).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Add camera" })).toHaveAttribute("href", "/cameras/add");
     });
   });
@@ -264,8 +264,8 @@ describe("Cameras Feature", () => {
       const editBtn = screen.getByRole("button", { name: "Edit camera details" });
       await user.click(editBtn);
 
-      // Identity tab is active
-      expect(screen.getByRole("tab", { name: "Identity" })).toHaveAttribute("data-state", "active");
+      // Camera details are active
+      expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("data-state", "active");
     });
   });
 
@@ -339,35 +339,35 @@ describe("Cameras Feature", () => {
   });
 
   describe("Simple vs Advanced View Mode", () => {
-    it("hides Video, Image, Overlays, and Maintenance tabs in Simple mode", () => {
+    it("exposes everyday camera settings in Simple mode", () => {
       useUiStore.setState({ viewMode: "simple" });
       renderWithRouter(["/cameras/CAM-01"]);
 
-      expect(screen.getByRole("tab", { name: "Identity" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Details" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Video" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Image" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Overlays" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Maintenance" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Video" })).toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Image" })).toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "On-screen text" })).toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
     });
 
     it("shows all tabs in Advanced mode", () => {
       useUiStore.setState({ viewMode: "advanced" });
       renderWithRouter(["/cameras/CAM-01"]);
 
-      expect(screen.getByRole("tab", { name: "Identity" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Details" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Video" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Image" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Overlays" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "On-screen text" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
     });
 
-    it("falls back to Identity when simple mode accesses a hidden tab", () => {
+    it("opens the requested video settings in everyday view", () => {
       useUiStore.setState({ viewMode: "simple" });
       renderWithRouter(["/cameras/CAM-01?tab=video"]);
 
-      expect(screen.getByRole("tab", { name: "Identity" })).toHaveAttribute("data-state", "active");
+      expect(screen.getByRole("tab", { name: "Video" })).toHaveAttribute("data-state", "active");
     });
   });
 

@@ -157,8 +157,9 @@ export function PlaybackToolbar({
 
       {/* Right controls: Events Link */}
       <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" asChild><Link to="/">Back to live</Link></Button>
         <Button variant="outline" size="sm" asChild className="h-8 gap-2 text-xs font-semibold">
-          <Link to={`/events?camera=${selectedSerial}`} className="flex items-center gap-1">
+          <Link to={`/events?camera=${encodeURIComponent(selectedSerial)}`} className="flex items-center gap-1">
             <Bell className="h-3.5 w-3.5 text-muted-foreground" />
             <span>{PLAYBACK_COPY.eventsLink}</span>
           </Link>

@@ -48,3 +48,21 @@
     scroll-behavior: auto !important;
   }
 }
+
+@layer base {
+  button, [role="button"], a, input, select { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+  input, select, textarea { accent-color: var(--primary); }
+}
+[data-slot="sidebar-menu-button"] { min-height: 42px; }
+[data-slot="sidebar-menu-button"][data-active="true"] {
+  background: var(--selected); color: var(--selected-foreground);
+  box-shadow: inset 3px 0 var(--primary);
+}
+[data-slot="sidebar-group-label"] { letter-spacing: .07em; text-transform: uppercase; }
+[data-slot="card"] { box-shadow: 0 2px 8px rgb(16 22 47 / 3%); }
+[data-slot="tabs-list"] { max-width: 100%; }
+[data-slot="tabs-trigger"] { min-height: 40px; }
+[data-slot="input"], [data-slot="select-trigger"] { min-height: 38px; }
+.vms-select { min-height: 40px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); padding: 8px 12px; max-width: 100%; }
+.vms-field { display: flex; flex-direction: column; gap: 8px; font-size: var(--text-sm); }

@@ -42,11 +42,11 @@ export const ADD_CAMERA_COPY = {
   GROUP_HELPER: "Optional group tag for organizing cameras.",
 
   // Step 3: Streams
-  MAIN_STREAM_TITLE: "Main stream",
+  MAIN_STREAM_TITLE: "High-quality video (main stream)",
   SCHEME_LABEL: "Scheme",
   PATH_LABEL: "Path",
   STREAM_PORT_LABEL: "Port",
-  SUB_STREAM_TOGGLE: "Add a sub stream",
+  SUB_STREAM_TOGGLE: "Use a lower-bandwidth stream for the camera grid",
   SUB_STREAM_TITLE: "Sub stream",
   SUB_PATH_REQUIRED: "Enter the camera's sub stream path.",
   SUB_PATH_HELPER: "Enter the camera's sub stream path.",

@@ -132,7 +132,7 @@ describe("LivePage & VideoTile", () => {
       expect(screen.getByText("No cameras yet")).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/Add a camera by entering its details/i)
+      screen.getByText(/Connect your first camera/i)
     ).toBeInTheDocument();
     const addLink = screen.getByRole("link", { name: "Add camera" });
     expect(addLink).toHaveAttribute("href", "/cameras/add");
@@ -162,7 +162,7 @@ describe("LivePage & VideoTile", () => {
     expect(activeToggle).toHaveAttribute("data-state", "on");
   });
 
-  it("offers 1x1 to 4x4 in advanced view and limits to 3x3 in simple view", async () => {
+  it("offers all layouts in both view modes", async () => {
     const cameras = Array.from({ length: 5 }, (_, i) => ({
       id: i + 1,
       serial: `CAM${i + 1}`,
@@ -185,10 +185,10 @@ describe("LivePage & VideoTile", () => {
     await waitFor(() => {
       expect(screen.getByRole("radio", { name: "3 by 3 grid" })).toBeInTheDocument();
     });
-    expect(screen.queryByRole("radio", { name: "4 by 4 grid" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "4 by 4 grid" })).toBeInTheDocument();
   });
 
-  it("stored 4x4 renders as 3x3 in simple view without overwriting stored preference", async () => {
+  it("preserves a saved 4x4 layout in everyday view", async () => {
     GridStorage.save({ dimension: 4, page: 0, slotAssignments: {} });
     useUiStore.setState({ viewMode: "simple" });
 
@@ -212,7 +212,7 @@ describe("LivePage & VideoTile", () => {
 
   it("renders REC indicator when camera is actively recording", async () => {
     const cameras = [{ id: 1, serial: "CAM1", name: "Driveway", state: "online" }];
-    const recording = [{ camera_serial: "CAM1", mode: "continuous" }];
+    const recording = [{ camera_serial: "CAM1", mode: "continuous", is_recording: true }];
 
     renderLivePage(cameras, "owner", recording);
 
@@ -261,4 +261,39 @@ describe("LivePage & VideoTile", () => {
 
     expect(mockSwitchStream).toHaveBeenCalledWith("sub");
   });
+  it("filters cameras, saves a view, and restores its cameras and layout", async () => {
+    const user = userEvent.setup();
+    const cameras = [
+      { id: 1, serial: "CAM1", name: "Entrance", location: "Ground floor", state: "online" },
+      { id: 2, serial: "CAM2", name: "Warehouse", location: "Back", state: "online" },
+    ];
+    renderLivePage(cameras, "owner");
+    await screen.findByText("Entrance");
+    await user.type(screen.getByRole("textbox", { name: "Search cameras" }), "Ground");
+    expect(screen.queryByText("Warehouse")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save current view" }));
+    await user.type(screen.getByRole("textbox", { name: "View name" }), "Entrances");
+    await user.click(screen.getByRole("button", { name: "Save view" }));
+    await user.click(screen.getByRole("button", { name: "Show all" }));
+    expect(screen.getByText("Warehouse")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Saved views"), "Entrances");
+    expect(screen.queryByText("Warehouse")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Playback" })).toHaveAttribute("href", "/playback?camera=CAM1");
+    const stored = JSON.parse(localStorage.getItem("vizenlink_live_preferences_1") || "{}");
+    expect(stored.views[0].serials).toEqual(["CAM1"]);
+  });
+
+  it("favorites are selectable and recording policy alone never shows REC", async () => {
+    const user = userEvent.setup();
+    renderLivePage([{ id: 1, serial: "CAM1", name: "Entrance", state: "online" }], "owner", [{ camera_serial: "CAM1", mode: "scheduled" }]);
+    await screen.findByText("Entrance");
+    expect(screen.queryByText("REC")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(screen.getByText("No cameras in this view")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    await user.click(screen.getByRole("button", { name: "Add Entrance to favorites" }));
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(screen.getByText("Entrance")).toBeInTheDocument();
+  });
+
 });

@@ -11,6 +11,8 @@ const SIGNED_IN_ROUTES = [
   "/users",
   "/devices",
   "/profile",
+  "/settings",
+  "/settings/recording",
 ] as const;
 
 const VIEWPORTS = [

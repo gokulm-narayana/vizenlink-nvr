@@ -1,0 +1,53 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Foundations & Camera Onboarding",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "Headless Recording Core",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Secure API, Auth & Live View",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Events & Event Recording",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Playback, Export & Gallery",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Camera Settings",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Mobile LAN Integration",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Cross-Platform Packaging & Soak",
+      "status": "in_progress"
+    }
+  ],
+  "next": {
+    "command": "/gsd:new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
+  },
+  "updated_at": "2026-11-05T05:59:22.978Z"
+}

@@ -252,7 +252,7 @@ describe("AuthGate routing", () => {
     });
   });
 
-  it("Signed in at / renders the shell Live page", async () => {
+  it("Signed in at / renders the shell Dashboard (start page)", async () => {
     const user = { id: 1, username: "admin", role: "owner", permissions: ["*"] };
     renderWithRouter(["/"], {
       initialized: true,
@@ -261,7 +261,7 @@ describe("AuthGate routing", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Account menu for admin" })
       ).toBeInTheDocument();

@@ -68,6 +68,15 @@ vi.mock("@/lib/queries", () => ({
     data: { site_timezone: "UTC", user: mockCurrentUser },
   }),
   useCurrentUser: () => mockCurrentUser,
+  useUnreadCount: () => ({
+    data: {
+      items: [
+        { id: 7, camera_serial: "CAM-01", event_type: "line_crossing", start_time: "2026-06-15T12:05:00Z" },
+      ],
+      total: 1,
+    },
+    unreadCount: 1,
+  }),
 }));
 
 vi.mock("./api", () => ({
@@ -110,6 +119,20 @@ vi.mock("./api", () => ({
     isLoading: false,
     refetch: vi.fn(),
   }),
+  useSystemMetrics: () => ({
+    data: {
+      cpu_percent: 37.4,
+      cpu_count: 8,
+      memory_total_bytes: 17179869184,
+      memory_used_bytes: 8589934592,
+      memory_percent: 50,
+      nvr_uptime_seconds: 90061,
+      host_uptime_seconds: 200000,
+      load_average: [1, 1, 1],
+      platform: "Darwin arm64",
+      version: "0.1.0",
+    },
+  }),
 }));
 
 describe("Dashboard Feature", () => {
@@ -142,41 +165,66 @@ describe("Dashboard Feature", () => {
     );
   };
 
-  describe("Row 1 Metric Cards", () => {
-    it("renders recorder status in display size and other metrics in heading size", () => {
+  describe("2x2 zones (old VMS layout)", () => {
+    it("renders the four zones with live numbers", () => {
       renderWithProviders(<DashboardPage />);
 
-      // Recorder status displays Healthy
-      expect(screen.getByText("Recorder status")).toBeInTheDocument();
-      expect(screen.getByText("Healthy", { selector: ".text-xl" })).toBeInTheDocument();
+      for (const title of ["Camera Summary", "System & Storage", "Camera Issues", "Active Alerts"]) {
+        expect(screen.getByText(title)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: `Configure ${title}` })).toBeInTheDocument();
+      }
 
-      // Cameras online (CAM-01 is online, CAM-02 has open outage so offline)
-      expect(screen.getByText("Cameras online")).toBeInTheDocument();
-      expect(screen.getByText("1 / 2")).toHaveClass("text-xl");
+      // Camera Summary: CAM-02 has an open outage, CAM-01 is continuous.
+      const summary = document.querySelector('[data-zone="zone1"]') as HTMLElement;
+      expect(within(summary).getByText("Total cameras").previousSibling).toHaveTextContent("2");
+      expect(within(summary).getByText("Online").previousSibling).toHaveTextContent("1");
+      expect(within(summary).getByText("Offline").previousSibling).toHaveTextContent("1");
+      expect(within(summary).getByText("Recording").previousSibling).toHaveTextContent("1 / 2");
 
-      // Recording now (CAM-01 is continuous, CAM-02 is off)
-      expect(screen.getByText("Recording enabled")).toBeInTheDocument();
-      const recordingCard = screen.getByText("Recording enabled").closest('[data-slot="card"]');
-      expect(within(recordingCard! as HTMLElement).getByText("1")).toHaveClass("text-xl");
+      // System & Storage: CPU, memory, services, uptime.
+      const system = document.querySelector('[data-zone="zone2"]') as HTMLElement;
+      expect(within(system).getByText("37%")).toBeInTheDocument();
+      expect(within(system).getByText("50%")).toBeInTheDocument();
+      expect(within(system).getByText("Database")).toBeInTheDocument();
+      expect(within(system).getByText("Video service")).toBeInTheDocument();
+      expect(within(system).getByText(/Uptime: 1d 1h/)).toBeInTheDocument();
+      expect(within(system).getByText(/14 days retention remaining/)).toBeInTheDocument();
 
-      // Storage used (70%)
-      expect(screen.getByText("Storage used")).toBeInTheDocument();
-      expect(screen.getByText("70%")).toBeInTheDocument();
+      // Camera Issues: Backyard is offline and links to its health page.
+      const issues = document.querySelector('[data-zone="zone3"]') as HTMLElement;
+      expect(within(issues).getByRole("link", { name: /Backyard/ })).toHaveAttribute("href", "/cameras/CAM-02/health");
+      expect(within(issues).getByText("Camera outage history")).toBeInTheDocument();
 
-      // Active alerts
-      expect(screen.getByText("Active alerts")).toBeInTheDocument();
-      const alertsCard = screen.getByText("Active alerts").closest('[data-slot="card"]');
-      expect(within(alertsCard! as HTMLElement).getByText("1")).toHaveClass("text-xl");
-      expect(screen.getByText("Camera outage history")).toBeInTheDocument();
+      // Active Alerts: system alert and latest camera alert.
+      const alerts = document.querySelector('[data-zone="zone4"]') as HTMLElement;
+      expect(within(alerts).getByText("Camera Front Door not recording")).toBeInTheDocument();
+      expect(within(alerts).getByText("line crossing")).toBeInTheDocument();
+    });
+
+    it("hides a widget after it is switched off in the zone configuration and remembers it", async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DashboardPage />);
+
+      await user.click(screen.getByRole("button", { name: "Configure System & Storage" }));
+      await user.click(screen.getByRole("switch", { name: "Show CPU load" }));
+      await user.click(screen.getByRole("button", { name: "Save widgets" }));
+
+      const system = document.querySelector('[data-zone="zone2"]') as HTMLElement;
+      expect(within(system).queryByText("CPU load")).toBeNull();
+      expect(within(system).getByText("Memory")).toBeInTheDocument();
+      expect(JSON.parse(localStorage.getItem("vizenlink_dashboard_widgets_v1") || "{}").zone2.cpu).toBe(false);
     });
   });
 
   it("never reports Healthy when the configured storage folder is unavailable", () => {
     mockStorageHealth = "unmounted";
     renderWithProviders(<DashboardPage />);
-    expect(screen.getByText("Needs attention")).toBeInTheDocument();
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveAttribute("data-level", "critical");
+    expect(within(banner).getByText("Not recording")).toBeInTheDocument();
     expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Review storage settings/ })).toHaveAttribute("href", "/settings/recording");
+    expect(screen.getByText(/0 days retention \(not saving\)/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Review storage settings/ })[0]).toHaveAttribute("href", "/settings/recording");
   });
 
   describe("StorageCard", () => {
@@ -364,30 +412,9 @@ describe("Dashboard Feature", () => {
     });
   });
 
-  describe("Advanced Diagnostic View", () => {
-    it("shows subsystem health and uptime only in advanced mode", () => {
-      useUiStore.setState({ viewMode: "simple" });
-      const { rerender } = renderWithProviders(<DashboardPage />);
-
-      expect(screen.queryByText("Subsystem health")).not.toBeInTheDocument();
-      expect(screen.queryByText("MediaMTX")).not.toBeInTheDocument();
-
-      // Switch to Advanced
-      useUiStore.setState({ viewMode: "advanced" });
-      rerender(
-        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-          <MemoryRouter>
-            <DashboardPage />
-          </MemoryRouter>
-        </QueryClientProvider>
-      );
-
-      expect(screen.getByText("Subsystem health")).toBeInTheDocument();
-      expect(screen.getByText("MediaMTX")).toBeInTheDocument();
-      expect(screen.getByText("Database")).toBeInTheDocument();
-      expect(screen.getAllByText("Storage")).toHaveLength(2);
-      expect(screen.getByText("Recorder uptime:")).toBeInTheDocument();
-      expect(screen.getByText("Raw health details")).toBeInTheDocument();
-    });
+  it("shows Healthy only when storage, services and every camera are fine", () => {
+    renderWithProviders(<DashboardPage />);
+    // CAM-02 is offline and not recording, so the recorder needs attention.
+    expect(within(screen.getByRole("status")).getByText("Needs attention")).toBeInTheDocument();
   });
 });

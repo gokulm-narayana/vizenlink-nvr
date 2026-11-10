@@ -45,9 +45,9 @@ export const CamerasTable: React.FC<CamerasTableProps> = ({
 
   if (cameras.length === 0) {
     return (
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-4">
-          <div className="rounded-lg bg-selected p-3 text-primary"><Cctv className="size-6" /></div>
+          <div className="rounded-lg bg-selected p-4 text-primary"><Cctv className="size-6" /></div>
           <div>
             <h2 className="font-semibold">{isOperatorOrOwner ? DASHBOARD_COPY.CAMERAS_EMPTY_OPERATOR_TITLE : DASHBOARD_COPY.CAMERAS_EMPTY_VIEWER_TITLE}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{isOperatorOrOwner ? DASHBOARD_COPY.CAMERAS_EMPTY_OPERATOR_DESC : DASHBOARD_COPY.CAMERAS_EMPTY_VIEWER_DESC}</p>

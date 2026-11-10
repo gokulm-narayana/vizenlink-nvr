@@ -5,7 +5,7 @@ import type { ShellRoute } from "@/app/routes";
 export const routes: ShellRoute[] = [
   {
     path: "/events",
-    title: "Events",
+    title: "Alerts",
     minRole: "viewer",
     element: <EventsPage />,
   },

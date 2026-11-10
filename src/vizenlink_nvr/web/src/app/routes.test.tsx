@@ -219,12 +219,12 @@ describe("Feature Route Adapters", () => {
     });
   });
 
-  it("renders Events page with h1 Events and handles jump-to-playback", async () => {
+  it("renders Events page with h1 Alerts (old VMS name) and handles jump-to-playback", async () => {
     const user = userEvent.setup();
     const { router } = renderRoutesApp(["/events"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Alerts" })).toBeInTheDocument();
     });
 
     const card = await screen.findByText("Front Door");
@@ -289,7 +289,7 @@ describe("Feature Route Adapters", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Mobile devices" })).toBeInTheDocument();
     });
-    expect(screen.getByRole("link", { name: "Mobile devices" })).toBeInTheDocument();
+    // Phase 10: Mobile devices is reached from Settings (old VMS layout), not the sidebar.
     expect(screen.getByRole("button", { name: "Pair mobile device" })).toBeInTheDocument();
   });
 
@@ -322,16 +322,28 @@ describe("Feature Route Adapters", () => {
     expect(useUiStore.getState().dismissedAlertIds.has("alert-disk")).toBe(true);
   });
 
-  it("renders / as Live page with top-bar h1 Live and Live nav link has aria-current page", async () => {
+  it("renders / as the Dashboard start page with the Dashboard nav link current", async () => {
     renderRoutesApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
 
-    const liveLink = screen.getByRole("link", { name: "Live" });
-    expect(liveLink).toBeInTheDocument();
-    expect(liveLink).toHaveAttribute("aria-current", "page");
+    const dashLink = screen.getByRole("link", { name: "Dashboard" });
+    expect(dashLink).toHaveAttribute("aria-current", "page");
+    // Multiview must not also be marked current on the start page.
+    expect(screen.getByRole("link", { name: "Multiview" })).not.toHaveAttribute("aria-current", "page");
+  });
+
+  it("sidebar uses the old VMS order and names", async () => {
+    renderRoutesApp(["/"], "owner");
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+    });
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    const names = within(nav).getAllByRole("link").map((a) => a.textContent?.replace(/\d+$/, "").trim());
+    expect(names).toEqual(["Dashboard", "Cameras", "Alerts", "Multiview", "Playback", "Gallery", "Settings"]);
   });
 
   it("redirects unknown routes to / with replace", async () => {
@@ -339,7 +351,7 @@ describe("Feature Route Adapters", () => {
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/");
-      expect(screen.getByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
   });
 });

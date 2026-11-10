@@ -191,7 +191,7 @@ describe("CameraHealthPage (Viewer Route)", () => {
     );
 
     expect(await screen.findByText("Access restricted")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to Live" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to Dashboard" })).toBeInTheDocument();
   });
 });
 

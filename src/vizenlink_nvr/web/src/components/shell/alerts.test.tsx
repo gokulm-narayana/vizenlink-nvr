@@ -10,7 +10,7 @@ import { setMediaQueryMatches } from "@/test/setup";
 import { CameraHealthLink } from "@/components/CameraHealthLink";
 
 function renderAlertsApp(
-  initialEntries = ["/"],
+  initialEntries = ["/live"],
   role: "viewer" | "operator" | "owner" = "viewer",
   mockAlerts: any[] = []
 ) {
@@ -126,7 +126,7 @@ describe("AlertStack, Bell and Dashboard Badge", () => {
   });
 
   it("AlertStack shows at most 2 alerts: critical first with role=alert, warning with role=status", async () => {
-    renderAlertsApp(["/"], "viewer", testAlerts);
+    renderAlertsApp(["/live"], "viewer", testAlerts);
 
     await waitFor(() => {
       expect(screen.getByText("Storage Pool Full")).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe("AlertStack, Bell and Dashboard Badge", () => {
 
   it("dismissing an alert hides it from the stack, bell, and dashboard badge for the session", async () => {
     const user = userEvent.setup();
-    const { container } = renderAlertsApp(["/"], "viewer", testAlerts);
+    const { container } = renderAlertsApp(["/live"], "viewer", testAlerts);
 
     await waitFor(() => {
       expect(screen.getByText("Storage Pool Full")).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("AlertStack, Bell and Dashboard Badge", () => {
   });
 
   it("bell trigger has aria-label and count badge, popover lists all non-dismissed alerts", async () => {
-    renderAlertsApp(["/"], "viewer", testAlerts);
+    renderAlertsApp(["/live"], "viewer", testAlerts);
 
     await waitFor(() => {
       const bellBtn = screen.getByRole("button", { name: /Alerts, 3 active/i });
@@ -207,7 +207,7 @@ describe("AlertStack, Bell and Dashboard Badge", () => {
   });
 
   it("bell popover shows 'All clear. No active alerts.' when no alerts exist", async () => {
-    renderAlertsApp(["/"], "viewer", []);
+    renderAlertsApp(["/live"], "viewer", []);
 
     await waitFor(() => {
       const bellBtn = screen.getByRole("button", { name: /Alerts, 0 active/i });

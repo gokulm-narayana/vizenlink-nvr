@@ -1,14 +1,12 @@
 import React from "react";
 import { NavLink, Link, useLocation } from "react-router";
 import {
+  LayoutDashboard,
   LayoutGrid,
   History,
   Bell,
   Images,
-  Activity,
   Cctv,
-  Users,
-  Smartphone,
   Settings,
 } from "lucide-react";
 import { cn } from "cn";
@@ -17,7 +15,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarFooter,
   SidebarMenu,
@@ -62,26 +59,18 @@ function hasRole(userRole: string | undefined, minRole: Role): boolean {
   return current >= min;
 }
 
+// Phase 10: one flat menu in the old VMS order and naming
+// (Dashboard, Cameras, Alerts, Multiview, Playback, Gallery, Settings).
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Your workspace",
+    label: "Menu",
     items: [
-      { title: "Live View", path: "/", icon: LayoutGrid, minRole: "viewer", shortcut: "G then L" },
-      { title: "Playback", path: "/playback", icon: History, minRole: "viewer", shortcut: "G then P" },
-      { title: "Events", path: "/events", icon: Bell, minRole: "viewer", shortcut: "G then E" },
-      { title: "Saved Media", path: "/gallery", icon: Images, minRole: "viewer", shortcut: "G then G" },
-    ],
-  },
-  {
-    label: "Recorder",
-    items: [
-      { title: "System Health", path: "/dashboard", icon: Activity, minRole: "viewer", shortcut: "G then D" },
-    ],
-  },
-  {
-    label: "Manage",
-    items: [
+      { title: "Dashboard", path: "/", icon: LayoutDashboard, minRole: "viewer", shortcut: "G then D" },
       { title: "Cameras", path: "/cameras", icon: Cctv, minRole: "operator" },
+      { title: "Alerts", path: "/events", icon: Bell, minRole: "viewer", shortcut: "G then E" },
+      { title: "Multiview", path: "/live", icon: LayoutGrid, minRole: "viewer", shortcut: "G then L" },
+      { title: "Playback", path: "/playback", icon: History, minRole: "viewer", shortcut: "G then P" },
+      { title: "Gallery", path: "/gallery", icon: Images, minRole: "viewer", shortcut: "G then G" },
       { title: "Settings", path: "/settings", icon: Settings, minRole: "viewer" },
     ],
   },
@@ -141,18 +130,20 @@ export const AppSidebar: React.FC = () => {
 
             return (
               <SidebarGroup key={group.label} className="p-2">
-                <SidebarGroupLabel className="text-xs font-normal">
-                  {group.label}
-                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {visibleItems.map((item) => {
-                      const targetPath =
-                        item.path === "/" && location.pathname === "/live"
-                          ? "/live"
-                          : item.path;
+                      const targetPath = item.path;
+                      // Active state is computed here and passed to SidebarMenuButton: with asChild,
+                      // a NavLink className *function* was being stringified into every link's classes
+                      // (all items rendered in the accent colour).
+                      const path = location.pathname;
+                      const isActive =
+                        item.path === "/"
+                          ? path === "/" || path === "/dashboard"
+                          : path === item.path || path.startsWith(item.path + "/");
 
-                      const isDashboard = item.path === "/dashboard";
+                      const isDashboard = item.path === "/";
                       const showDashboardBadge = isDashboard && activeAlertCount > 0;
 
                       const isEvents = item.path === "/events";
@@ -176,17 +167,13 @@ export const AppSidebar: React.FC = () => {
 
                       return (
                         <SidebarMenuItem key={item.path}>
-                          <SidebarMenuButton asChild tooltip={tooltipContent}>
+                          <SidebarMenuButton asChild isActive={isActive} tooltip={tooltipContent}>
                             <NavLink
                               to={targetPath}
+                              end={targetPath === "/"}
                               onClick={() => { if (isMobile) setOpenMobile(false); }}
-                              className={({ isActive }) =>
-                                cn(
-                                  "relative flex items-center gap-2",
-                                  isActive &&
-                                    "bg-selected text-primary-text font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-1 before:rounded-r before:bg-primary"
-                                )
-                              }
+                              aria-current={isActive ? "page" : undefined}
+                              className="relative flex items-center gap-2"
                             >
                               <item.icon className="h-4 w-4 shrink-0" />
                               <span>{item.title}</span>

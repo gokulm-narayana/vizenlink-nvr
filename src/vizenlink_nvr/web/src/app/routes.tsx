@@ -63,7 +63,7 @@ export function Forbidden() {
         </EmptyHeader>
         <EmptyContent>
           <Button asChild>
-            <Link to="/">Go to Live</Link>
+            <Link to="/">Go to Dashboard</Link>
           </Button>
         </EmptyContent>
       </Empty>

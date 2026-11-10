@@ -638,7 +638,7 @@ describe("Users Management Feature (Plan 09-22)", () => {
 
       renderWithProviders(<UsersPage />);
       expect(screen.getByText("Access restricted")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Go to Live" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Go to Dashboard" })).toBeInTheDocument();
     });
   });
 });

@@ -35,7 +35,7 @@ export const AlertsCard: React.FC = () => {
 
       <CardContent className="flex flex-col gap-4 p-4">
         {activeAlerts.length === 0 ? (
-          <div className="flex items-center gap-3 py-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 py-2 text-sm text-muted-foreground">
             <CircleCheck className="size-5 shrink-0 text-success" />{DASHBOARD_COPY.ALERTS_EMPTY}
           </div>
         ) : (

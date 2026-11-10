@@ -38,15 +38,18 @@ export const UserMenu: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="rounded-full"
+          className="h-auto gap-2 rounded-full py-1 pl-1 pr-2"
           aria-label={`Account menu for ${username}`}
         >
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
+            <AvatarFallback className="bg-selected text-selected-foreground text-xs font-semibold">
               {initial}
             </AvatarFallback>
           </Avatar>
+          <span className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="text-sm font-semibold">{username}</span>
+            <span className="text-xs font-normal capitalize text-muted-foreground">{role}</span>
+          </span>
         </Button>
       </DropdownMenuTrigger>
 

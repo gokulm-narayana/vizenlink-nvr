@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.db.models import CameraOutage
-from vizenlink_nvr.services.storage import get_storage_config
+from vizenlink_nvr.services.storage import StorageHealthState, get_storage_config
 from vizenlink_nvr.timeutil import utc_now
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,23 @@ class AlertService:
         # 2. Disk low space alerts
         try:
             cfg = await get_storage_config(session, default_path=default_storage_path)
-            if cfg.telemetry is not None:
+            if cfg.health_state != StorageHealthState.OK:
+                # Recording cannot write anywhere: this is the most important alert the NVR has.
+                alerts.append(
+                    InAppAlert(
+                        id="storage_unavailable",
+                        severity="critical",
+                        title="Not recording: storage unavailable",
+                        message=(
+                            f"The recording folder '{cfg.storage_path}' can't be used "
+                            f"({cfg.health_state.value}). No footage is being saved. "
+                            "Choose a writable storage location in Settings."
+                        ),
+                        timestamp=current_time,
+                        source="storage",
+                    )
+                )
+            elif cfg.telemetry is not None:
                 critical_threshold = cfg.reserve_bytes + DISK_HYSTERESIS_BYTES
                 if cfg.telemetry.free_bytes < critical_threshold:
                     free_gb = cfg.telemetry.free_bytes / (1024 * 1024 * 1024)

@@ -35,7 +35,7 @@ function getInitialTheme(): Theme {
   } catch {
     // fallback
   }
-  return "system";
+  return "light"; // Phase 10: old VMS defaulted to the light theme
 }
 
 function getInitialSidebarOpen(): boolean {

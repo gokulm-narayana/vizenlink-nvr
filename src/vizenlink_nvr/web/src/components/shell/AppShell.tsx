@@ -9,6 +9,7 @@ import { AlertStack } from "./AlertStack";
 import { RefetchBar } from "./RefetchBar";
 import { Shortcuts } from "./Shortcuts";
 import { ThemeSync } from "./ThemeSync";
+import { ThemeToggle } from "./ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "cn";
@@ -27,19 +28,6 @@ export const AppShell: React.FC = () => {
   const handle = (currentMatch?.handle as RouteHandle) || {};
   const pageTitle = handle.title || "VizenLink NVR";
   const isFullBleed = Boolean(handle.fullBleed);
-  const descriptions: Record<string, string> = {
-    "Live View": "Your cameras, together. Choose a view or find a camera to get started.",
-    Playback: "Find a moment, review the footage, and save what matters.",
-    Events: "Review detections and jump straight to the recorded moment.",
-    "Saved Media": "Your saved snapshots and exported video clips, in one place.",
-    "System Health": "Check camera connections, storage, and issues that need attention.",
-    Cameras: "Choose a camera to update its picture, video, or connection settings.",
-    Users: "Manage who can access your recorder and which cameras they can see.",
-    "Mobile devices": "Connect your phone and manage devices with remote access.",
-    Profile: "Manage your account and sign-in details.",
-    Settings: "Set up your cameras, recording preferences, and access.",
-    "Recording & Storage": "Choose when to record and how long to keep footage.",
-  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -72,7 +60,7 @@ export const AppShell: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <AlertsBell />
-
+              <ThemeToggle />
               <UserMenu />
             </div>
             <RefetchBar />
@@ -91,8 +79,7 @@ export const AppShell: React.FC = () => {
             {isFullBleed ? (
               <Outlet />
             ) : (
-              <div className="max-w-320 mx-auto w-full">
-                {descriptions[pageTitle] && <p className="mb-6 text-sm text-muted-foreground">{descriptions[pageTitle]}</p>}
+              <div className="w-full">
                 <Outlet />
               </div>
             )}

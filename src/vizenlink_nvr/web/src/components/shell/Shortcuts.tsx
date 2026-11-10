@@ -41,7 +41,7 @@ export const Shortcuts: React.FC = () => {
       if (now - lastGTimeRef.current <= 1500) {
         if (key === "l") {
           lastGTimeRef.current = 0;
-          void navigate("/");
+          void navigate("/live");
         } else if (key === "p") {
           lastGTimeRef.current = 0;
           void navigate("/playback");
@@ -50,7 +50,7 @@ export const Shortcuts: React.FC = () => {
           void navigate("/events");
         } else if (key === "d") {
           lastGTimeRef.current = 0;
-          void navigate("/dashboard");
+          void navigate("/");
         } else {
           lastGTimeRef.current = 0;
         }

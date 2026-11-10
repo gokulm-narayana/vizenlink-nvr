@@ -3,6 +3,8 @@ import { TriangleAlert, OctagonAlert } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCameras, useRecordingStatus, useHealth } from "@/lib/queries";
+import { evaluateRecorderStatus } from "@/lib/recorder-status";
+import { useStorageStatus } from "@/features/dashboard/api";
 import { cn } from "cn";
 
 export type RecorderSeverity = "success" | "warning" | "critical";
@@ -11,46 +13,31 @@ export const RecorderStatusChip: React.FC<{ className?: string }> = ({ className
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
-  const { data: cameras = [] } = useCameras();
-  const { data: recList = [] } = useRecordingStatus();
+  const { data: rawCameras } = useCameras();
+  const { data: rawRecList } = useRecordingStatus();
+  const cameras = Array.isArray(rawCameras) ? rawCameras : [];
+  const recList = Array.isArray(rawRecList) ? rawRecList : [];
   const { data: health } = useHealth();
+  const { data: storage } = useStorageStatus();
 
-  const { n, total, severity } = useMemo(() => {
-    const totalCams = cameras.length;
-    const activeModes = new Set(["continuous", "scheduled", "event"]);
-    const activeSerials = new Set<string>();
+  const status = useMemo(
+    () =>
+      evaluateRecorderStatus({
+        health,
+        storageState: storage?.health_state,
+        cameras,
+        recList,
+      }),
+    [health, storage?.health_state, cameras, recList]
+  );
+  const severity: RecorderSeverity =
+    status.level === "critical" ? "critical" : status.level === "warning" ? "warning" : "success";
+  const n = status.recordingCount;
+  const total = status.cameraCount;
 
-    for (const item of recList) {
-      if (activeModes.has(item.mode)) {
-        activeSerials.add(item.camera_serial);
-      }
-    }
-
-    const recordingCount = activeSerials.size;
-
-    let sev: RecorderSeverity = "success";
-
-    if (health?.storage_ok === false) {
-      sev = "critical";
-    } else if (
-      recordingCount < totalCams ||
-      health?.db_ok === false ||
-      health?.mediamtx_ok === false ||
-      (health?.status && health.status !== "healthy")
-    ) {
-      sev = "warning";
-    } else {
-      sev = "success";
-    }
-
-    return {
-      n: recordingCount,
-      total: totalCams,
-      severity: sev,
-    };
-  }, [cameras, recList, health]);
-
-  const label = `Recording ${n} of ${total}`;
+  // Never show a calm "Recording 0 of 0" when nothing can be saved.
+  const label = status.label === "Not recording" ? `Not recording: ${status.detail}` : `Recording ${n} of ${total}`;
+  const shortLabel = status.label === "Not recording" ? "Not recording" : label;
 
   const dot = (
     <span
@@ -103,7 +90,15 @@ export const RecorderStatusChip: React.FC<{ className?: string }> = ({ className
     >
       {dot}
       {icon}
-      <span className="tabular-nums font-normal">{label}</span>
+      <span
+        className={cn(
+          "tabular-nums",
+          severity === "critical" ? "font-semibold text-critical" : "font-normal"
+        )}
+        title={label}
+      >
+        {shortLabel}
+      </span>
     </div>
   );
 };

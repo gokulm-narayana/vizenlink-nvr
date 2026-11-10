@@ -80,7 +80,7 @@ describe("Shortcuts, Skip Link & RefetchBar", () => {
     const { router } = renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
 
     fireEvent.keyDown(window, { key: "g" });
@@ -92,11 +92,11 @@ describe("Shortcuts, Skip Link & RefetchBar", () => {
     });
   });
 
-  it("pressing g then e navigates to /events, and g then d to /dashboard", async () => {
+  it("pressing g then e navigates to /events, and g then d to the Dashboard (/)", async () => {
     const { router } = renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
 
     fireEvent.keyDown(window, { key: "g" });
@@ -104,15 +104,15 @@ describe("Shortcuts, Skip Link & RefetchBar", () => {
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/events");
-      expect(screen.getByRole("heading", { level: 1, name: "Events" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Alerts" })).toBeInTheDocument();
     });
 
     fireEvent.keyDown(window, { key: "g" });
     fireEvent.keyDown(window, { key: "d" });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe("/dashboard");
-      expect(screen.getByRole("heading", { level: 1, name: "System Health" })).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe("/");
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
   });
 
@@ -120,7 +120,7 @@ describe("Shortcuts, Skip Link & RefetchBar", () => {
     const { router } = renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
 
     // Modifiers held
@@ -145,7 +145,7 @@ describe("Shortcuts, Skip Link & RefetchBar", () => {
     renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
 
     const skipLink = screen.getByRole("link", { name: "Skip to main content" });

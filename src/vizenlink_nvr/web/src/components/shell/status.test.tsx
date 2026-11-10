@@ -182,7 +182,7 @@ describe("RecorderStatusChip, Unread Badge, StatusBadge & InlineError", () => {
     expect(dot).toHaveClass("bg-warning");
   });
 
-  it("RecorderStatusChip shows critical dot and icon when storage_ok is false", async () => {
+  it("RecorderStatusChip shows critical Not recording when storage_ok is false", async () => {
     const cameras = [{ id: 1, serial: "CAM1", name: "Camera 1" }];
     const recStatus = [{ camera_serial: "CAM1", mode: "continuous" }];
 
@@ -195,11 +195,14 @@ describe("RecorderStatusChip, Unread Badge, StatusBadge & InlineError", () => {
       active_cameras: 1,
     });
 
+    // Phase 10 honest status: broken storage means nothing is saved, so never "Recording 1 of 1".
     await waitFor(() => {
-      expect(screen.getByText("Recording 1 of 1")).toBeInTheDocument();
+      expect(screen.getAllByText("Not recording").length).toBeGreaterThan(0);
     });
+    expect(screen.queryByText("Recording 1 of 1")).toBeNull();
 
-    const dot = screen.getByText("Recording 1 of 1").parentElement?.querySelector('[data-slot="recorder-dot"]');
+    const chip = document.querySelector('[data-slot="recorder-status-chip"]');
+    const dot = chip?.querySelector('[data-slot="recorder-dot"]');
     expect(dot).toHaveClass("bg-critical");
   });
 

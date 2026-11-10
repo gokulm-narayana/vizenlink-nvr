@@ -48,8 +48,37 @@ export function useOutages() {
       if (!res.ok) {
         throw new Error(`Failed to load outages: HTTP ${res.status}`);
       }
-      return (await res.json()) as OutageRecord[];
+      const body: unknown = await res.json();
+      return Array.isArray(body) ? (body as OutageRecord[]) : [];
     },
     refetchInterval: 10000,
+  });
+}
+
+export interface SystemMetrics {
+  cpu_percent: number;
+  cpu_count: number;
+  memory_total_bytes: number;
+  memory_used_bytes: number;
+  memory_percent: number;
+  nvr_uptime_seconds: number;
+  host_uptime_seconds: number;
+  load_average?: number[] | null;
+  platform: string;
+  version: string;
+}
+
+/** Host CPU / memory / uptime for the Dashboard "System & Storage" zone. */
+export function useSystemMetrics() {
+  return useQuery<SystemMetrics, Error>({
+    queryKey: ["health", "system"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/health/system");
+      if (!res.ok) {
+        throw new Error(`Failed to load system metrics: HTTP ${res.status}`);
+      }
+      return (await res.json()) as SystemMetrics;
+    },
+    refetchInterval: 5000,
   });
 }

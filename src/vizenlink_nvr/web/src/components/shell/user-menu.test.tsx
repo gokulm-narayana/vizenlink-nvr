@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, within, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -85,10 +85,15 @@ describe("UserMenu and ThemeSync", () => {
     expect(trigger).toBeInTheDocument();
     expect(screen.getByText("A")).toBeInTheDocument();
 
+    // Phase 10: the header trigger shows name and role like the old VMS.
+    expect(within(trigger).getByText("alice")).toBeInTheDocument();
+    expect(within(trigger).getByText("owner")).toBeInTheDocument();
+
     await user.click(trigger);
 
-    expect(screen.getByText("alice")).toBeInTheDocument();
-    expect(screen.getByText("owner")).toBeInTheDocument();
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByText("alice")).toBeInTheDocument();
+    expect(within(menu).getByText("owner")).toBeInTheDocument();
   });
 
   it("choosing Dark adds dark class and writes nvr_theme=dark", async () => {

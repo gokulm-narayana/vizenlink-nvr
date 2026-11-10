@@ -100,14 +100,14 @@ describe("AppShell tracer & navigation", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the shell on /live with route h1 Live and active page link", async () => {
+  it("renders the shell on /live with route h1 Multiview and active page link", async () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Multiview" })).toBeInTheDocument();
     });
 
-    const activeLink = screen.getByRole("link", { name: "Live View" });
+    const activeLink = screen.getByRole("link", { name: "Multiview" });
     expect(activeLink).toHaveAttribute("aria-current", "page");
   });
 
@@ -116,7 +116,7 @@ describe("AppShell tracer & navigation", () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Multiview" })).toBeInTheDocument();
     });
 
     const trigger = screen.getByRole("button", { name: /toggle sidebar/i });
@@ -130,7 +130,7 @@ describe("AppShell tracer & navigation", () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Multiview" })).toBeInTheDocument();
     });
 
     expect(useUiStore.getState().sidebarOpen).toBe(true);
@@ -157,7 +157,7 @@ describe("AppShell tracer & navigation", () => {
     const { unmount } = renderShellApp(["/"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
 
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("AppShell tracer & navigation", () => {
 
     renderShellApp(["/dashboard"]);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "System Health" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
   });
@@ -211,7 +211,7 @@ describe("AppShell tracer & navigation", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("link", { name: "Go to Live" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to Dashboard" })).toBeInTheDocument();
     expect(screen.queryByText("Secret operator content")).not.toBeInTheDocument();
   });
 });

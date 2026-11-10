@@ -60,6 +60,7 @@ Decisions are logged in PROJECT.md Key Decisions table and Phase Contexts:
 ### Roadmap Evolution
 
 - Phase 9 added: UI Redesign (Tailwind v4 + shadcn/ui design system, sidebar shell with router, restyled pages, web stack bump, fix Settings/Devices nav build break)
+- Phase 10 added (2026-11-10): UI v2 - Old VMS Parity (dashboard home with 2x2 zones, old VMS blue look, honest recording status, multiview/playback/alerts parity). Owner chose to build it in the verification session. PTZ, zone drawing and two-way talk deferred until `camera_api` covers them.
 
 ## Session Continuity
 

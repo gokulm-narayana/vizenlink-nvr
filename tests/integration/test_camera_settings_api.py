@@ -33,7 +33,7 @@ from vizenlink_nvr.camera.onvif.media2 import (
     VideoEncoderConfigurationOptions,
     VideoResolution,
 )
-from vizenlink_nvr.camera.result import Success
+from vizenlink_nvr.camera.result import Failure, FailureKind, Success
 from vizenlink_nvr.db.models import (
     AuditLog,
     Base,
@@ -298,7 +298,17 @@ async def test_get_camera_settings_aggregated(app_fixture: dict) -> None:
         patch(f"{NE_CLIENT}.get_mirror_flip", new_callable=AsyncMock) as m_mf,
         patch(f"{NE_CLIENT}.get_anti_flicker", new_callable=AsyncMock) as m_af,
         patch(f"{M2_CLIENT}.get_osds", new_callable=AsyncMock) as m_osd,
+        patch(f"{M2_CLIENT}.get_osd_options", new_callable=AsyncMock) as m_osd_opts,
+        patch(f"{DEV_CLIENT}.get_system_timezone", new_callable=AsyncMock) as m_tz,
+        patch(f"{DEV_CLIENT}.get_device_identity", new_callable=AsyncMock) as m_ident,
+        patch(
+            "vizenlink_nvr.services.camera_settings.NuraeyeClient.request", new_callable=AsyncMock
+        ) as m_video_mode,
     ):
+        m_video_mode.return_value = Success({"configured_mode": "Auto", "effective_state": "night"})
+        m_ident.return_value = Failure(FailureKind.UNREACHABLE, "identity not mocked")
+        m_osd_opts.return_value = Success({})
+        m_tz.return_value = Success("UTC")
         m_prof.return_value = Success(mock_profiles)
         m_venc.return_value = Success(mock_enc_cfg)
         m_vopts.return_value = Success(mock_enc_opts)
@@ -338,6 +348,9 @@ async def test_get_camera_settings_aggregated(app_fixture: dict) -> None:
             assert img["current"]["brightness"] == 55.0
             assert img["current"]["ir_cut_filter"] == "AUTO"
             assert img["current"]["night_vision_type"] == "smart"
+            # Live day/night state from GetVideoMode (SETTINGS_API_GUIDE "Day/Night Mode").
+            assert img["current"]["day_night_now"] == "night"
+            m_video_mode.assert_any_await("GET", "/nuraeye/video/mode")
             assert img["current"]["anti_flicker"] == "60Hz"
             assert img["options"]["wdr_supported"] is True
 
@@ -382,12 +395,9 @@ async def test_update_identity_and_audit(app_fixture: dict) -> None:
         assert cam.name == "New Front Cam"
         assert cam.location == "Main Gate"
 
-        audit_stmt = (
-            select(AuditLog)
-            .where(
-                AuditLog.resource_id == serial,
-                AuditLog.action == "camera.settings.update_identity",
-            )
+        audit_stmt = select(AuditLog).where(
+            AuditLog.resource_id == serial,
+            AuditLog.action == "camera.settings.update_identity",
         )
         audit = (await session.execute(audit_stmt)).scalar_one()
         assert audit.actor_username == "settings_operator"
@@ -590,9 +600,7 @@ async def test_reboot_and_factory_reset_endpoints(app_fixture: dict) -> None:
 
     # Verify audit logs recorded for reboot and reset
     async with session_factory() as session:
-        rb_stmt = select(AuditLog).where(
-            AuditLog.resource_id == serial, AuditLog.action == "camera.reboot"
-        )
+        rb_stmt = select(AuditLog).where(AuditLog.resource_id == serial, AuditLog.action == "camera.reboot")
         rb_audit = (await session.execute(rb_stmt)).scalar_one()
         assert rb_audit.actor_username == "settings_operator"
 
@@ -611,43 +619,54 @@ async def test_health_endpoint_and_rbac(app_fixture: dict) -> None:
     cam2 = app_fixture["cam2_serial"]
 
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        # 1. Viewer can read health for permitted camera (CAM-SET-1)
-        resp_h1 = await client.get(
-            f"/api/v1/cameras/{cam1}/health",
-            headers={"Authorization": f"Bearer {viewer_token}"},
+    with patch(
+        "vizenlink_nvr.services.camera_settings.NuraeyeClient.request", new_callable=AsyncMock
+    ) as health_request:
+        health_request.return_value = Success(
+            {
+                "uptime_seconds": 120,
+                "reboot_reason": "watchdog",
+                "clock_sync_state": "synced",
+                "firmware_version": "v2.4.0",
+            }
         )
-        assert resp_h1.status_code == 200
-        data_h1 = resp_h1.json()
-        assert data_h1["serial"] == cam1
-        assert data_h1["online"] is True
-        assert data_h1["clock_sync_status"] == "synced"
-        assert data_h1["firmware_version"] == "v2.4.0"
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Viewer can read health for permitted camera (CAM-SET-1)
+            resp_h1 = await client.get(
+                f"/api/v1/cameras/{cam1}/health",
+                headers={"Authorization": f"Bearer {viewer_token}"},
+            )
+            assert resp_h1.status_code == 200
+            data_h1 = resp_h1.json()
+            assert data_h1["serial"] == cam1
+            assert data_h1["online"] is True
+            assert data_h1["clock_sync_status"] == "synced"
+            assert data_h1["firmware_version"] == "v2.4.0"
 
-        # 2. Viewer cannot access health or settings for non-permitted camera (CAM-SET-2) -> 403
-        resp_h2 = await client.get(
-            f"/api/v1/cameras/{cam2}/health",
-            headers={"Authorization": f"Bearer {viewer_token}"},
-        )
-        assert resp_h2.status_code == 403
+            # 2. Viewer cannot access health or settings for non-permitted camera (CAM-SET-2) -> 403
+            resp_h2 = await client.get(
+                f"/api/v1/cameras/{cam2}/health",
+                headers={"Authorization": f"Bearer {viewer_token}"},
+            )
+            assert resp_h2.status_code == 403
 
-        resp_s2 = await client.get(
-            f"/api/v1/cameras/{cam2}/settings",
-            headers={"Authorization": f"Bearer {viewer_token}"},
-        )
-        assert resp_s2.status_code == 403
+            resp_s2 = await client.get(
+                f"/api/v1/cameras/{cam2}/settings",
+                headers={"Authorization": f"Bearer {viewer_token}"},
+            )
+            assert resp_s2.status_code == 403
 
-        # 3. Viewer cannot modify settings (RequireOperator required) -> 403
-        resp_mut = await client.put(
-            f"/api/v1/cameras/{cam1}/settings/identity",
-            headers={"Authorization": f"Bearer {viewer_token}"},
-            json={"name": "Hacked Cam"},
-        )
-        assert resp_mut.status_code == 403
+            # 3. Viewer cannot modify settings (RequireOperator required) -> 403
+            resp_mut = await client.put(
+                f"/api/v1/cameras/{cam1}/settings/identity",
+                headers={"Authorization": f"Bearer {viewer_token}"},
+                json={"name": "Hacked Cam"},
+            )
+            assert resp_mut.status_code == 403
 
-        # 4. Viewer cannot reboot camera -> 403
-        resp_rb = await client.post(
-            f"/api/v1/cameras/{cam1}/reboot",
-            headers={"Authorization": f"Bearer {viewer_token}"},
-        )
-        assert resp_rb.status_code == 403
+            # 4. Viewer cannot reboot camera -> 403
+            resp_rb = await client.post(
+                f"/api/v1/cameras/{cam1}/reboot",
+                headers={"Authorization": f"Bearer {viewer_token}"},
+            )
+            assert resp_rb.status_code == 403

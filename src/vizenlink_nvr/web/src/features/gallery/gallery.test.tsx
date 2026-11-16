@@ -250,6 +250,53 @@ describe("Gallery Feature", () => {
 
       expect(screen.getByRole("button", { name: "Retry delete clip" })).toBeInTheDocument();
     });
+
+    it("generates and copies a QR share link when clicking Share QR", async () => {
+      const user = userEvent.setup();
+      const shareUrl = "http://192.168.1.50:8000/api/v1/gallery/10/shared?token=signed-token-123";
+      const writeTextMock = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true,
+      });
+
+      global.fetch = vi.fn().mockImplementation((url: string, opts?: RequestInit) => {
+        if (url.includes("/api/v1/gallery/10/share") && opts?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              item_id: 10,
+              share_url: shareUrl,
+              qr_payload: shareUrl,
+              expires_at: "2026-06-15T13:00:00Z",
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      renderWithProviders(
+        <PreviewDialog
+          item={mockSnapshot}
+          cameraName="Front Door"
+          isOpen={true}
+          onClose={vi.fn()}
+          zone="UTC"
+        />
+      );
+
+      await user.click(screen.getByRole("button", { name: "Share QR" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Scan QR code on mobile")).toBeInTheDocument();
+      });
+      expect(screen.getByRole("img", { name: "Pairing QR code" })).toBeInTheDocument();
+      expect(screen.getByText(shareUrl)).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Copy share link" }));
+      expect(writeTextMock).toHaveBeenCalledWith(shareUrl);
+    });
   });
 
   describe("GalleryPage", () => {

@@ -32,13 +32,13 @@ export function createAppRoutes(): RouteObject[] {
                 return {
                   index: true,
                   element: <RequireRole min={r.minRole}>{r.element}</RequireRole>,
-                  handle: { title: r.title, fullBleed: r.fullBleed },
+                  handle: { title: r.title, fullBleed: r.fullBleed, stickyContent: r.stickyContent },
                 };
               }
               return {
                 path: r.path.startsWith("/") ? r.path.slice(1) : r.path,
                 element: <RequireRole min={r.minRole}>{r.element}</RequireRole>,
-                handle: { title: r.title, fullBleed: r.fullBleed },
+                handle: { title: r.title, fullBleed: r.fullBleed, stickyContent: r.stickyContent },
               };
             }),
             {

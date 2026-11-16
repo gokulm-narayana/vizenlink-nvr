@@ -92,6 +92,10 @@ async def test_16camera_concurrent_recording_soak(tmp_path: Path) -> None:
         session.add_all(settings_list)
         await session.commit()
 
+    # Viewers start once their camera has a segment; otherwise a fast viewer can
+    # finish all its reads before any recorder has written and the test flakes.
+    first_segment_written = {i: asyncio.Event() for i in range(1, num_cameras + 1)}
+
     # 2. Worker for each camera writing segment files and inserting DB rows
     async def camera_recording_worker(cam_idx: int) -> list[str]:
         cam_serial = f"CAM-SOAK-{cam_idx:02d}"
@@ -128,6 +132,7 @@ async def test_16camera_concurrent_recording_soak(tmp_path: Path) -> None:
                 )
                 session.add(segment)
                 await session.commit()
+            first_segment_written[cam_idx].set()
 
             # Small jitter to simulate real asynchronous time-slices
             await asyncio.sleep(0.005)
@@ -138,6 +143,7 @@ async def test_16camera_concurrent_recording_soak(tmp_path: Path) -> None:
     viewer_read_count = [0, 0]
 
     async def viewer_worker(viewer_id: int) -> None:
+        await first_segment_written[(viewer_id % num_cameras) + 1].wait()
         for _ in range(10):
             # Query random camera segments from DB
             cam_serial = f"CAM-SOAK-{(viewer_id % num_cameras) + 1:02d}"

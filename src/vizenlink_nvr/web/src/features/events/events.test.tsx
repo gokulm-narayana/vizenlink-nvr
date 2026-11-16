@@ -150,11 +150,11 @@ describe("Events Feature", () => {
         />
       );
 
-      expect(screen.getByText("Event type: Motion")).toBeInTheDocument();
+      expect(screen.getByText("Alert type: Motion")).toBeInTheDocument();
       expect(screen.getByText("Front Door")).toBeInTheDocument();
       expect(screen.getByText("101")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Close event details" })
+        screen.getByRole("button", { name: "Close alert details" })
       ).toBeInTheDocument();
 
       const playBtn = screen.getByRole("button", { name: "Play footage" });
@@ -230,20 +230,20 @@ describe("Events Feature", () => {
         />
       );
 
-      const lockSwitch = screen.getByRole("switch", { name: "Lock event" });
+      const lockSwitch = screen.getByRole("switch", { name: "Lock alert" });
       expect(lockSwitch).not.toBeChecked();
 
       await user.click(lockSwitch);
 
       await waitFor(() => {
         expect(
-          screen.getByText("Couldn't lock the event. Check your connection and try again.")
+          screen.getByText("Couldn't lock the alert. Check your connection and try again.")
         ).toBeInTheDocument();
       });
 
       // Switch reverted to unchecked
       expect(lockSwitch).not.toBeChecked();
-      expect(screen.getByRole("button", { name: "Retry lock event" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Retry lock alert" })).toBeInTheDocument();
     });
   });
 
@@ -257,10 +257,10 @@ describe("Events Feature", () => {
       renderWithProviders(<EventsPage />);
 
       await waitFor(() => {
-        expect(screen.getByText("No events yet")).toBeInTheDocument();
+        expect(screen.getByText("No alerts yet")).toBeInTheDocument();
       });
       expect(
-        screen.getByText("No events yet. Events from your cameras show up here as they happen.")
+        screen.getByText("No alerts yet. Alerts from your cameras show up here as they happen.")
       ).toBeInTheDocument();
     });
 

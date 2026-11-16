@@ -84,21 +84,20 @@ def run_cmd(
     import logging
 
     import uvicorn
-    from sqlalchemy.ext.asyncio import async_sessionmaker
 
     from vizenlink_nvr.api.app import create_app
-    from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
+    from vizenlink_nvr.log import configure_logging
     from vizenlink_nvr.network.mdns import NvrMdnsAdvertiser
-    from vizenlink_nvr.paths import db_path, ensure_data_dir
 
+    # Recorder, MediaMTX and camera errors are only visible if app logging is configured;
+    # the handler also redacts credentials.
+    configure_logging()
     settings = load_settings(data_dir=data_dir)
-    ensure_data_dir(settings)
-    db_p = db_path(settings)
-    upgrade_to_head(db_p)
-    engine = create_engine_for(db_p)
-    session_factory = async_sessionmaker(engine, expire_on_commit=False)
-
-    server_app = create_app(session_factory=session_factory)
+    server_app = create_app(
+        settings=settings,
+        recorder_port=port,
+        recorder_lan_access=not host.startswith("127.") and host not in ("localhost", "::1"),
+    )
 
     mdns = None
     if not no_mdns:

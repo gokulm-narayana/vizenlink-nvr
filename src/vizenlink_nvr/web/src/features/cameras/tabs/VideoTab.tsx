@@ -1,3 +1,4 @@
+import { NativeSelect } from "@/components/ui/native-select";
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -30,7 +31,10 @@ export const VideoTab: React.FC<VideoTabProps> = ({
     resolution: `${currentEnc?.current.width || 1920}x${currentEnc?.current.height || 1080}`,
     frameRate: currentEnc?.current.frame_rate_limit || 25,
     bitrate: currentEnc?.current.bitrate_limit_kbps || 2048,
-    quality: currentEnc?.current.quality || 50,
+    quality: currentEnc?.current.quality ?? 50,
+    govLength: currentEnc?.current.gov_length ?? 30,
+    profile: currentEnc?.current.profile ?? "",
+    cbr: currentEnc?.current.cbr ?? false,
   });
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
@@ -43,6 +47,9 @@ export const VideoTab: React.FC<VideoTabProps> = ({
         frameRate: currentEnc.current.frame_rate_limit,
         bitrate: currentEnc.current.bitrate_limit_kbps,
         quality: currentEnc.current.quality,
+        govLength: currentEnc.current.gov_length,
+        profile: currentEnc.current.profile,
+        cbr: currentEnc.current.cbr ?? false,
       });
       setIsDirty(false);
       setErrorMessage(null);
@@ -57,13 +64,27 @@ export const VideoTab: React.FC<VideoTabProps> = ({
     );
   }
 
-  const resOptions = resolutionLabels(currentEnc.options);
-  const fpsRange = currentEnc.options.frame_rate_range || [1, 30];
-  const bitrateRange = currentEnc.options.bitrate_range_kbps || [128, 8192];
-  const qualityRange = currentEnc.options.quality_range || [1, 100];
+  const options = currentEnc.options.codecs?.find(c => c.encoding === form.encoding) || currentEnc.options;
+  const resOptions = resolutionLabels(options);
+  const fpsRange = options.frame_rate_range || [1, 30];
+  const bitrateRange = options.bitrate_range_kbps || [128, 8192];
+  const qualityRange = options.quality_range || [1, 100];
 
   const handleFieldChange = (field: keyof typeof form, val: any) => {
-    setForm((prev) => ({ ...prev, [field]: val }));
+    setForm((prev) => {
+      if (field !== "encoding") return { ...prev, [field]: val };
+      const next = currentEnc.options.codecs?.find(c => c.encoding === val) || currentEnc.options;
+      const sizes = resolutionLabels(next);
+      const clamp = (value: number, range?: [number, number]) => range ? Math.max(range[0], Math.min(range[1], value)) : value;
+      return { ...prev, encoding: val,
+        resolution: sizes.includes(prev.resolution) ? prev.resolution : sizes[0] || prev.resolution,
+        frameRate: next.frame_rates?.includes(prev.frameRate) ? prev.frameRate : next.frame_rates?.[0] ?? clamp(prev.frameRate, next.frame_rate_range),
+        bitrate: clamp(prev.bitrate, next.bitrate_range_kbps), quality: clamp(prev.quality, next.quality_range),
+        govLength: clamp(prev.govLength, next.gov_length_range),
+        profile: next.encoder_profiles?.includes(prev.profile) ? prev.profile : next.encoder_profiles?.[0] || prev.profile,
+        cbr: next.supports_cbr ? prev.cbr : false,
+      };
+    });
     setIsDirty(true);
   };
 
@@ -74,6 +95,9 @@ export const VideoTab: React.FC<VideoTabProps> = ({
       frameRate: currentEnc.current.frame_rate_limit,
       bitrate: currentEnc.current.bitrate_limit_kbps,
       quality: currentEnc.current.quality,
+        govLength: currentEnc.current.gov_length,
+        profile: currentEnc.current.profile,
+        cbr: currentEnc.current.cbr ?? false,
     });
     setIsDirty(false);
     setErrorMessage(null);
@@ -91,6 +115,9 @@ export const VideoTab: React.FC<VideoTabProps> = ({
         frame_rate_limit: Number(form.frameRate),
         bitrate_limit_kbps: Number(form.bitrate),
         quality: Number(form.quality),
+        gov_length: Number(form.govLength),
+        profile: form.profile || undefined,
+        cbr: options.supports_cbr ? form.cbr : false,
       });
       toast(CAMERAS_COPY.SETTINGS_SAVED);
       setIsDirty(false);
@@ -100,62 +127,71 @@ export const VideoTab: React.FC<VideoTabProps> = ({
   };
 
   return (
-    <SettingsForm
-      isDirty={isDirty}
-      isSubmitting={saveMutation.isPending}
-      errorMessage={errorMessage}
-      onDiscard={handleDiscard}
-      onSubmit={handleSubmit}
-      retryLabel={CAMERAS_COPY.RETRY_SAVE}
-    >
-      <Card className="border-border bg-card p-4 flex flex-col gap-4">
-        <CardHeader className="p-0 pb-2 border-b border-border flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-foreground">
-            Video Encoder Settings
-          </CardTitle>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-semibold">Video quality</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Configure main and sub-stream codec, resolution, frame rate, and bitrate limits.</p>
+      </div>
+      <SettingsForm
+        isDirty={isDirty}
+        isSubmitting={saveMutation.isPending}
+        errorMessage={errorMessage}
+        onDiscard={handleDiscard}
+        onSubmit={handleSubmit}
+        retryLabel={CAMERAS_COPY.RETRY_SAVE}
+      >
+        <Card className="rounded-xl border-border bg-card p-6 flex flex-col gap-4">
+          <CardHeader className="p-0 pb-2 border-b border-border flex flex-row items-center justify-between gap-4">
+            <CardTitle className="text-sm font-semibold text-foreground">
+              Video Encoder Settings
+            </CardTitle>
 
-          {encoders.length > 1 && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="stream-select" className="text-xs text-muted-foreground font-normal">
-                Stream:
-              </label>
-              <select
-                id="stream-select"
-                value={selectedIdx}
-                onChange={(e) => {
-                  setSelectedIdx(Number(e.target.value));
-                  setIsDirty(false);
-                }}
-                className="h-8 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {encoders.map((enc, idx) => (
-                  <option key={enc.profile_token} value={idx}>
-                    {enc.profile_name || `Stream ${idx + 1}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </CardHeader>
+            {encoders.length > 1 && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="stream-select" className="text-xs text-muted-foreground font-normal">
+                  Stream:
+                </label>
+                <NativeSelect
+                  id="stream-select"
+                  size="sm"
+                  className="w-auto text-xs"
+                  value={selectedIdx}
+                  onChange={(e) => {
+                    setSelectedIdx(Number(e.target.value));
+                    setIsDirty(false);
+                  }}
+                >
+                  {encoders.map((enc, idx) => (
+                    <option key={enc.profile_token} value={idx}>
+                      {enc.profile_name || `Stream ${idx + 1}`}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            )}
+          </CardHeader>
 
         <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="vms-field">GOP length<Input aria-label="GOP length" type="number" min={options.gov_length_range?.[0]} max={options.gov_length_range?.[1]} value={form.govLength} onChange={e => handleFieldChange("govLength", Number(e.target.value))} /></label>
+          {Boolean(options.encoder_profiles?.length) && <label className="vms-field">Encoder profile<NativeSelect aria-label="Encoder profile" value={form.profile} onChange={e => handleFieldChange("profile", e.target.value)}>{options.encoder_profiles?.map(p => <option key={p} value={p}>{p}</option>)}</NativeSelect></label>}
+          {options.supports_cbr && <label className="vms-field">Bitrate control<NativeSelect aria-label="Bitrate control" value={form.cbr ? "cbr" : "vbr"} onChange={e => handleFieldChange("cbr", e.target.value === "cbr")}><option value="vbr">Variable bitrate (VBR)</option><option value="cbr">Constant bitrate (CBR)</option></NativeSelect></label>}
+
           {/* Encoding */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="enc-format" className="text-xs font-semibold text-foreground">
               Video Codec
             </label>
-            <select
+            <NativeSelect
               id="enc-format"
               value={form.encoding}
               onChange={(e) => handleFieldChange("encoding", e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {currentEnc.options.encodings.map((codec) => (
                 <option key={codec} value={codec}>
                   {codec}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           {/* Resolution */}
@@ -163,18 +199,17 @@ export const VideoTab: React.FC<VideoTabProps> = ({
             <label htmlFor="enc-resolution" className="text-xs font-semibold text-foreground">
               Resolution
             </label>
-            <select
+            <NativeSelect
               id="enc-resolution"
               value={form.resolution}
               onChange={(e) => handleFieldChange("resolution", e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {resOptions.map((res) => (
                 <option key={res} value={res}>
                   {res}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           {/* Frame Rate */}
@@ -245,5 +280,6 @@ export const VideoTab: React.FC<VideoTabProps> = ({
         </CardContent>
       </Card>
     </SettingsForm>
+    </div>
   );
 };

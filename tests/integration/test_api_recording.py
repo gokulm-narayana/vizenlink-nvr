@@ -212,3 +212,43 @@ async def test_recording_status_reports_real_recording_not_just_policy(app_fixtu
     assert items["CAM-REC-2"]["mode"] == "continuous"
     assert items["CAM-REC-2"]["is_recording"] is False
     assert "No footage" in items["CAM-REC-2"]["recording_detail"]
+
+
+@pytest.mark.asyncio
+async def test_bulk_policy_is_atomic_and_only_changes_selected_fields(app_fixture) -> None:
+    client, owner, viewer = app_fixture
+    batch = {"serials": ["CAM-REC-1", "CAM-REC-2"], "changes": {"mode": "off"}}
+    client.cookies.set("session_id", viewer)
+    assert (await client.post("/api/v1/recording/apply", json=batch)).status_code == 403
+    client.cookies.set("session_id", owner)
+    assert (await client.patch("/api/v1/recording/CAM-REC-1", json={"retention_days": 14})).is_success
+    invalid = {**batch, "serials": [*batch["serials"], "missing"]}
+    assert (await client.post("/api/v1/recording/apply", json=invalid)).status_code == 404
+    assert all(r["mode"] == "continuous" for r in (await client.get("/api/v1/recording/status")).json())
+    assert (await client.post("/api/v1/recording/apply", json=batch)).json() == {"updated": 2}
+    policies = (await client.get("/api/v1/recording/status")).json()
+    assert all(r["mode"] == "off" for r in policies)
+    assert {r["camera_serial"]: r["retention_days"] for r in policies} == {"CAM-REC-1": 14, "CAM-REC-2": None}
+
+
+@pytest.mark.asyncio
+async def test_clip_length_option_is_validated_saved_and_audited(app_fixture) -> None:
+    """Clip length is recorder-wide: default 1 minute, only offered lengths, operators and above."""
+    client, owner, viewer = app_fixture
+    client.cookies.set("session_id", viewer)
+    res = await client.get("/api/v1/recording/options")
+    assert res.status_code == 200
+    assert res.json() == {"clip_minutes": 1, "clip_minutes_choices": [1, 5, 10, 15, 30, 60]}
+    assert (await client.put("/api/v1/recording/options", json={"clip_minutes": 5})).status_code == 403
+
+    client.cookies.set("session_id", owner)
+    assert (await client.put("/api/v1/recording/options", json={"clip_minutes": 7})).status_code == 422
+    assert (await client.get("/api/v1/recording/options")).json()["clip_minutes"] == 1
+
+    saved = await client.put("/api/v1/recording/options", json={"clip_minutes": 30})
+    assert saved.status_code == 200
+    assert saved.json()["clip_minutes"] == 30
+    assert (await client.get("/api/v1/recording/options")).json()["clip_minutes"] == 30
+    logs = (await client.get("/api/v1/audit-logs", params={"action": "recording.update_options"})).json()
+    items = logs if isinstance(logs, list) else logs.get("items", logs.get("logs", []))
+    assert len(items) == 1

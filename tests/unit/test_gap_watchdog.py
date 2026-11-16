@@ -190,3 +190,44 @@ async def test_gap_watchdog_newly_added_camera_startup_window(memory_session: As
     assert health.recording_state == RecordingState.NOT_RECORDING
     assert health.gap_alarm is False
     assert health.last_segment_at is None
+
+
+@pytest.mark.asyncio
+async def test_gap_watchdog_window_follows_clip_length(memory_session: AsyncSession) -> None:
+    """With 5-minute clips, 200 s without a finished clip is normal; 700 s is a gap."""
+    from vizenlink_nvr.services.settings import CLIP_MINUTES_KEY, put_setting
+
+    now = utc_now()
+    cam = Camera(
+        serial="CAM-LONG",
+        host="192.168.1.54",
+        https_port=443,
+        mac="AA:BB:CC:54:54:54",
+        name="Long Clip Cam",
+        manufacturer="NuraEye",
+        model="NE-4K",
+        tls_fingerprint_sha256="fp_long",
+        state="active",
+        added_at=now - timedelta(hours=1),
+        host_updated_at=now - timedelta(hours=1),
+    )
+    settings = RecordingSettings(camera_serial="CAM-LONG", mode="continuous", created_at=now, updated_at=now)
+    seg = Segment(
+        camera_serial="CAM-LONG",
+        stream_type="main",
+        file_path="/data/seg_long.mp4",
+        start_time=now - timedelta(seconds=500),
+        end_time=now - timedelta(seconds=200),
+        duration_seconds=300.0,
+        file_size_bytes=1024,
+        status="active",
+        is_protected=False,
+        created_at=now - timedelta(seconds=200),
+    )
+    memory_session.add_all([cam, settings, seg])
+    await put_setting(memory_session, CLIP_MINUTES_KEY, 5)
+    await memory_session.commit()
+
+    assert (await check_camera_gaps(memory_session, now=now))["CAM-LONG"].gap_alarm is False
+    later = now + timedelta(seconds=500)  # 700 s since the last finished clip, window is 630 s
+    assert (await check_camera_gaps(memory_session, now=later))["CAM-LONG"].gap_alarm is True

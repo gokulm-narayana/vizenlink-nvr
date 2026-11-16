@@ -111,6 +111,7 @@ class CameraHttp:
                 verify=ctx,
                 http2=False,
                 follow_redirects=False,
+                trust_env=False,  # Camera requests go directly to the configured device.
             )
         return self._clients[key]
 
@@ -123,6 +124,7 @@ class CameraHttp:
         body: bytes | None = None,
         headers: list[tuple[str, str]] | None = None,
         timeout: float,
+        max_bytes: int | None = None,
     ) -> HttpResponse | Failure | Timeout:
         """Send HTTP request to camera, preserving header case and handling events."""
         client = self._get_client(conn)
@@ -166,7 +168,15 @@ class CameraHttp:
             ) as stream_resp:
                 if silence_task is not None:
                     silence_task.cancel()
-                content = await stream_resp.aread()
+                if max_bytes is None:
+                    content = await stream_resp.aread()
+                else:
+                    chunks = bytearray()
+                    async for chunk in stream_resp.aiter_bytes():
+                        chunks.extend(chunk)
+                        if len(chunks) > max_bytes:
+                            return Failure(FailureKind.BAD_RESPONSE, "Camera response exceeds the size limit")
+                    content = bytes(chunks)
                 status = stream_resp.status_code
 
                 if status == CAMERA_ID_MISMATCH_STATUS:

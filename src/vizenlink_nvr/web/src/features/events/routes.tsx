@@ -8,6 +8,7 @@ export const routes: ShellRoute[] = [
     path: "/events",
     title: "Alerts",
     minRole: "viewer",
+    stickyContent: true,
     element: <EventsPage />,
   },
   {

@@ -1,24 +1,68 @@
-import { Link } from "react-router";
-import { Cctv, HardDrive, Users, Smartphone, User, Activity, ChevronRight, Sun, Moon, Monitor } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
+import { NavLink } from "react-router";
+import { Disc, HardDrive, ScrollText, Settings2, Smartphone, Sparkles, User, Users } from "lucide-react";
 import { useCurrentUser } from "@/lib/queries";
-import { useUiStore, type Theme } from "@/stores/ui";
-import { Button } from "@/components/ui/button";
+import { SystemSettings } from "./SystemSettings";
 
-export function SettingsPage() {
-  const user = useCurrentUser();
-  const theme = useUiStore(s => s.theme);
-  const setTheme = useUiStore(s => s.setTheme);
-  const manager = user?.role === "owner" || user?.role === "operator";
-  const items = [
-    { title: "Cameras", detail: "Add cameras, change names, and adjust picture and video settings.", path: "/cameras", icon: Cctv, visible: manager },
-    { title: "Recording & Storage", detail: "Recording modes, weekly schedules, audio, and footage retention.", path: "/settings/recording", icon: HardDrive, visible: manager },
-    { title: "Users & Access", detail: "Invite users and choose which cameras they can access.", path: "/users", icon: Users, visible: user?.role === "owner" },
-    { title: "Mobile devices", detail: "Pair a phone or remove a device's remote access.", path: "/devices", icon: Smartphone, visible: user?.role === "owner" },
-    { title: "System Health", detail: "View storage capacity, camera issues, and connection history.", path: "/dashboard", icon: Activity, visible: true },
-    { title: "My Account", detail: "View your profile and update your password.", path: "/profile", icon: User, visible: true },
+type Section = { path: string; title: string; icon: ComponentType<{ className?: string }>; visible: boolean };
+
+export function SettingsPage({ children }: { children?: ReactNode }) {
+  const role = useCurrentUser()?.role;
+  const manager = role === "owner" || role === "operator";
+  const owner = role === "owner";
+  const groups: Array<{ label: string; sections: Section[] }> = [
+    {
+      label: "Recorder",
+      sections: [
+        { path: "/settings", title: "System", icon: Settings2, visible: true },
+        { path: "/settings/recording", title: "Recording", icon: Disc, visible: manager },
+        { path: "/settings/storage", title: "Storage", icon: HardDrive, visible: manager },
+        { path: "/settings/ai", title: "AI & API keys", icon: Sparkles, visible: owner },
+      ],
+    },
+    {
+      label: "Access",
+      sections: [
+        { path: "/settings/users", title: "Users", icon: Users, visible: owner },
+        { path: "/settings/devices", title: "Mobile devices", icon: Smartphone, visible: owner },
+        { path: "/settings/audit", title: "Audit log", icon: ScrollText, visible: owner },
+      ],
+    },
+    { label: "You", sections: [{ path: "/profile", title: "My Account", icon: User, visible: true }] },
   ];
-  return <div className="flex flex-col gap-6">
-    <div className="grid gap-4 md:grid-cols-2">{items.filter(i => i.visible).map(item => <Link key={item.path} to={item.path} className="group flex items-start gap-4 rounded-xl border border-border bg-card p-6 transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-primary"><div className="rounded-lg bg-selected p-4 text-primary"><item.icon className="size-6" /></div><div className="flex-1"><h2 className="font-semibold">{item.title}</h2><p className="mt-1 text-sm text-muted-foreground">{item.detail}</p></div><ChevronRight className="mt-4 size-4 text-muted-foreground" /></Link>)}</div>
-    <section className="rounded-xl border border-border bg-card p-6"><h2 className="font-semibold">Appearance</h2><p className="mb-4 mt-1 text-sm text-muted-foreground">Choose a comfortable theme for this screen.</p><div className="flex flex-wrap gap-4">{([{ value: "light", title: "Light", icon: Sun }, { value: "dark", title: "Dark", icon: Moon }, { value: "system", title: "Match device", icon: Monitor }] as const).map(t => <Button key={t.value} variant={theme === t.value ? "default" : "outline"} aria-pressed={theme === t.value} onClick={() => setTheme(t.value as Theme)}><t.icon className="size-4" />{t.title}</Button>)}</div></section>
-  </div>;
+  return (
+    <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
+      {/* Phones: one scrolling row of pills. Wide screens: grouped menu that stays in view. */}
+      <nav
+        aria-label="Settings sections"
+        className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-2 lg:sticky lg:top-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:p-4"
+      >
+        {groups.map(group => {
+          const visible = group.sections.filter(section => section.visible);
+          if (!visible.length) return null;
+          return (
+            <div key={group.label} className="flex shrink-0 gap-1 lg:flex-col">
+              <p className="hidden px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:block">{group.label}</p>
+              {visible.map(section => (
+                <NavLink
+                  key={section.path}
+                  to={section.path}
+                  end
+                  className={({ isActive }) =>
+                    `flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      isActive ? "bg-selected font-semibold text-selected-foreground" : "text-foreground hover:bg-muted"
+                    }`
+                  }
+                >
+                  <section.icon className="size-4 shrink-0" aria-hidden />
+                  {section.title}
+                </NavLink>
+              ))}
+            </div>
+          );
+        })}
+      </nav>
+      <div className="flex min-w-0 flex-col gap-4 lg:gap-6">{children ?? <SystemSettings />}</div>
+    </div>
+  );
 }

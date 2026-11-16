@@ -76,6 +76,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   const absTime = formatDateTime(event.start_time, zone);
   const relTime = formatRelative(event.start_time);
   const displayName = cameraName || event.camera_serial;
+  const hasSnapshot = Boolean(event.snapshot_path) && !imgError;
 
   return (
     <Card
@@ -95,47 +96,52 @@ export const EventCard: React.FC<EventCardProps> = ({
         event.review_state === "resolved" && "opacity-75"
       )}
     >
-      {/* 16:9 Snapshot Thumbnail Area */}
-      <div className="relative aspect-video w-full bg-muted overflow-hidden flex items-center justify-center">
-        {event.snapshot_path && !imgError ? (
-          <>
-            {!imgLoaded && (
-              <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
-            )}
-            <img
-              src={`/api/v1/events/${event.id}/snapshot`}
-              alt={`${formatEventTypeLabel(event.event_type)} at ${displayName}, ${absTime}`}
-              onLoad={() => setImgLoaded(true)}
-              onError={() => setImgError(true)}
-              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-            />
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
-            <ImageOff className="h-8 w-8" />
-            <span className="text-xs font-normal">{EVENTS_COPY.NO_SNAPSHOT}</span>
-          </div>
-        )}
-
-        {/* Type Badge */}
-        <Badge
-          variant="secondary"
-          className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold shadow-xs backdrop-blur-xs"
-        >
-          {getEventTypeIcon(event.event_type)}
-          <span>{formatEventTypeLabel(event.event_type)}</span>
-        </Badge>
-
-        {/* Lock Pill / Icon */}
-        {event.is_locked && (
-          <div
-            title="Locked"
-            className="absolute top-2 right-2 flex items-center justify-center rounded bg-background/80 p-1 text-foreground shadow-xs"
+      {hasSnapshot ? (
+        /* 16:9 snapshot thumbnail */
+        <div className="relative aspect-video w-full bg-muted overflow-hidden flex items-center justify-center">
+          {!imgLoaded && <Skeleton className="absolute inset-0 h-full w-full rounded-none" />}
+          <img
+            src={`/api/v1/events/${event.id}/snapshot`}
+            alt={`${formatEventTypeLabel(event.event_type)} at ${displayName}, ${absTime}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+          />
+          <Badge
+            variant="secondary"
+            className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold shadow-xs backdrop-blur-xs"
           >
-            <Lock className="h-3.5 w-3.5" />
-          </div>
-        )}
-      </div>
+            {getEventTypeIcon(event.event_type)}
+            <span>{formatEventTypeLabel(event.event_type)}</span>
+          </Badge>
+          {event.is_locked && (
+            <div
+              title="Locked"
+              className="absolute top-2 right-2 flex items-center justify-center rounded bg-background/80 p-1 text-foreground shadow-xs"
+            >
+              <Lock className="h-3.5 w-3.5" />
+            </div>
+          )}
+        </div>
+      ) : (
+        /* No picture: one compact header line instead of an empty 16:9 box, so a page of
+           alerts without snapshots stays scannable. */
+        <div className="flex items-center gap-2 px-4 pt-4">
+          <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold">
+            {getEventTypeIcon(event.event_type)}
+            <span>{formatEventTypeLabel(event.event_type)}</span>
+          </Badge>
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+            <ImageOff className="size-3.5 shrink-0" />
+            <span className="truncate">{EVENTS_COPY.NO_SNAPSHOT}</span>
+          </span>
+          {event.is_locked && (
+            <span title="Locked" className="ml-auto flex items-center text-foreground">
+              <Lock className="h-3.5 w-3.5" />
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Card Body */}
       <div className="flex flex-col gap-2 p-4">

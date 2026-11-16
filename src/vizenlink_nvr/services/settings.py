@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.db.models import AppSetting
@@ -17,6 +18,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 SITE_TIMEZONE_KEY = "site_timezone"
+
+# Length of each recorded clip (one file on disk), recorder-wide.
+CLIP_MINUTES_KEY = "recording_clip_minutes"
+CLIP_MINUTES_CHOICES: tuple[int, ...] = (1, 5, 10, 15, 30, 60)
+DEFAULT_CLIP_MINUTES = 1
+
+
+async def read_clip_minutes(session: AsyncSession) -> int:
+    """Clip length in minutes; anything unreadable or not offered falls back to the default."""
+    stmt = select(AppSetting).where(AppSetting.key == CLIP_MINUTES_KEY)
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is None:
+        return DEFAULT_CLIP_MINUTES
+    try:
+        value = json.loads(row.value)
+    except Exception:
+        return DEFAULT_CLIP_MINUTES
+    return value if isinstance(value, int) and value in CLIP_MINUTES_CHOICES else DEFAULT_CLIP_MINUTES
 
 
 async def get_setting(rt: Runtime, key: str) -> object | None:
@@ -43,13 +62,12 @@ async def put_setting(
     ts = updated_at if updated_at is not None else utc_now()
     json_val = json.dumps(value)
 
-    stmt = select(AppSetting).where(AppSetting.key == key)
-    existing = (await session.execute(stmt)).scalar_one_or_none()
-    if existing is not None:
-        existing.value = json_val
-        existing.updated_at = ts
-    else:
-        session.add(AppSetting(key=key, value=json_val, updated_at=ts))
+    stmt = insert(AppSetting).values(key=key, value=json_val, updated_at=ts)
+    await session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[AppSetting.key], set_={"value": json_val, "updated_at": ts}
+        )
+    )
 
 
 async def read_site_timezone(session: AsyncSession) -> str:

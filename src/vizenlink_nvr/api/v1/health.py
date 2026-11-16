@@ -112,8 +112,12 @@ async def get_system_health(
 ) -> SystemHealthResponse:
     """Retrieve overall system health and subsystem statuses."""
     storage_cfg = await get_storage_config(db, default_path=_default_storage_path(request))
+    recorder = getattr(request.app.state, "recorder", None)
     status_rec = await RecorderHealthService.get_recorder_status(
-        db, storage_status=storage_cfg.health_state
+        db,
+        # Real MediaMTX state under `nvr run`; apps built without the recorder (tests) keep the default.
+        media_status=recorder.status()["mediamtx_running"] if recorder is not None else True,
+        storage_status=storage_cfg.health_state,
     )
     counts = await camera_counts(db)
 

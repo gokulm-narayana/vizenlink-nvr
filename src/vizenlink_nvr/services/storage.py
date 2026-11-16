@@ -106,20 +106,21 @@ def evaluate_storage_health(
     """Evaluate storage volume health and accessibility per D-32 and D-33."""
     resolved = target_path.resolve()
 
-    # 1. Existence / Directory creation test
+    # 1. System drive protection guard (D-32). Checked before anything is
+    #    created, so a refused path leaves no directory behind.
+    if is_system_drive(resolved) and not allow_system_disk:
+        return (
+            StorageHealthState.SYSTEM_DISK_REFUSED,
+            "Recording to system root disk is refused without --allow-system-disk",
+        )
+
+    # 2. Existence / Directory creation test
     try:
         resolved.mkdir(parents=True, exist_ok=True)
     except Exception as exc:
         return (
             StorageHealthState.UNMOUNTED,
             f"Storage path does not exist and cannot be created: {exc}",
-        )
-
-    # 2. System drive protection guard (D-32)
-    if is_system_drive(resolved) and not allow_system_disk:
-        return (
-            StorageHealthState.SYSTEM_DISK_REFUSED,
-            "Recording to system root disk is refused without --allow-system-disk",
         )
 
     # 3. Read-only / Write permissions test

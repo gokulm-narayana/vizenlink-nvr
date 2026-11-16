@@ -42,7 +42,7 @@ A rebuild of the existing VizenLink/NuraEye VMS (`nuraeye-rt/vms`) as a network 
 
 - Remote (off-LAN) access to the NVR — v1 is LAN only; mobile keeps its existing camera/AWS paths off-LAN
 - Third-party / generic ONVIF cameras — VizenLink/NuraEye only for v1
-- AI features in the NVR (the old VMS's AI analytics layers, Nura AI chatbot) — AI stays separate from the platform-independent core
+- Video AI inference and the old VMS's Kafka analytics pipeline — not part of the recording core. On 2026-11-11 the owner requested Search and AI parity: the web app now includes indexed search, a recorder assistant, and an optional Ollama model connection. Models are never installed automatically and are independent of recording.
 - Kafka WebSocket feed from old VMS — not core NVR functionality
 - Enforced camera-count limits / licensing tiers — designed for later; v1 targets ~16 cameras without enforcement
 - Video wall, bulk provisioning, infrastructure dashboards (GPU/CPU/thread stats)

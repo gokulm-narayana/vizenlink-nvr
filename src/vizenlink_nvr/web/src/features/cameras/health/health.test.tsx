@@ -243,7 +243,7 @@ describe("CamerasPage Health Tab & View Mode Visibility", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={["/cameras/CAM1"]}>
-          <CamerasPage />
+          <Routes><Route path="/cameras/:serial" element={<CamerasPage />} /></Routes>
         </MemoryRouter>
       </QueryClientProvider>
     );
@@ -252,10 +252,10 @@ describe("CamerasPage Health Tab & View Mode Visibility", () => {
     expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
 
     // Video, Image, Overlays, and Maintenance are hidden in Simple view
-    expect(screen.queryByRole("tab", { name: "Video" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Image" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Video quality" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Image & night mode" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "On-screen text" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Reboot & reset" })).toBeInTheDocument();
   });
 
   it("renders all tabs in Advanced view mode", async () => {
@@ -264,16 +264,16 @@ describe("CamerasPage Health Tab & View Mode Visibility", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={["/cameras/CAM1"]}>
-          <CamerasPage />
+          <Routes><Route path="/cameras/:serial" element={<CamerasPage />} /></Routes>
         </MemoryRouter>
       </QueryClientProvider>
     );
 
     expect(await screen.findByRole("tab", { name: "Details" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Video" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Image" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Video quality" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Image & night mode" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "On-screen text" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Reboot & reset" })).toBeInTheDocument();
   });
 });

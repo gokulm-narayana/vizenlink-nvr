@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -18,8 +18,11 @@ from vizenlink_nvr.api.dependencies import (
     RequireOperator,
 )
 from vizenlink_nvr.db.models import StorageSettings
+from vizenlink_nvr.network.mdns import get_local_ip
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.gallery import GalleryService
+from vizenlink_nvr.services.media_token import default_media_token_service
+from vizenlink_nvr.timeutil import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +52,13 @@ class GalleryListResponse(BaseModel):
 class GalleryDeleteResponse(BaseModel):
     status: str
     id: int
+
+
+class GalleryShareResponse(BaseModel):
+    item_id: int
+    share_url: str
+    qr_payload: str
+    expires_at: datetime
 
 
 async def _resolve_storage_root(request: Request, db: AsyncSession) -> Path:
@@ -241,4 +251,113 @@ async def delete_gallery_item(
     return GalleryDeleteResponse(
         status="deleted",
         id=item_id,
+    )
+
+
+@gallery_router.post("/{item_id}/share", response_model=GalleryShareResponse)
+async def share_gallery_item(
+    item_id: int,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+    expires_in_seconds: int = Query(3600, ge=60, le=86400),
+) -> GalleryShareResponse:
+    """Generate a signed LAN-accessible share URL and QR payload for a gallery item."""
+    item = await GalleryService.get_item(db, item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Gallery item {item_id} not found",
+        )
+
+    if user.role not in ("owner", "operator"):
+        permitted = {p.camera_serial for p in user.permissions}
+        if item.camera_serial not in permitted:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to camera '{item.camera_serial}'",
+            )
+
+    token = default_media_token_service.generate_token(
+        user_id=user.id,
+        camera_serial=item.camera_serial,
+        stream=f"gallery:{item.id}",
+        ttl_seconds=expires_in_seconds,
+    )
+
+    req_host = request.url.hostname or "127.0.0.1"
+    loopback_hosts = ("localhost", "127.0.0.1", "::1", "0.0.0.0")  # noqa: S104
+    host = get_local_ip() if req_host in loopback_hosts else req_host
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    port = request.url.port
+    host_part = f"{host}:{port}" if port and port not in (80, 443) else host
+    share_url = f"{request.url.scheme}://{host_part}/api/v1/gallery/{item.id}/shared?token={token}"
+    expires_at = utc_now() + timedelta(seconds=expires_in_seconds)
+
+    await AuditService.record_event(
+        session=db,
+        action="gallery.share_item",
+        resource_type="gallery_item",
+        resource_id=str(item.id),
+        actor_id=user.id,
+        actor_username=user.username,
+        details={
+            "camera_serial": item.camera_serial,
+            "item_type": item.item_type,
+            "expires_in_seconds": expires_in_seconds,
+        },
+        commit=True,
+    )
+
+    return GalleryShareResponse(
+        item_id=item.id,
+        share_url=share_url,
+        qr_payload=share_url,
+        expires_at=expires_at,
+    )
+
+
+@gallery_router.get("/{item_id}/shared")
+async def download_shared_gallery_item(
+    item_id: int,
+    request: Request,
+    db: DbSession,
+    token: str = Query(..., min_length=1),
+) -> FileResponse:
+    """Download or open a gallery item using a signed QR share token."""
+    payload = default_media_token_service.verify_token(token)
+    if payload is None or payload.get("stream") != f"gallery:{item_id}":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired share token",
+        )
+
+    item = await GalleryService.get_item(db, item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Gallery item {item_id} not found",
+        )
+
+    if payload.get("serial") != item.camera_serial:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Share token does not match item camera",
+        )
+
+    storage_root = await _resolve_storage_root(request, db)
+    resolved_path = GalleryService.resolve_file_path(storage_root, item.file_path)
+
+    if resolved_path is None or not resolved_path.exists() or not resolved_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Media file not found on disk: {item.file_path}",
+        )
+
+    media_type = "image/jpeg" if item.item_type == "snapshot" else "video/mp4"
+    return FileResponse(
+        path=resolved_path,
+        media_type=media_type,
+        filename=Path(item.file_path).name,
     )

@@ -26,7 +26,7 @@ export const PLAYBACK_COPY = {
   cameraLabel: "Camera",
   dateLabel: "Date",
   jumpToTime: "Jump to time",
-  eventsLink: "Events",
+  eventsLink: "Alerts",
   moreControls: "More playback controls",
   play: "Play",
   pause: "Pause",

@@ -147,7 +147,7 @@ describe("Timeline component", () => {
     expect(screen.getByText("Recorded")).toBeInTheDocument();
     expect(screen.getByText("Recording outage")).toBeInTheDocument();
     expect(screen.getByText("Removed by retention")).toBeInTheDocument();
-    expect(screen.getByText("Event")).toBeInTheDocument();
+    expect(screen.getByText("Alert")).toBeInTheDocument();
     expect(screen.getByText("Locked")).toBeInTheDocument();
   });
 

@@ -96,7 +96,7 @@ describe("UserMenu and ThemeSync", () => {
     expect(within(menu).getByText("owner")).toBeInTheDocument();
   });
 
-  it("choosing Dark adds dark class and writes nvr_theme=dark", async () => {
+  it("choosing Dark adds dark class and saves the account theme as dark", async () => {
     const user = userEvent.setup();
     renderUserMenu();
 
@@ -106,11 +106,12 @@ describe("UserMenu and ThemeSync", () => {
     const darkOption = screen.getByRole("menuitemradio", { name: "Dark" });
     await user.click(darkOption);
 
-    expect(localStorage.getItem("nvr_theme")).toBe("dark");
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/v1/auth/preferences",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ theme: "dark" }) })));
     expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
-  it("choosing Light removes dark class and writes nvr_theme=light", async () => {
+  it("choosing Light removes dark class and saves the account theme as light", async () => {
     document.documentElement.classList.add("dark");
     const user = userEvent.setup();
     renderUserMenu();
@@ -121,7 +122,8 @@ describe("UserMenu and ThemeSync", () => {
     const lightOption = screen.getByRole("menuitemradio", { name: "Light" });
     await user.click(lightOption);
 
-    expect(localStorage.getItem("nvr_theme")).toBe("light");
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/v1/auth/preferences",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ theme: "light" }) })));
     expect(document.documentElement.classList.contains("dark")).toBe(false);
   });
 
@@ -160,14 +162,15 @@ describe("UserMenu and ThemeSync", () => {
     );
   });
 
-  it("ViewModeToggle toggles between simple and advanced and sets nvr_view_mode", async () => {
+  it("ViewModeToggle toggles between simple and advanced and saves the account view mode", async () => {
     const user = userEvent.setup();
     renderUserMenu();
 
     const advancedBtn = screen.getByRole("radio", { name: "Advanced view" });
     await user.click(advancedBtn);
 
-    expect(localStorage.getItem("nvr_view_mode")).toBe("advanced");
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/v1/auth/preferences",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ view_mode: "advanced" }) })));
     expect(useUiStore.getState().viewMode).toBe("advanced");
   });
 });

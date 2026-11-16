@@ -13,16 +13,22 @@ import { ThemeToggle } from "./ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "cn";
+import { Search, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { WorkspaceSearch } from "./WorkspaceSearch";
+import { useWallFullscreenGuard } from "@/lib/fullscreen";
 
 interface RouteHandle {
   title?: string;
   fullBleed?: boolean;
+  stickyContent?: boolean;
 }
 
 export const AppShell: React.FC = () => {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
 
+  useWallFullscreenGuard();
   const matches = useMatches();
   const currentMatch = matches[matches.length - 1];
   const handle = (currentMatch?.handle as RouteHandle) || {};
@@ -43,13 +49,13 @@ export const AppShell: React.FC = () => {
         <div className="flex min-h-dvh w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-1 flex-col min-w-0">
-          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
-            <div className="flex items-center gap-2 min-w-0">
+          <header className="workspace-header sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-4 md:px-6">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <SidebarTrigger />
               <Link
                 to="/"
                 className="flex items-center md:hidden"
-                aria-label="VizenLink NVR, go to Live"
+                aria-label="VizenLink NVR, go to Dashboard"
               >
                 <BrandLogo variant="mark" />
               </Link>
@@ -58,7 +64,10 @@ export const AppShell: React.FC = () => {
               </h1>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              <WorkspaceSearch />
+              <Button variant="ghost" size="icon" className="workspace-search-link" aria-label="Search footage" asChild><Link to="/search"><Search className="size-4" /></Link></Button>
+              <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Open AI assistant" asChild><Link to="/assistant"><Sparkles className="size-4" /></Link></Button>
               <AlertsBell />
               <ThemeToggle />
               <UserMenu />
@@ -72,7 +81,8 @@ export const AppShell: React.FC = () => {
             id="main"
             tabIndex={-1}
             className={cn(
-              "flex-1 overflow-auto outline-hidden",
+              "flex-1 outline-hidden",
+              handle.stickyContent ? "overflow-x-clip" : "overflow-auto",
               isFullBleed ? "p-2" : "p-4 md:p-6"
             )}
           >

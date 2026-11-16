@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from vizenlink_nvr.db.models import Camera, Segment
 from vizenlink_nvr.services.health import CameraHealth, OnlineState, RecordingState
+from vizenlink_nvr.services.settings import read_clip_minutes
 from vizenlink_nvr.timeutil import UTC, utc_now
 
 if TYPE_CHECKING:
@@ -61,9 +62,16 @@ def _ensure_tz_aware(dt: datetime | None) -> datetime | None:
 async def check_camera_gaps(
     session: AsyncSession,
     now: datetime | None = None,
-    expected_window_seconds: float = DEFAULT_EXPECTED_WINDOW_SECONDS,
+    expected_window_seconds: float | None = None,
 ) -> dict[str, CameraHealth]:
-    """Inspect recent segments per camera and identify recording gaps (>150s) (HLTH-03)."""
+    """Inspect recent segments per camera and identify recording gaps (HLTH-03).
+
+    A clip is only indexed when it is finished, so the allowed silence follows the
+    configured clip length: 2 clips + 30 s (150 s with the default 1-minute clips, D-39).
+    """
+    if expected_window_seconds is None:
+        clip_seconds = await read_clip_minutes(session) * 60.0
+        expected_window_seconds = (2 * clip_seconds) + DEFAULT_GAP_TOLERANCE_SECONDS
     current_time = _ensure_tz_aware(now) if now is not None else utc_now()
     if current_time is None:
         current_time = utc_now()
@@ -173,7 +181,7 @@ class WatchdogService:
     async def check_camera_gaps(
         session: AsyncSession,
         now: datetime | None = None,
-        expected_window_seconds: float = DEFAULT_EXPECTED_WINDOW_SECONDS,
+        expected_window_seconds: float | None = None,
     ) -> dict[str, CameraHealth]:
         return await check_camera_gaps(session, now=now, expected_window_seconds=expected_window_seconds)
 

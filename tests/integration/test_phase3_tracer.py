@@ -255,7 +255,7 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
             "/api/v1/auth/mediamtx",
             json={
                 "ip": "192.168.1.100",
-                "path": "cam/CAM-A/sub",
+                "path": "cam/cam-a/sub",
                 "action": "read",
                 "query": f"token={token_a}",
             },
@@ -268,7 +268,7 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
             "/api/v1/auth/mediamtx",
             json={
                 "ip": "192.168.1.100",
-                "path": "cam/CAM-A/sub",
+                "path": "cam/cam-a/sub",
                 "action": "read",
                 "query": "",
             },
@@ -281,7 +281,7 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
             "/api/v1/auth/mediamtx",
             json={
                 "ip": "192.168.1.100",
-                "path": "cam/CAM-A/sub",
+                "path": "cam/cam-a/sub",
                 "action": "read",
                 "query": f"token={b64_p}.badSignatureXYZ",
             },
@@ -305,7 +305,7 @@ async def test_phase3_complete_e2e_tracer(tmp_path: Path) -> None:
             "/api/v1/auth/mediamtx",
             json={
                 "ip": "192.168.1.100",
-                "path": "cam/CAM-A/sub",
+                "path": "cam/cam-a/sub",
                 "action": "publish",
             },
         )

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -67,6 +67,29 @@ describe("Add Camera Feature", () => {
       </QueryClientProvider>
     );
   }
+
+  it("adds a discovered camera with only its credentials", async () => {
+    const camera = { host: "192.168.1.100", port: 443, name: "Front door", model: "VizenLink" };
+    const fetchMock = vi.fn<typeof fetch>(async path => new Response(JSON.stringify(
+      String(path).endsWith("/discover") ? { cameras: [camera] } : { name: camera.name, serial: "REAL-SERIAL" }
+    )));
+    global.fetch = fetchMock;
+    renderWizard();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Find cameras" }));
+    await user.click(await screen.findByRole("button", { name: "Use camera" }));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.type(dialog.getByLabelText("Camera password"), "test-camera-password");
+    await user.click(dialog.getByRole("button", { name: "Add camera" }));
+    expect(await screen.findByTestId("camera-page")).toBeVisible();
+    const submit = fetchMock.mock.calls.find(([path]) => String(path).endsWith("/onboard"));
+    expect(submit).toEqual([
+      "/api/v1/cameras/onboard",
+      expect.objectContaining({ body: JSON.stringify({
+        host: camera.host, port: camera.port, username: "admin", password: "test-camera-password",
+      }) }),
+    ]);
+  });
 
   describe("toCreateRequest helper", () => {
     it("transforms minimal values with default name, location, group and 1 main stream", () => {
@@ -161,6 +184,7 @@ describe("Add Camera Feature", () => {
       renderWizard();
 
       expect(screen.getByRole("heading", { name: ADD_CAMERA_COPY.TITLE })).toBeInTheDocument();
+      expect(screen.getByText(ADD_CAMERA_COPY.PAGE_NOTE)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Find cameras" })).toBeInTheDocument();
       expect(screen.getByText(ADD_CAMERA_COPY.STEP_CAPTION(1, 3))).toBeInTheDocument();
       expect(screen.getByLabelText(ADD_CAMERA_COPY.SERIAL_LABEL)).toBeInTheDocument();
@@ -367,6 +391,73 @@ describe("Add Camera Feature", () => {
 
       expect(screen.queryByText(ADD_CAMERA_COPY.DISCARD_TITLE)).not.toBeInTheDocument();
       expect(screen.getByLabelText(ADD_CAMERA_COPY.SERIAL_LABEL)).toHaveValue("CAM-01");
+    });
+  });
+
+  describe("Discovered camera factory password activation", () => {
+    it("prompts for and submits a new camera password when the camera requires activation", async () => {
+      const user = userEvent.setup();
+      let onboardCalls: Array<Record<string, unknown>> = [];
+
+      global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+        if (url === "/api/v1/cameras") {
+          return { ok: true, json: async () => [] };
+        }
+        if (url === "/api/v1/cameras/discover" && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => ({
+              cameras: [{ host: "192.168.1.99", port: 443, name: "VizenLink Cam", location: "Gate", model: "NE-100" }],
+            }),
+          };
+        }
+        if (url === "/api/v1/cameras/onboard" && init?.method === "POST") {
+          const body = JSON.parse(String(init.body || "{}"));
+          onboardCalls.push(body);
+          if (!body.new_camera_password) {
+            return {
+              ok: false,
+              status: 400,
+              statusText: "Bad Request",
+              json: async () => ({ detail: "Set a new password on the camera before adding it." }),
+            };
+          }
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              serial: "VZL-REAL-01",
+              name: "VizenLink Cam",
+              host: "192.168.1.99",
+              https_port: 443,
+              is_online: true,
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({}) };
+      });
+
+      renderWizard();
+
+      await user.click(screen.getByRole("button", { name: "Find cameras" }));
+      await user.click(await screen.findByRole("button", { name: "Use camera" }));
+
+      const dialog = within(await screen.findByRole("dialog"));
+      await user.type(dialog.getByLabelText(/Camera password/i), "password");
+      await user.click(dialog.getByRole("button", { name: "Add camera" }));
+
+      const newPassInput = await dialog.findByLabelText(/New camera password/i);
+      const confirmInput = dialog.getByLabelText(/Confirm new password/i);
+
+      await user.type(newPassInput, "CameraNewPass123!");
+      await user.type(confirmInput, "CameraNewPass123!");
+      await user.click(dialog.getByRole("button", { name: "Set password & add camera" }));
+
+      await waitFor(() => {
+        expect(onboardCalls).toHaveLength(2);
+        expect(onboardCalls[1].new_camera_password).toBe("CameraNewPass123!");
+        expect(screen.getByTestId("camera-page")).toBeInTheDocument();
+      });
     });
   });
 });

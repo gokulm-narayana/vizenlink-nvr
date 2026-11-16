@@ -7,6 +7,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 from typer.testing import CliRunner
 
 from vizenlink_nvr.cli.app import app
@@ -199,6 +200,8 @@ def test_remove_keep_recordings(cli: CliRunner, seeded_env: tuple[Path, Path]) -
             async with rt.sessions() as session:
                 cam = await session.get(Camera, "CAM-KEEP-01")
                 assert cam is None
+                indexed = await session.scalar(select(Segment).where(Segment.camera_serial == "CAM-KEEP-01"))
+                assert indexed is not None and Path(indexed.file_path) == seg_file
 
     import asyncio
 

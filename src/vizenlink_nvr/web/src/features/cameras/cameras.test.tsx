@@ -1,11 +1,12 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router";
 import { CamerasPage } from "./CamerasPage";
 import { useUiStore } from "@/stores/ui";
+import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
 
 vi.mock("sonner", () => ({
@@ -14,6 +15,7 @@ vi.mock("sonner", () => ({
 
 let mockCamerasData: any[] = [];
 let mockSettingsData: any = null;
+let mockSettingsError: Error | null = null;
 let mockHealthData: any = null;
 let mockSaveIdentityReject = false;
 
@@ -44,7 +46,7 @@ vi.mock("./api", () => ({
   useCameraSettings: (serial: string) => ({
     data: mockSettingsData,
     isLoading: false,
-    error: null,
+    error: mockSettingsError,
     refetch: vi.fn(),
   }),
   useCameraHealth: (serial: string) => ({
@@ -88,6 +90,7 @@ describe("Cameras Feature", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSaveIdentityReject = false;
+    mockSettingsError = null;
     useUiStore.setState({ viewMode: "advanced" });
 
     mockCamerasData = [
@@ -174,7 +177,7 @@ describe("Cameras Feature", () => {
           contrast_range: [0, 100],
           color_saturation_range: [0, 100],
           sharpness_range: [0, 100],
-          ir_cut_filter_modes: ["AUTO", "DAY", "NIGHT"],
+          ir_cut_filter_modes: ["AUTO", "ON", "OFF"],
           wdr_supported: true,
           wdr_level_range: [0, 100],
           night_vision_color_capable: true,
@@ -222,17 +225,19 @@ describe("Cameras Feature", () => {
   };
 
   describe("Master-Detail & Navigation", () => {
-    it("renders camera list and selects first camera by default on /cameras", () => {
+    it("renders the overview with camera-specific live, playback and settings links", () => {
       renderWithRouter(["/cameras"]);
 
       // Master list shows both cameras
       expect(screen.getAllByText("Front Door").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("Back Alley")).toBeInTheDocument();
 
-      // Detail header shows selected camera name and serial
+      // The overview opens settings only after the user chooses a camera.
       const detailHeader = screen.getByRole("heading", { level: 2, name: "Front Door" });
       expect(detailHeader).toBeInTheDocument();
-      expect(screen.getAllByText("CAM-01").length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByRole("tab", { name: "Details" })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Watch Front Door" })).toHaveAttribute("href", "/live?camera=CAM-01");
+      expect(screen.getAllByRole("link", { name: "Settings" })[0]).toHaveAttribute("href", "/cameras/CAM-01");
     });
 
     it("selects specific camera when route is /cameras/:serial", () => {
@@ -254,6 +259,20 @@ describe("Cameras Feature", () => {
   });
 
   describe("Not-Connected & Error Warning", () => {
+    it("shows saved details when a camera marked active cannot return live settings", () => {
+      mockSettingsData = null;
+      mockSettingsError = new ApiError(502, "Camera unavailable");
+      renderWithRouter(["/cameras/CAM-01"]);
+
+      expect(screen.getByText("Live settings unavailable")).toBeInTheDocument();
+      expect(screen.getByText("Settings unavailable")).toBeVisible();
+      expect(screen.getByRole("region", { name: "Saved camera details" })).toHaveTextContent("Main Entrance");
+      expect(screen.queryByLabelText("Camera name")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Reload settings" })).toBeEnabled();
+      // Developer sample-data previews are not offered to real users.
+      expect(screen.queryByRole("link", { name: "Preview detection settings" })).not.toBeInTheDocument();
+    });
+
     it("shows warning alert with last_error verbatim when camera is inactive or has error", async () => {
       const user = userEvent.setup();
       renderWithRouter(["/cameras/CAM-02"]);
@@ -340,6 +359,29 @@ describe("Cameras Feature", () => {
     });
   });
 
+  describe("Settings menu", () => {
+    it("lists every section once, grouped, and opens the chosen one", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(["/cameras/CAM-01"]);
+      const menu = screen.getByRole("navigation", { name: "Camera settings" });
+      for (const group of ["Picture", "Detection & safety", "Sound", "Device"]) {
+        expect(within(menu).getByText(group)).toBeInTheDocument();
+      }
+      expect(within(menu).getAllByRole("tab")).toHaveLength(15);
+      await user.click(within(menu).getByRole("tab", { name: "Image & night mode" }));
+      expect(within(menu).getByRole("tab", { name: "Image & night mode" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tabpanel", { name: "Image & night mode" })).toBeInTheDocument();
+      // One menu only: the old duplicate dropdown is gone.
+      expect(screen.queryByLabelText("Camera settings section")).not.toBeInTheDocument();
+    });
+
+    it("says plainly whether the camera is recording", () => {
+      renderWithRouter(["/cameras/CAM-02"]);
+      expect(screen.getByText("Recording off")).toBeInTheDocument();
+      expect(screen.queryByText(/Recording policy/)).not.toBeInTheDocument();
+    });
+  });
+
   describe("Simple vs Advanced View Mode", () => {
     it("exposes everyday camera settings in Simple mode", () => {
       useUiStore.setState({ viewMode: "simple" });
@@ -347,10 +389,10 @@ describe("Cameras Feature", () => {
 
       expect(screen.getByRole("tab", { name: "Details" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Video" })).toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Image" })).toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Video quality" })).toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Image & night mode" })).toBeInTheDocument();
       expect(screen.queryByRole("tab", { name: "On-screen text" })).toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Reboot & reset" })).toBeInTheDocument();
     });
 
     it("shows all tabs in Advanced mode", () => {
@@ -358,18 +400,18 @@ describe("Cameras Feature", () => {
       renderWithRouter(["/cameras/CAM-01"]);
 
       expect(screen.getByRole("tab", { name: "Details" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Video" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Image" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Video quality" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Image & night mode" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "On-screen text" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Maintenance" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Reboot & reset" })).toBeInTheDocument();
     });
 
     it("opens the requested video settings in everyday view", () => {
       useUiStore.setState({ viewMode: "simple" });
       renderWithRouter(["/cameras/CAM-01?tab=video"]);
 
-      expect(screen.getByRole("tab", { name: "Video" })).toHaveAttribute("data-state", "active");
+      expect(screen.getByRole("tab", { name: "Video quality" })).toHaveAttribute("data-state", "active");
     });
   });
 
@@ -379,7 +421,7 @@ describe("Cameras Feature", () => {
       useUiStore.setState({ viewMode: "advanced" });
       renderWithRouter(["/cameras/CAM-01"]);
 
-      const maintTab = screen.getByRole("tab", { name: "Maintenance" });
+      const maintTab = screen.getByRole("tab", { name: "Reboot & reset" });
       await user.click(maintTab);
 
       expect(screen.getByRole("button", { name: "Reboot camera" })).toBeInTheDocument();
@@ -395,6 +437,32 @@ describe("Cameras Feature", () => {
   });
 
   describe("Capability Gating in Image Tab", () => {
+    it("previews unsaved edits locally and refreshes the camera image after saving", async () => {
+      const user = userEvent.setup();
+      mockSaveImagingFn.mockClear();
+      renderWithRouter(["/cameras/CAM-01?tab=image"]);
+
+      const snapshot = screen.getByRole("img", { name: /camera snapshot/i });
+      const originalSource = snapshot.getAttribute("src");
+      fireEvent.change(screen.getByLabelText("Brightness"), { target: { value: "80" } });
+      expect(screen.getByRole("img", { name: /estimated image preview/i })).toBe(snapshot);
+      expect(snapshot.style.filter).toContain("brightness(1.25)");
+      expect(mockSaveImagingFn).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: "Show saved image" }));
+      expect(snapshot.style.filter).toBe("");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() => {
+        expect(screen.getByRole("img", { name: /camera snapshot/i })).not.toHaveAttribute("src", originalSource);
+      });
+      expect(mockSaveImagingFn).toHaveBeenCalledWith(expect.objectContaining({ brightness: 80 }));
+
+      fireEvent.error(screen.getByRole("img", { name: /camera snapshot/i }));
+      expect(screen.getByText(/camera snapshot unavailable/i)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
+      expect(screen.getByRole("img", { name: /camera snapshot/i })).toBeInTheDocument();
+    });
+
     it("shows WDR card and warning when wdr_supported is true", async () => {
       const user = userEvent.setup();
       renderWithRouter(["/cameras/CAM-01?tab=image"]);
@@ -413,6 +481,43 @@ describe("Cameras Feature", () => {
       expect(
         screen.queryByText("Changing WDR switches the sensor mode and may restart the camera briefly.")
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Day / night mode (ONVIF IrCutFilter)", () => {
+    it("names the modes in plain words and shows the camera's live state", () => {
+      const original = structuredClone(mockSettingsData.imaging);
+      mockSettingsData.imaging.current.day_night_now = "night";
+      try {
+        renderWithRouter(["/cameras/CAM-01?tab=image"]);
+        const select = screen.getByLabelText("Day / night mode");
+        expect(Array.from((select as HTMLSelectElement).options).map(o => [o.value, o.text])).toEqual([
+          ["AUTO", "Auto (switches with light)"],
+          ["ON", "Day (colour)"],
+          ["OFF", "Night (infrared, black & white)"],
+        ]);
+        expect(screen.getByText("Right now: Night (infrared)")).toBeInTheDocument();
+      } finally {
+        mockSettingsData.imaging = original;
+      }
+    });
+
+    it("offers nothing and sends nothing when the camera reports no day/night choices", async () => {
+      const user = userEvent.setup();
+      const original = structuredClone(mockSettingsData.imaging);
+      mockSettingsData.imaging.options.ir_cut_filter_modes = [];
+      try {
+        mockSaveImagingFn.mockClear();
+        renderWithRouter(["/cameras/CAM-01?tab=image"]);
+        expect(screen.queryByLabelText("Day / night mode")).not.toBeInTheDocument();
+        expect(screen.getByText("Not available on this camera.")).toBeInTheDocument();
+        await user.selectOptions(screen.getByLabelText("Night Vision Mode"), "grey");
+        await user.click(screen.getByRole("button", { name: "Save changes" }));
+        await waitFor(() => expect(mockSaveImagingFn).toHaveBeenCalled());
+        expect(mockSaveImagingFn.mock.calls[0][0]).not.toHaveProperty("ir_cut_filter");
+      } finally {
+        mockSettingsData.imaging = original;
+      }
     });
   });
 

@@ -24,6 +24,9 @@ class NvrSettings(BaseSettings):
     discovery_port: int = 3702
     discovery_multicast_group: str = "239.255.255.250"
     discovery_unicast_hosts: list[str] | None = None
+    # Optional local AI. No model is installed or contacted until explicitly configured.
+    assistant_model: str | None = None
+    assistant_url: str = "http://127.0.0.1:11434"
 
 
 def load_settings(data_dir: Path | None = None) -> NvrSettings:

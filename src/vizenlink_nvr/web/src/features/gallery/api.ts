@@ -55,6 +55,25 @@ export function useGallery(filters: GalleryFilters, pageSize = 50) {
   });
 }
 
+export interface GalleryShareResponse {
+  item_id: number;
+  share_url: string;
+  qr_payload: string;
+  expires_at: string;
+}
+
+export function useShareGalleryItem() {
+  return useMutation<GalleryShareResponse, Error, number>({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/v1/gallery/${id}/share`, { method: "POST" });
+      if (!res.ok) {
+        throw new Error(`Failed to share gallery item: HTTP ${res.status}`);
+      }
+      return (await res.json()) as GalleryShareResponse;
+    },
+  });
+}
+
 export function useDeleteGalleryItem() {
   const queryClient = useQueryClient();
   return useMutation<{ status: string; id: number }, Error, number>({

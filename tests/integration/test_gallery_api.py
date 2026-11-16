@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import pytest
@@ -357,3 +358,61 @@ async def test_gallery_item_deletion_and_rbac(app_fixture):
         audit_entry = audit_res.scalar_one_or_none()
         assert audit_entry is not None
         assert audit_entry.actor_username == "gallery_operator"
+
+
+@pytest.mark.asyncio
+async def test_gallery_qr_share_and_shared_download(app_fixture):
+    """Test POST /api/v1/gallery/{id}/share and signed GET /api/v1/gallery/{id}/shared."""
+    app = app_fixture["app"]
+    owner_token = app_fixture["owner_token"]
+    viewer_token = app_fixture["viewer_token"]
+    item1_id = app_fixture["item1_id"]
+    item2_id = app_fixture["item2_id"]
+    item3_id = app_fixture["item3_id"]
+    snap_bytes = app_fixture["snap_bytes"]
+    session_factory = app_fixture["session_factory"]
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Viewer cannot share item on unpermitted camera
+        resp_denied = await client.post(
+            f"/api/v1/gallery/{item3_id}/share",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp_denied.status_code == 403
+
+        # Owner generates QR share link for snapshot
+        resp_share = await client.post(
+            f"/api/v1/gallery/{item1_id}/share",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert resp_share.status_code == 200
+        share_data = resp_share.json()
+        assert share_data["item_id"] == item1_id
+        assert share_data["share_url"] == share_data["qr_payload"]
+        parsed = urlparse(share_data["share_url"])
+        assert parsed.path == f"/api/v1/gallery/{item1_id}/shared"
+        assert "token=" in parsed.query
+
+        # Unauthenticated mobile client can open/download via signed token
+        resp_shared = await client.get(f"{parsed.path}?{parsed.query}")
+        assert resp_shared.status_code == 200
+        assert resp_shared.headers["content-type"].startswith("image/jpeg")
+        assert resp_shared.content == snap_bytes
+
+        # Token scoped to item1_id cannot be used for item2_id
+        resp_wrong_item = await client.get(f"/api/v1/gallery/{item2_id}/shared?{parsed.query}")
+        assert resp_wrong_item.status_code == 401
+
+        # Invalid token rejected
+        resp_bad_token = await client.get(f"/api/v1/gallery/{item1_id}/shared?token=invalid-token")
+        assert resp_bad_token.status_code == 401
+
+    async with session_factory() as session:
+        audit_stmt = select(AuditLog).where(
+            AuditLog.action == "gallery.share_item",
+            AuditLog.resource_id == str(item1_id),
+        )
+        audit_entry = (await session.execute(audit_stmt)).scalar_one_or_none()
+        assert audit_entry is not None
+        assert audit_entry.actor_username == "gallery_owner"

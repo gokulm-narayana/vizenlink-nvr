@@ -1,3 +1,4 @@
+import { useAccountPreferences } from "@/features/profile/preferences";
 import React from "react";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,8 @@ import { resolvedTheme, useUiStore } from "@/stores/ui";
 
 /** One-click light/dark switch in the header (old VMS parity). */
 export const ThemeToggle: React.FC = () => {
+  const { setTheme } = useAccountPreferences();
   const theme = useUiStore((s) => s.theme);
-  const setTheme = useUiStore((s) => s.setTheme);
   const isDark = resolvedTheme(theme) === "dark";
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";
 

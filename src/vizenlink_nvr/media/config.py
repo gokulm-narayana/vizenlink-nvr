@@ -14,6 +14,12 @@ import yaml
 CONTROL_USER = "nvr-control"
 
 
+def camera_path_name(serial: str, stream: str) -> str:
+    """MediaMTX path for a camera stream. Path names are case-sensitive, so every
+    caller (reconciler, live proxy, media tokens, auth webhook) must use this."""
+    return f"cam/{serial.lower()}/{stream}"
+
+
 @dataclass(frozen=True)
 class MediaMtxPorts:
     """Port configuration for MediaMTX listeners."""

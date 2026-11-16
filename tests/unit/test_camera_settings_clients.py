@@ -9,6 +9,7 @@ Tests:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -16,7 +17,6 @@ from pydantic import SecretStr
 
 from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.http import CameraHttp
-from vizenlink_nvr.camera.nuraeye.rest import RestError, RestOk
 from vizenlink_nvr.camera.nuraeye.settings import (
     FALLBACK_TIMEZONES,
     NightVisionStatus,
@@ -34,7 +34,7 @@ from vizenlink_nvr.camera.onvif.media2 import (
     VideoEncoderConfigurationOptions,
     VideoResolution,
 )
-from vizenlink_nvr.camera.result import Failure, Success
+from vizenlink_nvr.camera.result import Failure, FailureKind, Success
 from vizenlink_nvr.timeutil import SystemClock
 
 
@@ -425,24 +425,27 @@ async def test_nuraeye_night_vision(fake_conn: CameraConnection, fake_http: Came
     clock = SystemClock()
     client = NuraeyeSettingsClient(fake_conn, fake_http, clock)
 
-    with patch("vizenlink_nvr.camera.nuraeye.settings.get_json", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = RestOk(
-            status=200,
-            output={"type": "smart", "color_capable": True, "smart_capable": True},
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = Success({"type": "Smart"})
+        client.client.get_capabilities = AsyncMock(
+            return_value=Success(
+                SimpleNamespace(night_vision_color_capable=True, night_vision_smart_capable=True)
+            )
         )
         res = await client.get_night_vision_type()
         assert isinstance(res, Success)
         nv: NightVisionStatus = res.value
+        assert mock_get.call_args.args[:2] == ("GET", "/nuraeye/video/night-vision-type")
         assert nv.current_type == "smart"
         assert nv.color_capable is True
         assert nv.smart_capable is True
 
-    with patch("vizenlink_nvr.camera.nuraeye.settings.post_json", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = RestOk(status=200, output={"result": "ok"})
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success({"result": "ok"})
         set_res = await client.set_night_vision_type("color")
         assert isinstance(set_res, Success)
         assert set_res.value is True
-        assert mock_post.call_args[0][3] == {"type": "color"}
+        assert mock_post.call_args[0][2] == {"type": "Color"}
 
     # Invalid type rejection
     bad_res = await client.set_night_vision_type("ultraviolet")
@@ -455,18 +458,18 @@ async def test_nuraeye_mirror_flip(fake_conn: CameraConnection, fake_http: Camer
     clock = SystemClock()
     client = NuraeyeSettingsClient(fake_conn, fake_http, clock)
 
-    with patch("vizenlink_nvr.camera.nuraeye.settings.get_json", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = RestOk(status=200, output={"mode": "mirror"})
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = Success({"mode": "Mirror"})
         res = await client.get_mirror_flip()
         assert isinstance(res, Success)
         assert res.value == "mirror"
 
-    with patch("vizenlink_nvr.camera.nuraeye.settings.post_json", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = RestOk(status=200, output={"result": "ok"})
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success({"result": "ok"})
         set_res = await client.set_mirror_flip("both")
         assert isinstance(set_res, Success)
         assert set_res.value is True
-        assert mock_post.call_args[0][3] == {"mode": "both"}
+        assert mock_post.call_args[0][2] == {"mode": "Both"}
 
     # Invalid mode rejection
     bad_res = await client.set_mirror_flip("upside_down")
@@ -479,18 +482,18 @@ async def test_nuraeye_anti_flicker(fake_conn: CameraConnection, fake_http: Came
     clock = SystemClock()
     client = NuraeyeSettingsClient(fake_conn, fake_http, clock)
 
-    with patch("vizenlink_nvr.camera.nuraeye.settings.get_json", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = RestOk(status=200, output={"mode": "50Hz"})
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = Success({"mode": "50Hz"})
         res = await client.get_anti_flicker()
         assert isinstance(res, Success)
         assert res.value == "50Hz"
 
-    with patch("vizenlink_nvr.camera.nuraeye.settings.post_json", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = RestOk(status=200, output={"result": "ok"})
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success({"result": "ok"})
         set_res = await client.set_anti_flicker("60hz")
         assert isinstance(set_res, Success)
         assert set_res.value is True
-        assert mock_post.call_args[0][3] == {"mode": "60Hz"}
+        assert mock_post.call_args[0][2] == {"mode": "60Hz"}
 
     # Invalid mode rejection
     bad_res = await client.set_anti_flicker("120Hz")
@@ -504,18 +507,16 @@ async def test_nuraeye_timezones_catalog(fake_conn: CameraConnection, fake_http:
     client = NuraeyeSettingsClient(fake_conn, fake_http, clock)
 
     # 1. Successful camera catalog fetch
-    with patch("vizenlink_nvr.camera.nuraeye.settings.get_json", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = RestOk(
-            status=200,
-            output={"timezones": [{"code": "UTC", "label": "UTC"}]},
-        )
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = Success({"timezones": [{"code": "UTC", "name": "UTC"}]})
         res = await client.get_supported_timezones()
         assert isinstance(res, Success)
         assert res.value == [{"code": "UTC", "label": "UTC"}]
+        assert mock_get.call_args.args[:2] == ("GET", "/nuraeye/timezones")
 
     # 2. Fallback when endpoint returns error
-    with patch("vizenlink_nvr.camera.nuraeye.settings.get_json", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = RestError(status=404, error_code=404, error_msg="Not Found")
+    with patch.object(client.client, "request", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = Failure(FailureKind.GENERIC, "Not Found", http_status=404)
         res_fb = await client.get_supported_timezones()
         assert isinstance(res_fb, Success)
         assert res_fb.value == FALLBACK_TIMEZONES

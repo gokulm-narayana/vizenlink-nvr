@@ -280,3 +280,19 @@ async def test_viewer_rbac_scoping(app_fixture):
         headers={"Authorization": f"Bearer {viewer_session}"},
     )
     assert resp_days.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_unlock_keeps_event_protection(app_fixture):
+    client, owner, _, sessions = app_fixture
+    async with sessions() as session:
+        segment = await session.get(Segment, 101)
+        segment.is_protected = True
+        segment.protection_reason = "event:12"
+        await session.commit()
+    headers = {"Authorization": f"Bearer {owner}"}
+    for _ in range(2):
+        response = await client.post("/api/v1/playback/segments/101/lock", headers=headers)
+        assert response.json()["protection_reason"].count("evidence_lock:") == 1
+    kept = await client.post("/api/v1/playback/segments/101/unlock", headers=headers)
+    assert kept.json()["is_protected"] and kept.json()["protection_reason"] == "event:12"

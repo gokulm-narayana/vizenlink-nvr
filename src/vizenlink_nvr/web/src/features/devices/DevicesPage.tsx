@@ -66,9 +66,9 @@ export const DevicesPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-full max-w-[1280px]">
+    <div className="flex min-h-full flex-col gap-6">
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-foreground tracking-tight">
             Mobile Devices
@@ -206,7 +206,7 @@ export const DevicesPage: React.FC = () => {
           </div>
 
           {/* Mobile Stacked Cards (< 768px, block md:hidden) */}
-          <div className="block md:hidden flex flex-col gap-4">
+          <div className="flex flex-col gap-4 md:hidden">
             {activeDevices.map((device) => {
               const pairedFormatted = device.paired_at
                 ? formatDateTime(device.paired_at, siteZone)
@@ -223,11 +223,11 @@ export const DevicesPage: React.FC = () => {
                   key={device.id || device.device_id}
                   className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-xs"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 text-sm font-semibold wrap-anywhere text-foreground">
                       {device.device_name}
                     </span>
-                    <div className="flex items-center gap-1 text-muted-foreground">
+                    <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
                       <Smartphone className="h-4 w-4 text-foreground" />
                       <span className="capitalize">{device.platform}</span>
                     </div>

@@ -218,6 +218,7 @@ class _WsDiscoveryProtocol(asyncio.DatagramProtocol):
         self.expected_msg_id = expected_msg_id
         self.on_candidate = on_candidate
         self.transport: asyncio.DatagramTransport | None = None
+        self.permission_error: PermissionError | None = None
 
     def connection_made(self, transport: asyncio.DatagramTransport) -> None:  # type: ignore[override]
         self.transport = transport
@@ -242,8 +243,10 @@ class _WsDiscoveryProtocol(asyncio.DatagramProtocol):
             self.on_candidate(dev)
 
     def error_received(self, exc: Exception) -> None:
-        # Ignore ConnectionResetError / OSError (Windows ICMP unreachable)
-        pass
+        # A blocked send is a scan failure. ICMP unreachable replies are normal
+        # when a subnet contains hosts without a WS-Discovery responder.
+        if isinstance(exc, PermissionError):
+            self.permission_error = exc
 
 
 def _create_proto_factory(
@@ -298,6 +301,7 @@ class WsDiscoveryClient:
 
         loop = asyncio.get_running_loop()
         transports: list[asyncio.DatagramTransport] = []
+        protocols: list[_WsDiscoveryProtocol] = []
         mock_socks: list[Any] = []
 
         try:
@@ -329,17 +333,21 @@ class WsDiscoveryClient:
                         pass
 
                 if isinstance(sock, socket.socket):
-                    transport, _ = await loop.create_datagram_endpoint(
+                    transport, protocol = await loop.create_datagram_endpoint(
                         _create_proto_factory(msg_id, on_candidate),
                         sock=sock,
                     )
                     transports.append(transport)
+                    protocols.append(protocol)
                     transport.sendto(probe_bytes, (self.multicast_group, self.port))
                 elif sock is not None:
                     mock_socks.append(sock)
                     sock.sendto(probe_bytes, (self.multicast_group, self.port))
 
-            await self.sleep(wait)
+            if not protocols or any(p.permission_error is None for p in protocols):
+                await self.sleep(wait)
+            if protocols and all(p.permission_error is not None for p in protocols):
+                raise PermissionError("Local network multicast discovery is blocked")
         finally:
             for t in transports:
                 t.close()
@@ -388,10 +396,11 @@ class WsDiscoveryClient:
             sock = raw_sock
 
         transport: asyncio.DatagramTransport | None = None
+        protocol: _WsDiscoveryProtocol | None = None
         mock_sock: Any = None
 
         if isinstance(sock, socket.socket):
-            transport, _ = await loop.create_datagram_endpoint(
+            transport, protocol = await loop.create_datagram_endpoint(
                 _create_proto_factory(msg_id, on_candidate),
                 sock=sock,
             )
@@ -410,7 +419,11 @@ class WsDiscoveryClient:
                 elif mock_sock is not None:
                     mock_sock.sendto(probe_bytes, (ip, self.port))
 
+                if protocol is not None and protocol.permission_error is not None:
+                    raise protocol.permission_error
                 await self.sleep(send_interval)
+                if protocol is not None and protocol.permission_error is not None:
+                    raise protocol.permission_error
 
             elapsed = (self.clock.now() - start_time).total_seconds()
             remaining_cap = overall_cap - elapsed

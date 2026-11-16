@@ -25,7 +25,7 @@ export const QrCode: React.FC<QrCodeProps> = ({
     return (
       <div
         className={cn(
-          "w-[224px] h-[224px] flex items-center justify-center bg-white rounded-lg text-xs text-black",
+          "flex aspect-square w-full max-w-60 items-center justify-center rounded-lg bg-white p-2 text-center text-xs text-black",
           className
         )}
       >
@@ -47,7 +47,7 @@ export const QrCode: React.FC<QrCodeProps> = ({
   return (
     <div
       className={cn(
-        "inline-flex items-center justify-center rounded-lg p-2 bg-white transition-opacity duration-200",
+        "inline-flex w-full max-w-60 items-center justify-center rounded-lg bg-white p-2 transition-opacity duration-200",
         dimmed && "opacity-30",
         className
       )}
@@ -58,7 +58,7 @@ export const QrCode: React.FC<QrCodeProps> = ({
         viewBox={`0 0 ${qr.size} ${qr.size}`}
         width={224}
         height={224}
-        className="block"
+        className="block h-auto w-full"
       >
         {/* White background */}
         <rect width={qr.size} height={qr.size} fill="white" />

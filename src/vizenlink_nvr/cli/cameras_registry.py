@@ -23,7 +23,7 @@ from vizenlink_nvr.services.manage import (
     run_rename,
     run_set_password,
 )
-from vizenlink_nvr.services.registry import CameraView, get_camera, list_cameras
+from vizenlink_nvr.services.registry import CameraView, archive_camera, get_camera, list_cameras
 from vizenlink_nvr.services.reprobe import ReprobeKind, run_reprobe
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.settings import get_site_timezone
@@ -410,7 +410,10 @@ def remove_camera(
                         storage_path=config.storage_path,
                     )
 
-                await session.delete(cam)
+                if keep_recordings:
+                    await archive_camera(session, cam)
+                else:
+                    await session.delete(cam)
                 await session.commit()
                 return {
                     "serial": serial,

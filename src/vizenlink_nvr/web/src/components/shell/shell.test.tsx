@@ -100,14 +100,14 @@ describe("AppShell tracer & navigation", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the shell on /live with route h1 Multiview and active page link", async () => {
+  it("renders the shell on /live with route h1 Live View and active page link", async () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Multiview" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
-    const activeLink = screen.getByRole("link", { name: "Multiview" });
+    const activeLink = screen.getByRole("link", { name: "Live View" });
     expect(activeLink).toHaveAttribute("aria-current", "page");
   });
 
@@ -116,21 +116,27 @@ describe("AppShell tracer & navigation", () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Multiview" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
     const trigger = screen.getByRole("button", { name: /toggle sidebar/i });
+    expect(screen.getByText("Monitor")).toBeVisible();
     await user.click(trigger);
 
     expect(localStorage.getItem("nvr_sidebar")).toBe("collapsed");
     expect(useUiStore.getState().sidebarOpen).toBe(false);
+    expect(screen.queryByText("Monitor")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Live View" })).toHaveAttribute("aria-current", "page");
+    await user.click(trigger);
+    expect(screen.getByText("Monitor")).toBeVisible();
   });
 
   it("pressing [ toggles sidebar, but not when typing inside an input", async () => {
     renderShellApp(["/live"]);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Multiview" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Live View" })).toBeInTheDocument();
     });
 
     expect(useUiStore.getState().sidebarOpen).toBe(true);

@@ -60,6 +60,7 @@ export interface TransportBarProps {
   zone: string;
   hasActiveSegment: boolean;
   containerRef?: React.RefObject<HTMLElement | null>;
+  extraActions?: React.ReactNode;
 }
 
 export function TransportBar({
@@ -84,6 +85,7 @@ export function TransportBar({
   zone,
   hasActiveSegment,
   containerRef,
+  extraActions,
 }: TransportBarProps) {
   const handleFullscreen = useCallback(() => {
     const target = containerRef?.current || document.documentElement;
@@ -279,6 +281,7 @@ export function TransportBar({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
+            {extraActions}
             {/* Desktop toolbar controls */}
             <div className="hidden md:flex items-center gap-2">
               {/* Mute */}

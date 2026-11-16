@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.camera.events import CameraEventBus
 from vizenlink_nvr.camera.http import CameraHttp
+from vizenlink_nvr.camera.nuraeye.client import NuraeyeClient
+from vizenlink_nvr.camera.nuraeye.sessions import NuraeyeSessionCache
 from vizenlink_nvr.camera.nuraeye.settings import (
     FALLBACK_TIMEZONES,
     NuraeyeSettingsClient,
@@ -29,7 +31,7 @@ from vizenlink_nvr.camera.onvif.media2 import (
     VideoResolution,
 )
 from vizenlink_nvr.camera.result import Failure, Success, Timeout
-from vizenlink_nvr.db.models import Camera, CameraCredential, CameraStream, Event
+from vizenlink_nvr.db.models import Camera, CameraCredential, CameraStream
 from vizenlink_nvr.secrets.vault import Vault
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.registry import load_connection
@@ -60,6 +62,7 @@ class CameraSettingsService:
     ) -> None:
         self.clock = clock or SystemClock()
         self.http = http or CameraHttp(CameraEventBus())
+        self.sessions = NuraeyeSessionCache(self.clock)
 
     async def get_settings(
         self,
@@ -76,12 +79,18 @@ class CameraSettingsService:
         dev_client = OnvifDeviceClient(conn, self.http, self.clock)
         media_client = OnvifMedia2Client(conn, self.http, self.clock)
         imaging_client = OnvifImagingClient(conn, self.http, self.clock)
-        nuraeye_client = NuraeyeSettingsClient(conn, self.http, self.clock)
+        nuraeye_client = NuraeyeSettingsClient(conn, self.http, self.clock, sessions=self.sessions)
 
         # 1. Identity & Device Info
         name = cam.name
         location = cam.location
         id_res = await dev_client.get_device_identity()
+        if isinstance(id_res, Timeout):
+            # Offline camera: stop after the first read instead of waiting out a
+            # timeout on each of the remaining sequential reads.
+            raise CameraOperationError(
+                "The camera did not answer. Check that it is powered on and connected."
+            )
         if isinstance(id_res, Success):
             if id_res.value.name:
                 name = id_res.value.name
@@ -96,74 +105,21 @@ class CameraSettingsService:
         profiles_res = await media_client.get_profiles()
         profiles = profiles_res.value if isinstance(profiles_res, Success) else []
 
-        # If profiles not returned from live camera, fallback to DB streams
+        read_errors: dict[str, str] = {}
         if not profiles:
-            stream_stmt = select(CameraStream).where(CameraStream.serial == serial)
-            db_streams = (await session.execute(stream_stmt)).scalars().all()
-            for stm in db_streams:
-                encoders.append(
-                    {
-                        "profile_token": stm.profile_token,
-                        "profile_name": stm.profile_name,
-                        "venc_token": stm.venc_token,
-                        "current": {
-                            "encoding": stm.codec,
-                            "width": stm.width,
-                            "height": stm.height,
-                            "quality": 50.0,
-                            "frame_rate_limit": 25.0,
-                            "bitrate_limit_kbps": 2048,
-                            "gov_length": 30,
-                            "profile": "Main",
-                        },
-                        "options": {
-                            "encodings": ["H264", "H265"],
-                            "resolutions": [
-                                {"width": stm.width, "height": stm.height},
-                                {"width": 1920, "height": 1080},
-                            ],
-                            "quality_range": (1.0, 100.0),
-                            "frame_rate_range": (1.0, 30.0),
-                            "bitrate_range_kbps": (256, 8192),
-                            "gov_length_range": (1, 120),
-                        },
-                    }
-                )
+            read_errors["video"] = "The camera did not return its stream profiles."
         else:
             for prof in profiles:
                 cfg_res = await media_client.get_video_encoder_configuration(prof.venc_token)
                 opts_res = await media_client.get_video_encoder_configuration_options(prof.venc_token)
 
-                curr_cfg = (
-                    cfg_res.value
-                    if isinstance(cfg_res, Success)
-                    else VideoEncoderConfiguration(
-                        token=prof.venc_token,
-                        name=prof.name,
-                        encoding=prof.encoding,
-                        width=prof.width,
-                        height=prof.height,
-                        quality=50.0,
-                        frame_rate_limit=25.0,
-                        bitrate_limit_kbps=2048,
+                if not isinstance(cfg_res, Success) or not isinstance(opts_res, Success):
+                    read_errors["video"] = (
+                        "The camera did not return current encoder settings and supported options."
                     )
-                )
-
-                opts = (
-                    opts_res.value
-                    if isinstance(opts_res, Success)
-                    else VideoEncoderConfigurationOptions(
-                        token=prof.venc_token,
-                        encodings=("H264", "H265"),
-                        resolutions=(
-                            VideoResolution(prof.width, prof.height),
-                            VideoResolution(1920, 1080),
-                        ),
-                        quality_range=(1.0, 100.0),
-                        frame_rate_range=(1.0, 30.0),
-                        bitrate_range_kbps=(256, 8192),
-                    )
-                )
+                    continue
+                curr_cfg = cfg_res.value
+                opts = opts_res.value
 
                 encoders.append(
                     {
@@ -179,6 +135,7 @@ class CameraSettingsService:
                             "bitrate_limit_kbps": curr_cfg.bitrate_limit_kbps,
                             "gov_length": curr_cfg.gov_length,
                             "profile": curr_cfg.profile,
+                            "cbr": curr_cfg.cbr,
                         },
                         "options": {
                             "encodings": list(opts.encodings),
@@ -187,6 +144,18 @@ class CameraSettingsService:
                             "frame_rate_range": opts.frame_rate_range,
                             "bitrate_range_kbps": opts.bitrate_range_kbps,
                             "gov_length_range": opts.gov_length_range,
+                            "supports_cbr": opts.supports_cbr,
+                            "encoder_profiles": list(opts.encoder_profiles),
+                            "frame_rates": list(opts.frame_rates),
+                            "codecs": [
+                                {
+                                    **c,
+                                    "resolutions": [
+                                        {"width": r.width, "height": r.height} for r in c["resolutions"]
+                                    ],
+                                }
+                                for c in opts.codec_options
+                            ],
                         },
                     }
                 )
@@ -197,34 +166,55 @@ class CameraSettingsService:
         nv_res = await nuraeye_client.get_night_vision_type()
         mf_res = await nuraeye_client.get_mirror_flip()
         af_res = await nuraeye_client.get_anti_flicker()
+        # Live day/night state (SETTINGS_API_GUIDE "Day/Night Mode"): only GetVideoMode reports it.
+        video_mode_res = await NuraeyeClient(conn, self.http, self.clock, sessions=self.sessions).request(
+            "GET", "/nuraeye/video/mode"
+        )
+        effective = (
+            video_mode_res.value.get("effective_state") if isinstance(video_mode_res, Success) else None
+        )
 
         img_curr = img_res.value if isinstance(img_res, Success) else ImagingSettings()
         img_opts = img_opts_res.value if isinstance(img_opts_res, Success) else ImagingOptions()
 
         night_vision_type = nv_res.value.current_type if isinstance(nv_res, Success) else "grey"
-        color_capable = nv_res.value.color_capable if isinstance(nv_res, Success) else True
-        smart_capable = nv_res.value.smart_capable if isinstance(nv_res, Success) else True
+        color_capable = nv_res.value.color_capable if isinstance(nv_res, Success) else False
+        smart_capable = nv_res.value.smart_capable if isinstance(nv_res, Success) else False
 
         mirror_flip = mf_res.value if isinstance(mf_res, Success) else "off"
         anti_flicker = af_res.value if isinstance(af_res, Success) else "Auto"
 
         # 4. OSD Overlays
         osd_res = await media_client.get_osds()
+        osd_options_res = await media_client.get_osd_options()
         osd_list = osd_res.value if isinstance(osd_res, Success) else []
 
+        section_results: list[tuple[str, list[Any]]] = [
+            ("image", [img_res, img_opts_res, nv_res, mf_res, af_res]),
+            ("overlays", [osd_res]),
+        ]
+        for section, results in section_results:
+            if any(not isinstance(r, Success) for r in results):
+                read_errors[section] = (
+                    "Some camera values could not be read. Reload before editing this section."
+                )
+        timezone_result = await dev_client.get_system_timezone()
+
         return {
+            "read_errors": read_errors,
+            "unavailable_sections": list(read_errors),
             "identity": {
                 "name": name,
                 "location": location,
-                "timezone": "UTC",
+                "timezone": timezone_result.value if isinstance(timezone_result, Success) else None,
                 "supported_timezones": timezones,
             },
             "device_info": {
                 "manufacturer": cam.manufacturer or "Generic",
                 "model": cam.model or "Generic",
-                "firmware_version": cam.firmware_version or "1.0",
+                "firmware_version": cam.firmware_version or "Not reported",
                 "serial_number": cam.serial,
-                "hardware_id": cam.hardware_id or "rev1",
+                "hardware_id": cam.hardware_id or "Not reported",
             },
             "encoders": encoders,
             "imaging": {
@@ -236,6 +226,7 @@ class CameraSettingsService:
                     ),
                     "sharpness": img_curr.sharpness if img_curr.sharpness is not None else 50.0,
                     "ir_cut_filter": img_curr.ir_cut_filter or "AUTO",
+                    "day_night_now": effective if effective in ("day", "night") else None,
                     "wdr_mode": img_curr.wdr_mode or "OFF",
                     "wdr_level": img_curr.wdr_level if img_curr.wdr_level is not None else 0.0,
                     # Phase 10 (old VMS parity, FR-MOB-062): null when the camera does not report them.
@@ -263,6 +254,7 @@ class CameraSettingsService:
                     "night_vision_smart_capable": smart_capable,
                 },
             },
+            "osd_options": osd_options_res.value if isinstance(osd_options_res, Success) else None,
             "osd": [
                 {
                     "token": o.token,
@@ -272,6 +264,10 @@ class CameraSettingsService:
                     "plain_text": o.plain_text,
                     "date_format": o.date_format,
                     "time_format": o.time_format,
+                    "position_x": o.position_x,
+                    "position_y": o.position_y,
+                    "font_size": o.font_size,
+                    "font_color": o.font_color,
                 }
                 for o in osd_list
             ],
@@ -368,6 +364,8 @@ class CameraSettingsService:
         bitrate_limit_kbps: int | None = None,
         quality: float | None = None,
         gov_length: int | None = None,
+        profile: str | None = None,
+        cbr: bool | None = None,
         actor_id: int | None = None,
         actor_username: str | None = None,
         ip_address: str | None = None,
@@ -382,14 +380,38 @@ class CameraSettingsService:
 
         # 1. Fetch current options to validate bounds
         opts_res = await media_client.get_video_encoder_configuration_options(venc_token)
+        curr_res = await media_client.get_video_encoder_configuration(venc_token)
+        if not isinstance(opts_res, Success) or not isinstance(curr_res, Success):
+            raise CameraOperationError(
+                "Cannot change video settings until the camera reports "
+                "its current configuration and supported options"
+            )
+        requested_encoding = encoding or curr_res.value.encoding
         if isinstance(opts_res, Success):
             opts = opts_res.value
+            codec = next((c for c in opts.codec_options if c["encoding"] == requested_encoding), None)
+            if codec:
+                opts = VideoEncoderConfigurationOptions(
+                    token=venc_token,
+                    encodings=opts.encodings,
+                    **{k: v for k, v in codec.items() if k != "encoding"},
+                )
+            if (
+                profile is not None
+                and profile != curr_res.value.profile
+                and profile not in opts.encoder_profiles
+            ):
+                raise SettingsValidationError("Encoder profile is not supported for this codec")
+            if cbr is True and not opts.supports_cbr:
+                raise SettingsValidationError("Constant bitrate is not supported for this codec")
+            if frame_rate_limit is not None and opts.frame_rates and frame_rate_limit not in opts.frame_rates:
+                raise SettingsValidationError("Frame rate must match a camera-reported supported value")
             if encoding is not None and encoding not in opts.encodings:
                 raise SettingsValidationError(
                     f"Encoding '{encoding}' not supported. Allowed: {opts.encodings}"
                 )
-            if width is not None and height is not None:
-                req_res = VideoResolution(width, height)
+            if width is not None or height is not None or requested_encoding != curr_res.value.encoding:
+                req_res = VideoResolution(width or curr_res.value.width, height or curr_res.value.height)
                 if req_res not in opts.resolutions:
                     allowed_str = ", ".join(f"{r.width}x{r.height}" for r in opts.resolutions)
                     raise SettingsValidationError(
@@ -420,22 +442,7 @@ class CameraSettingsService:
                     )
 
         # 2. Get current config to merge unmodified fields
-        curr_res = await media_client.get_video_encoder_configuration(venc_token)
-        curr = (
-            curr_res.value
-            if isinstance(curr_res, Success)
-            else VideoEncoderConfiguration(
-                token=venc_token,
-                name="Stream",
-                encoding=encoding or "H265",
-                width=width or 1920,
-                height=height or 1080,
-                quality=quality or 50.0,
-                frame_rate_limit=frame_rate_limit or 25.0,
-                bitrate_limit_kbps=bitrate_limit_kbps or 2048,
-                gov_length=gov_length or 30,
-            )
-        )
+        curr = curr_res.value
 
         new_cfg = VideoEncoderConfiguration(
             token=venc_token,
@@ -449,7 +456,8 @@ class CameraSettingsService:
                 bitrate_limit_kbps if bitrate_limit_kbps is not None else curr.bitrate_limit_kbps
             ),
             gov_length=gov_length if gov_length is not None else curr.gov_length,
-            profile=curr.profile,
+            profile=profile if profile is not None else curr.profile,
+            cbr=cbr if cbr is not None else curr.cbr,
         )
 
         set_res = await media_client.set_video_encoder_configuration(venc_token, new_cfg)
@@ -531,10 +539,12 @@ class CameraSettingsService:
 
         conn = await load_connection(session, vault, serial)
         imaging_client = OnvifImagingClient(conn, self.http, self.clock)
-        nuraeye_client = NuraeyeSettingsClient(conn, self.http, self.clock)
+        nuraeye_client = NuraeyeSettingsClient(conn, self.http, self.clock, sessions=self.sessions)
 
         # 1. Fetch imaging options to validate ISP ranges and WDR support
         opts_res = await imaging_client.get_imaging_options(video_source_token)
+        if not isinstance(opts_res, Success):
+            raise CameraOperationError("Cannot edit image settings until camera options can be read")
         if isinstance(opts_res, Success):
             opts = opts_res.value
             if brightness is not None:
@@ -598,6 +608,8 @@ class CameraSettingsService:
         updated: dict[str, Any] = {}
         if night_vision_type is not None:
             nv_status_res = await nuraeye_client.get_night_vision_type()
+            if not isinstance(nv_status_res, Success):
+                raise CameraOperationError("Cannot change night vision until camera capabilities can be read")
             if isinstance(nv_status_res, Success):
                 nv_status = nv_status_res.value
                 clean_nv = night_vision_type.lower().strip()
@@ -710,6 +722,10 @@ class CameraSettingsService:
         plain_text: str | None = None,
         date_format: str = "YYYY/MM/DD",
         time_format: str = "HH:mm:ss",
+        position_x: float | None = None,
+        position_y: float | None = None,
+        font_size: int | None = None,
+        font_color: dict[str, Any] | None = None,
         actor_id: int | None = None,
         actor_username: str | None = None,
         ip_address: str | None = None,
@@ -730,6 +746,10 @@ class CameraSettingsService:
             plain_text=plain_text,
             date_format=date_format,
             time_format=time_format,
+            position_x=position_x,
+            position_y=position_y,
+            font_size=font_size,
+            font_color=font_color,
         )
 
         set_res = await media_client.set_osd(osd_cfg)
@@ -850,25 +870,19 @@ class CameraSettingsService:
         if cam is None:
             raise CameraNotFoundError(f"Camera '{serial}' not found")
 
-        # Query clock_sync_state from latest event if available
-        evt_stmt = (
-            select(Event.clock_sync_state)
-            .where(Event.camera_serial == serial)
-            .order_by(Event.start_time.desc())
-            .limit(1)
-        )
-        latest_clock_state = (await session.execute(evt_stmt)).scalar_one_or_none() or "synced"
-
-        # Calculate uptime estimate based on host_updated_at or added_at
-        now = utc_now()
-        uptime_seconds = int((now - cam.host_updated_at).total_seconds()) if cam.host_updated_at else None
-
+        conn = await load_connection(session, vault, serial)
+        client = NuraeyeClient(conn, self.http, self.clock, sessions=self.sessions)
+        result = await client.request("GET", "/nuraeye/health")
+        if not isinstance(result, Success):
+            raise CameraOperationError(f"Could not read live camera health: {result.reason}")
+        health = result.value
+        uptime = health.get("uptime_seconds")
         return {
             "serial": cam.serial,
-            "online": cam.state == "active",
-            "uptime_seconds": uptime_seconds,
-            "reboot_reason": "normal_startup",
-            "clock_sync_status": latest_clock_state,
-            "firmware_version": cam.firmware_version or "1.0",
+            "online": True,
+            "uptime_seconds": uptime if type(uptime) is int and uptime >= 0 else None,
+            "reboot_reason": health.get("reboot_reason"),
+            "clock_sync_status": health.get("clock_sync_state") or "unknown",
+            "firmware_version": health.get("firmware_version") or cam.firmware_version or "Unknown",
             "last_seen": cam.host_updated_at.isoformat() if cam.host_updated_at else None,
         }

@@ -115,25 +115,36 @@ class ScanService:
 
     async def scan(self, thorough: bool = False) -> ScanReport:
         """Run WS-Discovery passes and identify cameras."""
-        tiers_used = ["multicast"]
-        candidates = await self.discovery.scan_multicast()
-
-        if not candidates or thorough:
-            unicast_candidates = await self.discovery.scan_unicast()
-            tiers_used.append("unicast")
-            merged = {(c.host, c.port): c for c in candidates}
-            for c in unicast_candidates:
-                merged.setdefault((c.host, c.port), c)
-            candidates = list(merged.values())
-
         sem = asyncio.Semaphore(self.concurrency)
 
         async def _identify_with_sem(dev: DiscoveredDevice) -> ScannedCamera | None:
             async with sem:
                 return await self.identify(dev)
 
-        tasks = [_identify_with_sem(c) for c in candidates]
-        results = await asyncio.gather(*tasks) if tasks else []
+        async def identify_candidates(candidates: list[DiscoveredDevice]) -> list[ScannedCamera | None]:
+            return await asyncio.gather(*(_identify_with_sem(device) for device in candidates))
+
+        tiers_used = ["multicast"]
+        try:
+            multicast = await self.discovery.scan_multicast()
+        except PermissionError:
+            # Some networks permit direct probes even when multicast is blocked.
+            multicast = []
+        results = await identify_candidates(multicast)
+
+        if thorough or not any(results):
+            tiers_used.append("unicast")
+            try:
+                unicast = await self.discovery.scan_unicast()
+            except PermissionError:
+                if not any(results):
+                    raise
+                unicast = []
+            verified = {(camera.host, camera.port) for camera in results if camera is not None}
+            results.extend(await identify_candidates([
+                device for device in unicast if (device.host, device.port) not in verified
+            ]))
+
         cameras = [c for c in results if c is not None]
         cameras.sort(key=lambda c: (c.host, c.port))
 

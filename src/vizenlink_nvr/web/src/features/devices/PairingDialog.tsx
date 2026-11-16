@@ -96,8 +96,8 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[480px] p-0 overflow-hidden bg-card border-border">
-        <DialogHeader className="p-6 pb-4 border-b border-border">
+      <DialogContent className="max-w-[30rem] gap-0 border-border bg-card p-0">
+        <DialogHeader className="border-b border-border px-4 py-4 pr-12 sm:px-6 sm:pr-12">
           <DialogTitle className="text-sm font-semibold text-foreground">
             {DEVICES_COPY.PAIR_DEVICE}
           </DialogTitle>
@@ -106,10 +106,10 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-6 p-6">
+        <div className="flex min-w-0 flex-col items-center gap-4 p-4 sm:p-6">
           {qrInitMutation.isPending && !data ? (
             <div className="flex flex-col items-center gap-4 w-full py-8">
-              <Skeleton className="w-[224px] h-[224px] rounded-lg" />
+              <Skeleton className="aspect-square w-full max-w-60 rounded-lg" />
               <Skeleton className="h-6 w-36" />
               <Skeleton className="h-4 w-48" />
             </div>
@@ -124,7 +124,7 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
           ) : data ? (
             <>
               {/* QR Code Container */}
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex w-full flex-col items-center gap-2">
                 <QrCode payload={data.qr_payload} dimmed={isExpired} />
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {formatExpiry(secondsRemaining)}
@@ -133,8 +133,8 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
 
               {/* Pairing Code + Copy Button */}
               <div className="flex flex-col items-center gap-2 w-full">
-                <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-2">
-                  <span className="font-mono text-xl font-semibold tracking-widest text-foreground select-all">
+                <div className="flex w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-2">
+                  <span className="min-w-0 flex-1 select-all font-mono text-sm font-semibold wrap-anywhere text-foreground">
                     {data.pairing_code}
                   </span>
                   <TooltipProvider>
@@ -193,7 +193,7 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end border-t border-border p-4 bg-card">
+        <div className="flex justify-end border-t border-border bg-card p-4">
           <Button
             type="button"
             variant="outline"

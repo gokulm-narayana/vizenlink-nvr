@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 
 export interface CameraSettingsData {
+  read_errors?: Record<string, string>;
+  unavailable_sections?: string[];
   identity: {
     name: string;
     location: string;
-    timezone?: string;
+    timezone?: string | null;
     supported_timezones: Array<{ code: string; label: string }>;
   };
   device_info: {
@@ -28,6 +30,7 @@ export interface CameraSettingsData {
       bitrate_limit_kbps: number;
       gov_length: number;
       profile: string;
+      cbr?: boolean;
     };
     options: {
       encodings: string[];
@@ -36,6 +39,10 @@ export interface CameraSettingsData {
       frame_rate_range: [number, number];
       bitrate_range_kbps: [number, number];
       gov_length_range: [number, number];
+      supports_cbr?: boolean;
+      encoder_profiles?: string[];
+      frame_rates?: number[];
+      codecs?: Array<{encoding: string; resolutions: Array<{width:number;height:number}>; quality_range:[number,number]; frame_rate_range:[number,number]; bitrate_range_kbps:[number,number]; gov_length_range:[number,number]; supports_cbr:boolean; encoder_profiles:string[]; frame_rates:number[]}>;
     };
   }>;
   imaging: {
@@ -45,6 +52,8 @@ export interface CameraSettingsData {
       color_saturation: number;
       sharpness: number;
       ir_cut_filter: string;
+      /** Live day/night state from GetVideoMode; null when the camera does not report it. */
+      day_night_now?: "day" | "night" | null;
       wdr_mode: string;
       wdr_level: number;
       night_vision_type: string;
@@ -72,6 +81,7 @@ export interface CameraSettingsData {
       white_balance_modes?: string[];
     };
   };
+  osd_options?: { positions: string[]; date_formats: string[]; time_formats: string[]; font_size_range?: [number, number] | null; font_color_range: boolean } | null;
   osd: Array<{
     token: string;
     video_source_token: string;
@@ -80,6 +90,8 @@ export interface CameraSettingsData {
     plain_text?: string;
     date_format: string;
     time_format: string;
+    position_x?: number | null; position_y?: number | null; font_size?: number | null;
+    font_color?: {x:number; y:number; z:number; colorspace:string} | null;
   }>;
 }
 
@@ -93,11 +105,11 @@ export interface CameraHealthData {
   last_seen?: string;
 }
 
-export function useCameraSettings(serial: string) {
+export function useCameraSettings(serial: string | undefined, enabled = true) {
   return useQuery<CameraSettingsData>({
     queryKey: ["cameraSettings", serial],
-    queryFn: () => apiFetch<CameraSettingsData>(`/api/v1/cameras/${serial}/settings`),
-    enabled: Boolean(serial),
+    queryFn: () => apiFetch<CameraSettingsData>(`/api/v1/cameras/${encodeURIComponent(serial!)}/settings`),
+    enabled: Boolean(serial) && enabled,
     staleTime: 10000,
   });
 }
@@ -105,7 +117,7 @@ export function useCameraSettings(serial: string) {
 export function useCameraHealth(serial: string) {
   return useQuery<CameraHealthData>({
     queryKey: ["cameraHealth", serial],
-    queryFn: () => apiFetch<CameraHealthData>(`/api/v1/cameras/${serial}/health`),
+    queryFn: () => apiFetch<CameraHealthData>(`/api/v1/cameras/${encodeURIComponent(serial!)}/health`),
     enabled: Boolean(serial),
     staleTime: 10000,
   });
@@ -123,7 +135,7 @@ export function useSaveIdentity(serial: string) {
   return useMutation({
     gcTime: 0, // T-09-36: do not retain camera passwords in query client memory
     mutationFn: async (payload: IdentityPayload) => {
-      return apiFetch(`/api/v1/cameras/${serial}/settings/identity`, {
+      return apiFetch(`/api/v1/cameras/${encodeURIComponent(serial!)}/settings/identity`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -144,13 +156,16 @@ export interface EncoderPayload {
   frame_rate_limit: number;
   bitrate_limit_kbps: number;
   quality: number;
+  gov_length?: number;
+  profile?: string;
+  cbr?: boolean;
 }
 
 export function useSaveEncoder(serial: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: EncoderPayload) => {
-      return apiFetch(`/api/v1/cameras/${serial}/settings/encoder`, {
+      return apiFetch(`/api/v1/cameras/${encodeURIComponent(serial!)}/settings/encoder`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -167,9 +182,9 @@ export interface ImagingPayload {
   contrast: number;
   color_saturation: number;
   sharpness: number;
-  ir_cut_filter: string;
-  wdr_mode: string;
-  wdr_level: number;
+  ir_cut_filter?: string;
+  wdr_mode?: string;
+  wdr_level?: number;
   night_vision_type: string;
   mirror_flip: string;
   anti_flicker: string;
@@ -183,7 +198,7 @@ export function useSaveImaging(serial: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: ImagingPayload) => {
-      return apiFetch(`/api/v1/cameras/${serial}/settings/imaging`, {
+      return apiFetch(`/api/v1/cameras/${encodeURIComponent(serial!)}/settings/imaging`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -201,6 +216,10 @@ export interface OsdItemPayload {
   osd_type: "Plain" | "DateAndTime";
   position: string;
   plain_text?: string;
+  date_format?: string;
+  time_format?: string;
+  position_x?: number | null; position_y?: number | null; font_size?: number | null;
+  font_color?: {x:number; y:number; z:number; colorspace:string} | null;
 }
 
 export function useSaveOsd(serial: string) {
@@ -208,7 +227,7 @@ export function useSaveOsd(serial: string) {
   return useMutation({
     mutationFn: async (payloads: OsdItemPayload[]) => {
       for (const payload of payloads) {
-        await apiFetch(`/api/v1/cameras/${serial}/settings/osd`, {
+        await apiFetch(`/api/v1/cameras/${encodeURIComponent(serial!)}/settings/osd`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -224,7 +243,7 @@ export function useSaveOsd(serial: string) {
 export function useReboot(serial: string) {
   return useMutation({
     mutationFn: async () => {
-      return apiFetch(`/api/v1/cameras/${serial}/reboot`, {
+      return apiFetch(`/api/v1/cameras/${encodeURIComponent(serial!)}/reboot`, {
         method: "POST",
       });
     },
@@ -234,7 +253,7 @@ export function useReboot(serial: string) {
 export function useFactoryReset(serial: string) {
   return useMutation({
     mutationFn: async (params: { mode: "Soft" | "Hard"; confirmation: string }) => {
-      return apiFetch(`/api/v1/cameras/${serial}/factory-reset`, {
+      return apiFetch(`/api/v1/cameras/${encodeURIComponent(serial!)}/factory-reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),

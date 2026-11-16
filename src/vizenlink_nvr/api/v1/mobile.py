@@ -17,6 +17,7 @@ from vizenlink_nvr.api.dependencies import (
     verify_camera_access,
 )
 from vizenlink_nvr.db.models import Camera, RecordingSettings, Segment
+from vizenlink_nvr.media.config import camera_path_name
 from vizenlink_nvr.services.health import RecorderHealthService
 from vizenlink_nvr.services.media_token import DEFAULT_TOKEN_TTL_SECONDS, default_media_token_service
 from vizenlink_nvr.services.mobile_auth import MobileAuthService
@@ -408,7 +409,7 @@ async def get_mobile_live_stream(
     mediamtx_port = 8889
     rtsp_port = 8554
 
-    path = f"cam/{camera_id}/{profile}"
+    path = camera_path_name(camera_id, profile)
     webrtc_url = f"http://{host}:{mediamtx_port}/{path}/whep?token={token}"
     hls_url = f"http://{host}:{mediamtx_port}/{path}/index.m3u8?token={token}"
     rtsp_url = f"rtsp://{host}:{rtsp_port}/{path}?token={token}"

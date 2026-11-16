@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -17,13 +18,16 @@ from vizenlink_nvr.api.dependencies import (
     RequireOwner,
     verify_camera_access,
 )
+from vizenlink_nvr.camera.layer import CameraLayer
 from vizenlink_nvr.db.models import Camera
 from vizenlink_nvr.secrets.vault import Vault
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.media_token import DEFAULT_TOKEN_TTL_SECONDS, default_media_token_service
+from vizenlink_nvr.services.onboarding import AddOutcomeKind, AddRequest, OnboardingService
 from vizenlink_nvr.services.registry import (
     CameraView,
     NewCameraRecord,
+    archive_camera,
     get_camera,
     insert_camera,
     list_cameras,
@@ -85,6 +89,22 @@ class CameraCreateRequest(BaseModel):
     streams: list[StreamInput] = []
 
 
+class DiscoveredCameraCredentials(BaseModel):
+    host: IPv4Address
+    port: int = Field(default=443, ge=1, le=65535)
+    username: str = Field(min_length=1, max_length=128, pattern=r"\S")
+    password: SecretStr
+    new_camera_password: SecretStr | None = None
+
+    async def current_password(self) -> SecretStr:
+        return self.password
+
+    async def new_password(self) -> SecretStr:
+        if self.new_camera_password is not None and self.new_camera_password.get_secret_value():
+            return self.new_camera_password
+        raise RuntimeError("Discovered camera onboarding uses existing credentials")
+
+
 def _resolve_vault(request: Request) -> Vault:
     """Resolve operational vault from runtime. Fails closed (503) when unavailable (D-18)."""
     runtime = getattr(request.app.state, "runtime", None)
@@ -116,6 +136,15 @@ async def discover_cameras_endpoint(user: RequireOperator, request: Request) -> 
         raise HTTPException(
             status_code=504, detail="The camera search timed out. Check the network and try again."
         ) from exc
+    except PermissionError as exc:
+        logger.warning("Camera discovery blocked by local network permissions: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The recorder was denied access to the local network. "
+                "Check local network permissions for the process running the NVR, then retry."
+            ),
+        ) from exc
     except OSError as exc:
         logger.warning("Camera discovery network failure: %s", exc)
         raise HTTPException(
@@ -130,9 +159,10 @@ async def discover_cameras_endpoint(user: RequireOperator, request: Request) -> 
 async def list_cameras_endpoint(
     user: CurrentUser,
     db: DbSession,
+    playback: bool = False,
 ) -> list[CameraView]:
     """List cameras. Viewers only see their assigned cameras (AUTH-05)."""
-    all_cameras = await list_cameras(db)
+    all_cameras = await list_cameras(db, playback=playback)
     if user.role in ("owner", "operator"):
         return all_cameras
     allowed = {p.camera_serial for p in user.permissions}
@@ -233,6 +263,61 @@ async def add_camera_endpoint(
     return created_view
 
 
+@cameras_router.post("/onboard", response_model=CameraView, status_code=status.HTTP_201_CREATED)
+async def onboard_discovered_camera(
+    payload: DiscoveredCameraCredentials, user: RequireOperator, request: Request, db: DbSession
+) -> CameraView:
+    """Verify credentials and register the camera with its actual device and stream information."""
+    if not 0 < len(payload.password.get_secret_value()) <= 1024:
+        raise HTTPException(status_code=400, detail="Enter the camera password.")
+    vault = _resolve_vault(request)
+    runtime = request.app.state.runtime
+    host = str(payload.host)
+    layer = CameraLayer.create(runtime.clock)
+    try:
+        service = OnboardingService(runtime, layer, vault)
+        outcome = await service.add(
+            AddRequest(host=host, port=payload.port), payload, username=payload.username.strip()
+        )
+    finally:
+        await layer.aclose()
+
+    if outcome.kind is not AddOutcomeKind.OK or outcome.camera is None:
+        errors = {
+            AddOutcomeKind.ALREADY_REGISTERED: (409, "This camera is already registered."),
+            AddOutcomeKind.WRONG_CREDENTIALS: (400, "The camera rejected the username or password."),
+            AddOutcomeKind.NEEDS_NEW_PASSWORD: (400, "Set a new password on the camera before adding it."),
+            AddOutcomeKind.BLOCKED: (429, "The camera blocked sign-in attempts. Try again later."),
+            AddOutcomeKind.FORBIDDEN: (403, "This camera account cannot read the required settings."),
+            AddOutcomeKind.UNREACHABLE: (502, "Could not reach the camera. Check its connection."),
+            AddOutcomeKind.TLS_CHANGED: (502, "The camera certificate changed during setup. Try again."),
+            AddOutcomeKind.UNSUPPORTED_DEVICE: (400, "Could not verify this as a supported camera."),
+            AddOutcomeKind.NO_SERIAL: (502, "The camera did not report a serial number."),
+            AddOutcomeKind.STREAMS_UNAVAILABLE: (502, "The camera did not provide a usable video stream."),
+            AddOutcomeKind.INVALID_INPUT: (400, "Choose a camera on the recorder’s local network."),
+        }
+        if outcome.kind is AddOutcomeKind.INVALID_INPUT and outcome.detail in (
+            "Use 8 to 32 characters.",
+            "Choose a password other than the factory password.",
+        ):
+            raise HTTPException(status_code=400, detail=outcome.detail)
+        status_code, detail = errors.get(outcome.kind, (500, "Could not save the camera. Try again."))
+        raise HTTPException(status_code=status_code, detail=detail)
+
+    camera = outcome.camera
+    await AuditService.record_event(
+        session=db,
+        action="camera.add",
+        resource_type="camera",
+        resource_id=camera.serial,
+        actor_id=user.id,
+        actor_username=user.username,
+        details={"host": camera.host, "name": camera.name},
+        commit=True,
+    )
+    return camera
+
+
 @cameras_router.delete("/{serial}")
 async def remove_camera_endpoint(
     serial: str,
@@ -261,9 +346,12 @@ async def remove_camera_endpoint(
                 storage_path=cfg.storage_path,
             )
         except Exception as exc:
-            logger.warning("Failed to delete recordings for camera %s: %s", serial, exc)
+            raise HTTPException(500, "Could not purge recordings. Camera registration was kept.") from exc
 
-    await db.delete(cam)
+    if keep_recordings:
+        await archive_camera(db, cam)
+    else:
+        await db.delete(cam)
     await db.commit()
 
     await AuditService.record_event(
@@ -304,6 +392,17 @@ async def reprobe_camera_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Camera '{serial}' not found",
         )
+    from vizenlink_nvr.services.sim_camera import is_sim_camera
+
+    if is_sim_camera(cam):
+        return {
+            "serial": serial,
+            "reprobed": True,
+            "status": cam.state,
+            "kind": "SIMULATED_OK",
+            "address": f"{cam.host}:{cam.https_port}",
+            "warnings": [],
+        }
     runtime = getattr(request.app.state, "runtime", None)
     if runtime is None or getattr(runtime, "settings", None) is None or not hasattr(runtime, "sessions"):
         # No live runtime (e.g. tests): report the stored state without contacting the camera.
@@ -373,5 +472,5 @@ async def generate_camera_media_token(
         token=token,
         expires_in=DEFAULT_TOKEN_TTL_SECONDS,
         stream=stream,
-        path=f"cam/{serial}/{stream}",
+        path=f"cam/{serial}/{stream}",  # browser URL; the proxy maps it to the MediaMTX path
     )

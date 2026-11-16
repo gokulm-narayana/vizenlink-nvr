@@ -315,7 +315,7 @@ Scope (owner-approved 2026-11-10):
 - Profile: log out all other sessions, default start page
 - Evidence review step after snapshot/clip (keep / discard)
 
-Out of scope: PTZ, zone / line-crossing / privacy-mask drawing, two-way talk (not in `camera_api`; needs owner confirmation of contracts), AI search and chat (v1 "no AI in core").
+Out of scope: PTZ, zone / line-crossing / privacy-mask drawing, two-way talk (not in `camera_api`; requires camera contract support), and video AI inference. Owner scope update on 2026-11-11: add indexed footage search and an optional local AI assistant alongside the recording core; see [UI refresh implementation](UI-REFRESH-2026-11-11.md).
 
 Success criteria:
 1. After login the owner lands on the Dashboard and sees all four zones filled from live API data.

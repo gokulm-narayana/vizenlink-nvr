@@ -51,6 +51,9 @@ export const Shortcuts: React.FC = () => {
         } else if (key === "d") {
           lastGTimeRef.current = 0;
           void navigate("/");
+        } else if (key === "s") {
+          lastGTimeRef.current = 0;
+          void navigate("/search");
         } else {
           lastGTimeRef.current = 0;
         }

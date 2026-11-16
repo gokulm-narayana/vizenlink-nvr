@@ -13,19 +13,14 @@ from dataclasses import dataclass
 
 from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.http import CameraHttp
-from vizenlink_nvr.camera.nuraeye.rest import (
-    RestError,
-    RestOk,
-    failure_from_rest,
-    get_json,
-    post_json,
-)
-from vizenlink_nvr.camera.result import CameraResult, Failure, FailureKind, Success, Timeout
+from vizenlink_nvr.camera.nuraeye.client import NuraeyeClient
+from vizenlink_nvr.camera.nuraeye.sessions import NuraeyeSessionCache
+from vizenlink_nvr.camera.result import CameraResult, Failure, FailureKind, Success
 from vizenlink_nvr.timeutil import Clock
 
 NIGHT_VISION_TYPES = {"grey", "color", "smart"}
 MIRROR_FLIP_MODES = {"off", "mirror", "flip", "both"}
-ANTI_FLICKER_MODES = {"50Hz", "60Hz", "Auto"}
+ANTI_FLICKER_MODES = {"50Hz", "60Hz", "Auto", "None"}
 
 FALLBACK_TIMEZONES = [
     {"code": "UTC", "label": "UTC (Coordinated Universal Time)"},
@@ -46,8 +41,8 @@ FALLBACK_TIMEZONES = [
 @dataclass(frozen=True)
 class NightVisionStatus:
     current_type: str
-    color_capable: bool = True
-    smart_capable: bool = True
+    color_capable: bool = False
+    smart_capable: bool = False
 
 
 class NuraeyeSettingsClient:
@@ -58,113 +53,86 @@ class NuraeyeSettingsClient:
         conn: CameraConnection,
         http: CameraHttp,
         clock: Clock,
+        sessions: NuraeyeSessionCache | None = None,
     ) -> None:
-        self.conn = conn
-        self.http = http
-        self.clock = clock
+        self.conn, self.http, self.clock = conn, http, clock
+        self.client = NuraeyeClient(conn, http, clock, sessions=sessions)
 
     async def get_night_vision_type(self, timeout: float = 8.0) -> CameraResult[NightVisionStatus]:
-        """Fetch current night vision rendering type and capabilities."""
-        res = await get_json(self.http, self.conn, "/nuraeye/video/night-vision", timeout=timeout)
-        if isinstance(res, (Timeout, Failure)):
-            return res
-        if isinstance(res, RestError):
-            return failure_from_rest(res)
-
-        output = res.output
-        curr = output.get("type") or output.get("night_vision_type") or "grey"
-        color_cap = bool(output.get("color_capable", True))
-        smart_cap = bool(output.get("smart_capable", True))
-
+        result = await self.client.request("GET", "/nuraeye/video/night-vision-type", timeout=timeout)
+        if not isinstance(result, Success):
+            return result
+        value = result.value.get("type")
+        if not isinstance(value, str) or value.lower() not in NIGHT_VISION_TYPES:
+            return Failure(FailureKind.BAD_RESPONSE, "Camera did not report a valid night vision type")
+        caps = await self.client.get_capabilities(timeout=timeout)
         return Success(
             NightVisionStatus(
-                current_type=curr,
-                color_capable=color_cap,
-                smart_capable=smart_cap,
+                value.lower(),
+                color_capable=caps.value.night_vision_color_capable if isinstance(caps, Success) else False,
+                smart_capable=caps.value.night_vision_smart_capable if isinstance(caps, Success) else False,
             )
         )
 
     async def set_night_vision_type(self, nv_type: str, timeout: float = 8.0) -> CameraResult[bool]:
-        """Set night vision rendering type (grey, color, smart)."""
-        clean = nv_type.lower().strip()
-        if clean not in NIGHT_VISION_TYPES:
-            return Failure(
-                kind=FailureKind.GENERIC,
-                reason=f"Invalid night vision type '{nv_type}'. Must be one of {NIGHT_VISION_TYPES}",
-            )
-
-        payload = {"type": clean}
-        res = await post_json(self.http, self.conn, "/nuraeye/video/night-vision", payload, timeout=timeout)
-        if isinstance(res, (Timeout, Failure)):
-            return res
-        if isinstance(res, RestError):
-            return failure_from_rest(res)
-        return Success(True)
+        value = nv_type.lower().strip()
+        if value not in NIGHT_VISION_TYPES:
+            return Failure(FailureKind.GENERIC, f"Invalid night vision type '{nv_type}'")
+        result = await self.client.request(
+            "POST", "/nuraeye/video/night-vision-type", {"type": value.title()}, timeout
+        )
+        return Success(True) if isinstance(result, Success) else result
 
     async def get_mirror_flip(self, timeout: float = 8.0) -> CameraResult[str]:
-        """Fetch current video mirror/flip mode (off, mirror, flip, both)."""
-        res = await get_json(self.http, self.conn, "/nuraeye/video/mirror-flip", timeout=timeout)
-        if isinstance(res, (Timeout, Failure)):
-            return res
-        if isinstance(res, RestError):
-            return failure_from_rest(res)
-
-        mode = res.output.get("mode") or "off"
-        return Success(str(mode).lower())
+        result = await self.client.request("GET", "/nuraeye/video/mirror-flip", timeout=timeout)
+        if not isinstance(result, Success):
+            return result
+        mode = result.value.get("mode")
+        if not isinstance(mode, str) or mode.lower() not in MIRROR_FLIP_MODES:
+            return Failure(FailureKind.BAD_RESPONSE, "Camera did not report a valid mirror/flip mode")
+        return Success(mode.lower())
 
     async def set_mirror_flip(self, mode: str, timeout: float = 8.0) -> CameraResult[bool]:
-        """Update video mirror/flip mode."""
-        clean = mode.lower().strip()
-        if clean not in MIRROR_FLIP_MODES:
-            return Failure(
-                kind=FailureKind.GENERIC,
-                reason=f"Invalid mirror/flip mode '{mode}'. Must be one of {MIRROR_FLIP_MODES}",
-            )
-
-        payload = {"mode": clean}
-        res = await post_json(self.http, self.conn, "/nuraeye/video/mirror-flip", payload, timeout=timeout)
-        if isinstance(res, (Timeout, Failure)):
-            return res
-        if isinstance(res, RestError):
-            return failure_from_rest(res)
-        return Success(True)
+        value = mode.lower().strip()
+        if value not in MIRROR_FLIP_MODES:
+            return Failure(FailureKind.GENERIC, f"Invalid mirror/flip mode '{mode}'")
+        result = await self.client.request(
+            "POST", "/nuraeye/video/mirror-flip", {"mode": value.title()}, timeout
+        )
+        return Success(True) if isinstance(result, Success) else result
 
     async def get_anti_flicker(self, timeout: float = 8.0) -> CameraResult[str]:
-        """Fetch anti-flicker frequency mode (50Hz, 60Hz, Auto)."""
-        res = await get_json(self.http, self.conn, "/nuraeye/video/anti-flicker", timeout=timeout)
-        if isinstance(res, (Timeout, Failure)):
-            return res
-        if isinstance(res, RestError):
-            return failure_from_rest(res)
-
-        mode = res.output.get("mode") or "Auto"
-        return Success(str(mode))
+        result = await self.client.request("GET", "/nuraeye/video/anti-flicker", timeout=timeout)
+        if not isinstance(result, Success):
+            return result
+        mode = result.value.get("mode")
+        if mode not in ANTI_FLICKER_MODES:
+            return Failure(FailureKind.BAD_RESPONSE, "Camera did not report a valid anti-flicker mode")
+        return Success(mode)
 
     async def set_anti_flicker(self, mode: str, timeout: float = 8.0) -> CameraResult[bool]:
-        """Update anti-flicker frequency mode (50Hz, 60Hz, Auto)."""
-        # Case-insensitive match to accepted modes
-        matched = next((m for m in ANTI_FLICKER_MODES if m.lower() == mode.lower().strip()), None)
-        if matched is None:
-            return Failure(
-                kind=FailureKind.GENERIC,
-                reason=f"Invalid anti-flicker mode '{mode}'. Must be one of {ANTI_FLICKER_MODES}",
-            )
-
-        payload = {"mode": matched}
-        res = await post_json(self.http, self.conn, "/nuraeye/video/anti-flicker", payload, timeout=timeout)
-        if isinstance(res, (Timeout, Failure)):
-            return res
-        if isinstance(res, RestError):
-            return failure_from_rest(res)
-        return Success(True)
+        value = next((m for m in ANTI_FLICKER_MODES if m.lower() == mode.lower().strip()), None)
+        if value is None:
+            return Failure(FailureKind.GENERIC, f"Invalid anti-flicker mode '{mode}'")
+        result = await self.client.request("POST", "/nuraeye/video/anti-flicker", {"mode": value}, timeout)
+        return Success(True) if isinstance(result, Success) else result
 
     async def get_supported_timezones(self, timeout: float = 8.0) -> CameraResult[list[dict[str, str]]]:
-        """Fetch catalog of supported timezones from camera or fallback catalog."""
-        res = await get_json(self.http, self.conn, "/nuraeye/network/timezones", timeout=timeout)
-        if isinstance(res, RestOk) and "timezones" in res.output:
-            raw_list = res.output["timezones"]
-            if isinstance(raw_list, list) and raw_list:
-                return Success(raw_list)
-
-        # Graceful fallback to standard Olson list if camera firmware lacks dedicated catalog endpoint
-        return Success(FALLBACK_TIMEZONES)
+        result = await self.client.request("GET", "/nuraeye/timezones", timeout=timeout)
+        if isinstance(result, Success):
+            zones = result.value.get("timezones")
+            if isinstance(zones, list) and zones:
+                return Success(
+                    [
+                        {"code": str(z["code"]), "label": str(z.get("name", z.get("label", z["code"])))}
+                        for z in zones
+                        if isinstance(z, dict) and isinstance(z.get("code"), str)
+                    ]
+                )
+        if isinstance(result, Failure) and result.http_status == 404:
+            return Success(FALLBACK_TIMEZONES)
+        return (
+            result
+            if not isinstance(result, Success)
+            else Failure(FailureKind.BAD_RESPONSE, "Camera returned an empty timezone catalog")
+        )

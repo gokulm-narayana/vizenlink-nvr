@@ -8,11 +8,14 @@ export const routes: ShellRoute[] = [
     title: "Cameras",
     minRole: "operator",
     element: <CamerasPage />,
+    stickyContent: true,
   },
   {
     path: "/cameras/:serial",
     title: "Cameras",
     minRole: "operator",
     element: <CamerasPage />,
+    // The settings menu stays in place while the section scrolls (needs a non-scrolling <main>).
+    stickyContent: true,
   },
 ];

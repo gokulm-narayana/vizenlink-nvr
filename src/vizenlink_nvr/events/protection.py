@@ -53,7 +53,7 @@ class SegmentProtectionService:
         for seg in overlapping_segments:
             seg.is_protected = True
             if seg.protection_reason:
-                if reason_tag not in seg.protection_reason:
+                if reason_tag not in seg.protection_reason.split(","):
                     seg.protection_reason = f"{seg.protection_reason},{reason_tag}"
             else:
                 seg.protection_reason = reason_tag

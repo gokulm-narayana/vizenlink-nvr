@@ -1,3 +1,4 @@
+import { useAccountPreferences } from "@/features/profile/preferences";
 import React, { useState } from "react";
 import { Link } from "react-router";
 import { User, Sun, Moon, Monitor, LogOut, KeyRound } from "lucide-react";
@@ -21,12 +22,11 @@ import { isRegistered } from "@/app/routes";
 import { ChangePasswordDialog } from "@/features/profile/ChangePasswordDialog";
 
 export const UserMenu: React.FC = () => {
+  const { setTheme, setViewMode } = useAccountPreferences();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const user = useCurrentUser();
   const theme = useUiStore((s) => s.theme);
-  const setTheme = useUiStore((s) => s.setTheme);
   const viewMode = useUiStore((s) => s.viewMode);
-  const setViewMode = useUiStore((s) => s.setViewMode);
   const signOut = useSignOut();
 
   const username = user?.username || "User";

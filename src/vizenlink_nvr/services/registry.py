@@ -4,14 +4,24 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from vizenlink_nvr.camera.connection import CameraConnection
-from vizenlink_nvr.db.models import Camera, CameraCapabilitiesRow, CameraCredential, CameraStream
+from vizenlink_nvr.db.models import (
+    Camera,
+    CameraCapabilitiesRow,
+    CameraCredential,
+    CameraOutage,
+    CameraStream,
+    EventSubscription,
+    RecordingSettings,
+    UserCameraPermission,
+)
 from vizenlink_nvr.secrets.vault import SealedSecret, Vault
 from vizenlink_nvr.services.streams import StreamRecord
+from vizenlink_nvr.timeutil import utc_now
 
 
 class StreamView(BaseModel):
@@ -57,6 +67,7 @@ class CameraView(BaseModel):
     host_updated_at: datetime
     identity_synced_at: datetime | None
     last_error: str | None
+    archived: bool = False
     streams: list[StreamView] = []
 
 
@@ -113,6 +124,7 @@ def _to_camera_view(camera: Camera) -> CameraView:
         https_port=camera.https_port,
         mac=camera.mac,
         name=camera.name,
+        archived=camera.archived,
         location=camera.location,
         group_tag=camera.group_tag,
         manufacturer=camera.manufacturer,
@@ -135,13 +147,32 @@ def stream_url(camera: CameraView | Camera, stream: StreamView | CameraStream) -
     return f"{stream.scheme}://{camera.host}:{stream.port}{stream.path}"
 
 
+async def archive_camera(session: AsyncSession, camera: Camera) -> None:
+    """Retain historical media and remove all live configuration and camera access grants."""
+    camera.archived = True
+    for model, column in (
+        (CameraCredential, CameraCredential.serial),
+        (CameraCapabilitiesRow, CameraCapabilitiesRow.serial),
+        (CameraStream, CameraStream.serial),
+        (RecordingSettings, RecordingSettings.camera_serial),
+        (EventSubscription, EventSubscription.camera_serial),
+        (UserCameraPermission, UserCameraPermission.camera_serial),
+    ):
+        await session.execute(delete(model).where(column == camera.serial))
+    await session.execute(
+        update(CameraOutage)
+        .where(CameraOutage.camera_serial == camera.serial, CameraOutage.ended_at.is_(None))
+        .values(ended_at=utc_now())
+    )
+
+
 async def insert_camera(
     session: AsyncSession,
     record: NewCameraRecord,
 ) -> CameraView:
     """Insert new camera with credential, capabilities, and stream records in a single transaction."""
-    camera = Camera(
-        serial=record.serial,
+    fields = dict(
+        archived=False,
         host=record.host,
         https_port=record.https_port,
         mac=record.mac,
@@ -160,7 +191,14 @@ async def insert_camera(
         identity_synced_at=record.added_at,
         last_error=None,
     )
-    session.add(camera)
+    restored = await session.scalar(
+        update(Camera)
+        .where(Camera.serial == record.serial, Camera.archived.is_(True))
+        .values(**fields)
+        .returning(Camera.serial)
+    )
+    if restored is None:
+        session.add(Camera(serial=record.serial, **fields))
 
     cred = CameraCredential(
         serial=record.serial,
@@ -224,9 +262,12 @@ async def get_camera(
 
 async def list_cameras(
     session: AsyncSession,
+    *, playback: bool = False,
 ) -> list[CameraView]:
     """List all registered cameras sorted by serial."""
-    stmt = select(Camera).options(selectinload(Camera.streams)).order_by(Camera.serial)
+    stmt = select(Camera).options(selectinload(Camera.streams)).order_by(Camera.archived, Camera.serial)
+    if playback:
+        stmt = stmt.execution_options(include_archived=True).where(~Camera.archived | Camera.segments.any())
     res = await session.execute(stmt)
     return [_to_camera_view(c) for c in res.scalars()]
 

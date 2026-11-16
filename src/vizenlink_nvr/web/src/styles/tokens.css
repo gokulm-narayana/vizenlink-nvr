@@ -1,7 +1,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #F5F7FA;
+  --background: #F3F6FA;
   --card: #FFFFFF;
   --card-foreground: #1A1A1A;
   --popover: #FFFFFF;
@@ -28,7 +28,7 @@
   --selected-foreground: #0044A5;
   --ring: #0056D2;
   --foreground: #1A1A1A;
-  --border: #E0E0E0;
+  --border: #DFE5EE;
   --input: #70757A;
   --destructive: #C62828;
   --destructive-foreground: #FFFFFF;
@@ -58,12 +58,12 @@
 }
 
 .dark {
-  --background: #121212;
-  --card: #1E1E1E;
+  --background: #0D1420;
+  --card: #151F2E;
   --card-foreground: #E0E0E0;
   --popover: #2C2C2C;
   --popover-foreground: #E0E0E0;
-  --sidebar: #1E1E1E;
+  --sidebar: #111B2B;
   --sidebar-foreground: #E0E0E0;
   --sidebar-primary: #64B5F6;
   --sidebar-primary-foreground: #0A1929;

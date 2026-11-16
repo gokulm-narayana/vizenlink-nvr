@@ -243,8 +243,8 @@ async def test_phase7_complete_e2e_tracer(tmp_path: Path) -> None:
         assert live_data["camera_serial"] == "CAM-P7-FRONT"
         # Defaults to sub-stream for mobile
         assert live_data["profile"] == "sub"
-        assert "/cam/CAM-P7-FRONT/sub/whep?token=" in live_data["webrtc_url"]
-        assert "/cam/CAM-P7-FRONT/sub/index.m3u8?token=" in live_data["hls_url"]
+        assert "/cam/cam-p7-front/sub/whep?token=" in live_data["webrtc_url"]
+        assert "/cam/cam-p7-front/sub/index.m3u8?token=" in live_data["hls_url"]
         assert "rtsp://" in live_data["rtsp_url"]
 
         # Viewer cannot access unpermitted camera CAM-P7-BACK

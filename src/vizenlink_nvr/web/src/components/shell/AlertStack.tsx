@@ -1,4 +1,5 @@
 import React from "react";
+import { useLocation } from "react-router";
 import { OctagonAlert, TriangleAlert, X } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,12 @@ export const AlertStack: React.FC<{ className?: string }> = ({ className }) => {
       });
   }, [rawAlerts, dismissedAlertIds]);
 
-  if (activeAlerts.length === 0) {
+  // The Dashboard lists the same alerts in its own "Recent alerts" panel; repeating them
+  // here showed one problem three times on the same screen.
+  const { pathname } = useLocation();
+  const onDashboard = pathname === "/" || pathname === "/dashboard";
+
+  if (activeAlerts.length === 0 || onDashboard) {
     return null;
   }
 
@@ -35,55 +41,48 @@ export const AlertStack: React.FC<{ className?: string }> = ({ className }) => {
     <div
       data-slot="alert-stack"
       aria-live="polite"
-      className={cn("flex flex-col gap-2 p-4 pb-0", className)}
+      className={cn("flex flex-col gap-1 px-4 pt-2", className)}
     >
       {visibleAlerts.map((alert) => {
         const isCritical = alert.severity === "critical";
 
         return (
+          // One thin line per alert: this strip sits above every page, so it must not push
+          // the page down. Full detail lives in the bell menu and on the Dashboard.
           <Alert
             key={alert.id}
             role={isCritical ? "alert" : "status"}
             className={cn(
-              "relative flex flex-col md:flex-row md:items-center justify-between gap-4 border p-4",
+              "flex min-h-10 items-center gap-2 border px-4 py-1",
               isCritical
                 ? "bg-critical-subtle border-critical/30 text-foreground"
                 : "bg-warning-subtle border-warning/30 text-foreground"
             )}
           >
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              {isCritical ? (
-                <OctagonAlert className="h-5 w-5 shrink-0 text-critical mt-0.5" />
-              ) : (
-                <TriangleAlert className="h-5 w-5 shrink-0 text-warning mt-0.5" />
-              )}
-              <div className="flex flex-col gap-0.5 min-w-0">
-                <AlertTitle className="text-sm font-semibold truncate">
-                  {alert.title || (isCritical ? "Critical alert" : "Warning alert")}
-                </AlertTitle>
-                <AlertDescription className="text-xs text-foreground/90 break-words">
-                  {alert.message}
-                </AlertDescription>
-                <div className="mt-1">
-                  <CameraHealthLink
-                    serial={alert.camera_serial}
-                    source={alert.source}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center shrink-0 self-end md:self-center">
+            {isCritical ? (
+              <OctagonAlert className="size-4 shrink-0 text-critical" />
+            ) : (
+              <TriangleAlert className="size-4 shrink-0 text-warning" />
+            )}
+            <AlertTitle className="min-w-0 shrink truncate text-sm font-semibold">
+              {alert.title || (isCritical ? "Critical alert" : "Warning alert")}
+            </AlertTitle>
+            <AlertDescription className="hidden min-w-0 flex-1 truncate text-xs text-foreground/90 md:block">
+              {alert.message}
+            </AlertDescription>
+            <span className="ml-auto flex shrink-0 items-center gap-2">
+              <CameraHealthLink serial={alert.camera_serial} source={alert.source} />
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
+                aria-label="Dismiss alert"
+                title="Dismiss alert"
                 onClick={() => dismissAlert(alert.id)}
-                className="h-8 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5"
+                className="size-8 hover:bg-black/5 dark:hover:bg-white/5"
               >
-                <X className="h-3.5 w-3.5 mr-1" />
-                Dismiss alert
+                <X className="size-4" />
               </Button>
-            </div>
+            </span>
           </Alert>
         );
       })}

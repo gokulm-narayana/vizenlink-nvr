@@ -6,11 +6,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.db.models import Camera, CameraOutage
+from vizenlink_nvr.services.settings import read_site_timezone
 from vizenlink_nvr.services.storage import StorageHealthState, get_storage_config
 from vizenlink_nvr.timeutil import utc_now
 
@@ -57,10 +59,18 @@ class AlertService:
             if name
         }
 
+        # Show the start time in the site time zone, like every other time in the UI.
+        try:
+            site_zone: ZoneInfo | None = ZoneInfo(await read_site_timezone(session))
+        except Exception:  # noqa: BLE001 - an unreadable zone must not hide the alert
+            site_zone = None
+
         for outage in open_outages:
             offline_duration = (current_time - outage.started_at).total_seconds()
             if offline_duration >= offline_threshold_seconds:
-                mins = int(offline_duration // 60)
+                started_local = outage.started_at.astimezone(site_zone) if site_zone else outage.started_at
+                same_day = started_local.date() == current_time.astimezone(started_local.tzinfo).date()
+                since = started_local.strftime("%H:%M" if same_day else "%b %d, %H:%M")
                 cam_label = names.get(outage.camera_serial, outage.camera_serial)
                 alerts.append(
                     InAppAlert(
@@ -68,8 +78,7 @@ class AlertService:
                         severity="warning",
                         title=f"{cam_label} is offline",
                         message=(
-                            f"Camera '{cam_label}' has been offline for "
-                            f"{mins} minutes (since {outage.started_at.strftime('%H:%M:%S')})."
+                            f"Offline for {_humanize_duration(offline_duration)} (since {since})."
                         ),
                         timestamp=outage.started_at,
                         source=f"camera:{outage.camera_serial}",
@@ -131,3 +140,19 @@ class AlertService:
                 )
 
         return alerts
+
+
+def _humanize_duration(seconds: float) -> str:
+    """Render a duration the way people say it: "8 minutes", "5 hours", "2 days 3 hours"."""
+
+    def unit(value: int, name: str) -> str:
+        return f"{value} {name}" if value == 1 else f"{value} {name}s"
+
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return unit(max(minutes, 1), "minute")
+    hours, rem_minutes = divmod(minutes, 60)
+    if hours < 24:
+        return unit(hours, "hour") + (f" {unit(rem_minutes, 'minute')}" if rem_minutes else "")
+    days, rem_hours = divmod(hours, 24)
+    return unit(days, "day") + (f" {unit(rem_hours, 'hour')}" if rem_hours else "")

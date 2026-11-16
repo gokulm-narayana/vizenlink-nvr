@@ -274,21 +274,24 @@ export const Timeline: React.FC<TimelineProps> = ({
     return retentionSpan(windowRange, retentionDays);
   }, [windowRange, retentionDays]);
 
-  // Generate tick marks
+  // Generate tick marks anchored to the site-timezone window start (so GMT+5:30 gets exact hours too)
   const ticks = useMemo(() => {
     const res: Array<{ pct: number; label: string | null }> = [];
     const stepHours =
-      zoomLevel === "24h" ? 2 : zoomLevel === "12h" ? 1 : zoomLevel === "4h" ? 0.5 : 0.166;
+      zoomLevel === "24h" ? 2 : zoomLevel === "12h" ? 1 : zoomLevel === "4h" ? 0.5 : 0.25;
     const stepMs = stepHours * 3600 * 1000;
 
-    let t = Math.ceil(winStart.getTime() / stepMs) * stepMs;
+    let t = winStart.getTime();
+    let stepIdx = 0;
     while (t <= winEnd.getTime()) {
       const d = new Date(t);
       const pct = timeToPct(d, windowRange);
-      const isMajor = d.getMinutes() === 0;
-      const label = isMajor ? formatTime(d, zone) : null;
+      const isMajor = zoomLevel === "24h" || zoomLevel === "12h" ? true : stepIdx % 2 === 0;
+      const rawLabel = isMajor && pct >= 0 && pct <= 97 ? formatTime(d, zone) : null;
+      const label = rawLabel ? rawLabel.replace(/:00$/, "") : null;
       res.push({ pct, label });
       t += stepMs;
+      stepIdx += 1;
     }
     return res;
   }, [winStart, winEnd, zoomLevel, windowRange, zone]);
@@ -297,7 +300,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   const handleSetOut = onMarkOut || onSetOutMarker;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-border bg-card p-4 select-none">
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2 select-none">
       <HatchPattern id="outage-hatch" />
 
       {/* Top Header Row: Markers, Legend, Zoom Controls */}
@@ -381,22 +384,27 @@ export const Timeline: React.FC<TimelineProps> = ({
           setHoverPos(null);
           setHoverType(null);
         }}
-        className="relative h-[120px] w-full rounded-md border border-border bg-card overflow-hidden cursor-pointer touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="relative h-20 w-full rounded-md border border-border bg-card overflow-hidden cursor-pointer touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {/* Axis & Gridlines */}
+        <div className="pointer-events-none absolute inset-x-0 top-4 h-8 border-y border-border/60 bg-muted/40" aria-hidden="true" />
         {ticks.map((tick, idx) => (
-          <div
-            key={idx}
-            // dynamic-style: timeline axis gridline percentage position
-            style={{ left: `${tick.pct}%` }}
-            className="absolute top-0 bottom-8 w-[1px] bg-border pointer-events-none"
-          >
+          <React.Fragment key={idx}>
+            <div
+              // dynamic-style: timeline axis gridline percentage position
+              style={{ left: `${tick.pct}%` }}
+              className="absolute top-0 bottom-6 w-[1px] bg-border pointer-events-none"
+            />
             {tick.label && (
-              <span className="absolute bottom-[-24px] left-1 text-xs font-normal text-muted-foreground tabular-nums whitespace-nowrap">
+              <span
+                // dynamic-style: timeline hour label percentage position
+                style={{ left: `${tick.pct}%` }}
+                className="pointer-events-none absolute bottom-1 pl-1 text-xs font-normal text-muted-foreground tabular-nums whitespace-nowrap"
+              >
                 {tick.label}
               </span>
             )}
-          </div>
+          </React.Fragment>
         ))}
 
         {/* Retention Span */}
@@ -408,7 +416,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               width: `${Math.max(0.2, timeToPct(retention[1], windowRange) - timeToPct(retention[0], windowRange))}%`,
             }}
             title={TIMELINE_COPY.TOOLTIP_RETENTION}
-            className="absolute top-6 h-6 rounded-sm bg-input border-b-2 border-dotted border-foreground/60 opacity-80"
+            className="absolute top-4 h-8 rounded-sm bg-input border-b-2 border-dotted border-foreground/60 opacity-80"
           />
         )}
 
@@ -425,7 +433,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               // dynamic-style: recorded footage segment percentage position and width
               style={{ left: `${sPct}%`, width: `${widthPct}%` }}
               title={`Segment #${seg.id}: ${formatTime(new Date(seg.start_time), zone)} - ${formatTime(new Date(seg.end_time), zone)}`}
-              className="absolute top-6 h-6 rounded-sm bg-primary opacity-95"
+              className="absolute top-4 h-8 rounded-sm bg-primary opacity-95"
             >
               {seg.is_protected && (
                 <div className="absolute bottom-[-5px] left-0 right-0 h-1 rounded-full bg-foreground" />
@@ -448,7 +456,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               // dynamic-style: outage span percentage position and width
               style={{ left: `${sPct}%`, width: `${widthPct}%` }}
               title={`Outage: ${outage.reason || "Camera disconnected"}`}
-              className="absolute top-6 h-6 rounded-sm border border-warning text-warning overflow-hidden bg-background"
+              className="absolute top-4 h-8 rounded-sm border border-warning text-warning overflow-hidden bg-background"
             >
               <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
                 <rect width="100%" height="100%" fill="url(#outage-hatch)" />
@@ -481,7 +489,7 @@ export const Timeline: React.FC<TimelineProps> = ({
           <div
             // dynamic-style: export selection range percentage position and width
             style={{ left: `${inPct}%`, width: `${outPct - inPct}%` }}
-            className="absolute top-0 bottom-8 bg-selected/30 pointer-events-none z-10"
+            className="absolute top-0 bottom-6 bg-selected/30 pointer-events-none z-10"
           >
             <div className="absolute top-0 bottom-0 left-0 w-1 bg-foreground" />
             <div className="absolute top-0 bottom-0 right-0 w-1 bg-foreground" />
@@ -493,7 +501,7 @@ export const Timeline: React.FC<TimelineProps> = ({
           <div
             // dynamic-style: hover indicator x position in pixels
             style={{ left: `${hoverPos}px` }}
-            className="absolute top-0 bottom-8 w-[1px] bg-foreground/50 pointer-events-none z-20"
+            className="absolute top-0 bottom-6 w-[1px] bg-foreground/50 pointer-events-none z-20"
           >
             <div className="absolute bottom-2 -translate-x-1/2 rounded bg-card border border-border px-1.5 py-0.5 text-xs font-semibold text-foreground whitespace-nowrap shadow-sm">
               {formatTime(hoverTime, zone)} {hoverType && `• ${hoverType}`}
@@ -505,7 +513,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div
           // dynamic-style: playhead line percentage position
           style={{ left: `${playheadPct}%` }}
-          className="absolute top-0 bottom-8 w-0.5 bg-primary-foreground shadow-[0_0_0_1px_var(--foreground)] pointer-events-none z-30"
+          className="absolute top-0 bottom-6 w-0.5 bg-primary-foreground shadow-[0_0_0_1px_var(--foreground)] pointer-events-none z-30"
         >
           {/* Triangular head */}
           <div className="absolute top-0 left-[-5px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-foreground" />

@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+import os
+import re
 import subprocess
 import threading
 import time
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("vizenlink_nvr.mediamtx")
+_TIMESTAMP = re.compile(r"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} ")
 
 _LIVE_PROCESSES: list[subprocess.Popen[str]] = []
 _LOCK: threading.Lock | None = None
@@ -44,6 +50,7 @@ class MediaMtxProcess:
         self.ready_timeout = ready_timeout
         self.popen: subprocess.Popen[str] | None = None
         self.log_lines: list[str] = []
+        self._last_forwarded: str | None = None
         self._ready_event = threading.Event()
         self._reader_thread: threading.Thread | None = None
 
@@ -54,14 +61,31 @@ class MediaMtxProcess:
             line_str = line.strip()
             if line_str:
                 self.log_lines.append(line_str)
+                del self.log_lines[:-500]  # bounded: MediaMTX runs for weeks
+                self._forward(line_str)
                 if "[API] started" in line_str or "[api] started" in line_str.lower():
                     self._ready_event.set()
         self.popen.stdout.close()
+
+    def _forward(self, line: str) -> None:
+        """Surface MediaMTX warnings/errors (e.g. a camera source failing) in the NVR log.
+
+        A failing source retries every few seconds; repeat lines are logged once.
+        """
+        if " ERR " not in line and " WAR " not in line:
+            return
+        message = _TIMESTAMP.sub("", line)
+        if message == self._last_forwarded:
+            return
+        self._last_forwarded = message
+        (logger.error if " ERR " in line else logger.warning)("%s", message)
 
     def start(self) -> None:
         """Start process and wait for ready line."""
         self.popen = subprocess.Popen(  # noqa: S603
             [str(self.binary), str(self.config_path)],
+            # Recording filenames end in Z and are indexed as UTC.
+            env={**os.environ, "TZ": "UTC"},
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

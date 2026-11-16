@@ -74,6 +74,7 @@ async def get_recording_settings(
 async def get_or_create_recording_settings(
     session: AsyncSession,
     camera_serial: str,
+    *, commit: bool = True,
 ) -> RecordingSettings:
     """Retrieve existing recording settings or initialize default settings for registered camera."""
     # Ensure camera exists
@@ -99,7 +100,10 @@ async def get_or_create_recording_settings(
         updated_at=now,
     )
     session.add(new_settings)
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return new_settings
 
 
@@ -107,6 +111,7 @@ async def set_recording_mode(
     session: AsyncSession,
     camera_serial: str,
     mode: RecordingMode | str,
+    *, commit: bool = True,
 ) -> RecordingSettings:
     """Set recording operational mode for camera."""
     mode_str = str(mode).strip().lower()
@@ -114,10 +119,13 @@ async def set_recording_mode(
     if mode_str not in valid_modes:
         raise ValueError(f"Invalid recording mode '{mode_str}'. Valid modes: {sorted(valid_modes)}")
 
-    settings = await get_or_create_recording_settings(session, camera_serial)
+    settings = await get_or_create_recording_settings(session, camera_serial, commit=commit)
     settings.mode = mode_str
     settings.updated_at = utc_now()
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return settings
 
 
@@ -125,13 +133,17 @@ async def set_recording_schedule(
     session: AsyncSession,
     camera_serial: str,
     schedule: WeeklySchedule | str | dict[str, Any],
+    *, commit: bool = True,
 ) -> RecordingSettings:
     """Set weekly recording schedule for camera."""
     sched_obj = WeeklySchedule.from_spec(schedule)
-    settings = await get_or_create_recording_settings(session, camera_serial)
+    settings = await get_or_create_recording_settings(session, camera_serial, commit=commit)
     settings.schedule_json = sched_obj.to_json()
     settings.updated_at = utc_now()
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return settings
 
 
@@ -139,6 +151,7 @@ async def set_recording_audio(
     session: AsyncSession,
     camera_serial: str,
     enabled: bool,
+    *, commit: bool = True,
 ) -> RecordingSettings:
     """Toggle audio recording track for camera, verifying camera capabilities."""
     if enabled:
@@ -149,10 +162,13 @@ async def set_recording_audio(
         if caps_row is not None and not camera_supports_audio(caps_row.raw_json):
             raise AudioNotSupportedError(f"Camera '{camera_serial}' does not support audio recording")
 
-    settings = await get_or_create_recording_settings(session, camera_serial)
+    settings = await get_or_create_recording_settings(session, camera_serial, commit=commit)
     settings.audio_enabled = enabled
     settings.updated_at = utc_now()
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return settings
 
 
@@ -161,6 +177,7 @@ async def set_recording_retention(
     camera_serial: str,
     days: int | None,
     max_gb: int | None,
+    *, commit: bool = True,
 ) -> RecordingSettings:
     """Configure retention window and size limit for camera."""
     if days is not None and days <= 0:
@@ -168,11 +185,14 @@ async def set_recording_retention(
     if max_gb is not None and max_gb <= 0:
         raise ValueError("Retention max_gb must be positive")
 
-    settings = await get_or_create_recording_settings(session, camera_serial)
+    settings = await get_or_create_recording_settings(session, camera_serial, commit=commit)
     settings.retention_days = days
     settings.retention_max_gb = max_gb
     settings.updated_at = utc_now()
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return settings
 
 

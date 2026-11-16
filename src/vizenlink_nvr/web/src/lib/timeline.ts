@@ -8,6 +8,7 @@ export interface TimelineSegment {
   start_time: string;
   end_time: string;
   is_protected: boolean;
+  protection_reason?: string | null;
   duration_seconds: number;
 }
 

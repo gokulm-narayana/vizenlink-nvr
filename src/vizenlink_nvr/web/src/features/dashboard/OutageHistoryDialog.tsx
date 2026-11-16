@@ -60,12 +60,12 @@ export const OutageHistoryDialog: React.FC<OutageHistoryDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-[760px] sm:max-w-2xl p-0 overflow-hidden flex flex-col bg-card"
+        className="flex max-w-3xl sm:max-w-3xl flex-col bg-card p-0"
       >
         {/* Header */}
-        <DialogHeader className="flex flex-row items-center justify-between border-b border-border p-4">
-          <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-muted-foreground" />
+        <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border p-4 pr-12">
+          <div className="flex min-w-0 items-center gap-2">
+            <History className="h-4 w-4 shrink-0 text-muted-foreground" />
             <DialogTitle className="text-sm font-semibold truncate">
               {dialogTitle}
             </DialogTitle>
@@ -138,7 +138,7 @@ export const OutageHistoryDialog: React.FC<OutageHistoryDialogProps> = ({
                     <TableCell className="tabular-nums font-semibold">
                       {formatOutageDuration(outage.duration_seconds)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground whitespace-normal break-words">
                       {outage.reason || "Disconnected"}
                     </TableCell>
                   </TableRow>

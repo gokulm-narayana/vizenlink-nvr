@@ -23,7 +23,7 @@ export const PROFILE_COPY = {
   SECURITY_TITLE: "Security",
   SECURITY_CAPTION: "Changing your password signs out your other devices.",
   PREFERENCES_TITLE: "Preferences",
-  PREFERENCES_CAPTION: "Saved in this browser only.",
+  PREFERENCES_CAPTION: "Saved to your account across devices.",
   CAMERAS_YOU_CAN_VIEW: "Cameras you can view",
   ALL_CAMERAS: "All cameras",
   NO_CAMERAS_VIEWER:

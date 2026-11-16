@@ -297,6 +297,11 @@ async def test_phase6_complete_e2e_tracer(tmp_path: Path) -> None:
             patch(f"{M2_CLIENT}.set_video_encoder_configuration", new_callable=AsyncMock)
         )
         m_get_osd = stack.enter_context(patch(f"{M2_CLIENT}.get_osds", new_callable=AsyncMock))
+        m_get_osd_opts = stack.enter_context(patch(f"{M2_CLIENT}.get_osd_options", new_callable=AsyncMock))
+        m_get_tz = stack.enter_context(patch(f"{DEV_CLIENT}.get_system_timezone", new_callable=AsyncMock))
+        m_video_mode = stack.enter_context(
+            patch("vizenlink_nvr.services.camera_settings.NuraeyeClient.request", new_callable=AsyncMock)
+        )
         m_set_osd = stack.enter_context(patch(f"{M2_CLIENT}.set_osd", new_callable=AsyncMock))
         m_get_img = stack.enter_context(patch(f"{IMG_CLIENT}.get_imaging_settings", new_callable=AsyncMock))
         m_get_iopts = stack.enter_context(patch(f"{IMG_CLIENT}.get_imaging_options", new_callable=AsyncMock))
@@ -320,6 +325,9 @@ async def test_phase6_complete_e2e_tracer(tmp_path: Path) -> None:
         m_vopts.return_value = Success(mock_enc_opts)
         m_set_venc.return_value = Success(True)
         m_get_osd.return_value = Success(mock_osds)
+        m_get_osd_opts.return_value = Success({})
+        m_get_tz.return_value = Success("UTC")
+        m_video_mode.return_value = Success({"configured_mode": "Auto", "effective_state": "day"})
         m_set_osd.return_value = Success(True)
         m_get_img.return_value = Success(mock_img_settings)
         m_get_iopts.return_value = Success(mock_img_opts)
@@ -490,10 +498,16 @@ async def test_phase6_complete_e2e_tracer(tmp_path: Path) -> None:
             # -----------------------------------------------------------------
             # Step 11: Camera Health Monitoring (SET-07)
             # -----------------------------------------------------------------
-            res_health = await client.get(
-                "/api/v1/cameras/CAM-P6-1/health",
-                headers={"Authorization": f"Bearer {viewer_token}"},
-            )
+            with patch(
+                "vizenlink_nvr.services.camera_settings.NuraeyeClient.request", new_callable=AsyncMock
+            ) as m_health:
+                m_health.return_value = Success(
+                    {"uptime_seconds": 120, "clock_sync_state": "synced", "firmware_version": "v3.1.2"}
+                )
+                res_health = await client.get(
+                    "/api/v1/cameras/CAM-P6-1/health",
+                    headers={"Authorization": f"Bearer {viewer_token}"},
+                )
             assert res_health.status_code == 200
             h_data = res_health.json()
             assert h_data["serial"] == "CAM-P6-1"

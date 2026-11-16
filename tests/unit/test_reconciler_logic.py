@@ -16,6 +16,7 @@ from vizenlink_nvr.media.reconciler import (
     _needs_patch,
     compute_desired_paths,
 )
+from vizenlink_nvr.services.settings import CLIP_MINUTES_KEY, put_setting
 from vizenlink_nvr.timeutil import utc_now
 
 
@@ -99,6 +100,7 @@ async def test_compute_desired_paths(tmp_path: Path) -> None:
             source="nuraeye",
             sub_is_main=False,
             probed_at=now,
+            tls_fingerprint_sha256="fp_main_rtsps",
         )
         sub_stream = CameraStream(
             serial="VZL-CAM-001",
@@ -135,12 +137,22 @@ async def test_compute_desired_paths(tmp_path: Path) -> None:
         assert main_cfg.source == "rtsps://192.168.1.50:443/live/main"
         assert main_cfg.source_on_demand is False
         assert main_cfg.record is False  # No RecordingSettings row yet, defaults to False
-        assert main_cfg.source_fingerprint == "fp_front"
+        # The RTSPS port's own pin, never the camera's HTTPS pin ("fp_front"):
+        # VizenLink cameras use a different certificate for video.
+        assert main_cfg.source_fingerprint == "fp_main_rtsps"
 
         sub_cfg = desired["cam/vzl-cam-001/sub"]
         assert sub_cfg.source == "rtsps://192.168.1.50:443/live/sub"
         assert sub_cfg.source_on_demand is True
         assert sub_cfg.record is False
+
+        # Clip length: 1 minute unless the recorder-wide setting says otherwise.
+        assert main_cfg.record_segment_duration == "60s"
+        await put_setting(session, CLIP_MINUTES_KEY, 30)
+        await session.commit()
+        longer = await compute_desired_paths(session, storage_root, volume_ok=True, now=now)
+        assert longer["cam/vzl-cam-001/main"].record_segment_duration == "1800s"
+        assert longer["cam/vzl-cam-001/main"].to_api_dict()["recordSegmentDuration"] == "1800s"
 
         # When volume_ok=False, record is forced False
         desired_unhealthy = await compute_desired_paths(session, storage_root, volume_ok=False, now=now)

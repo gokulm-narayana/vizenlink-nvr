@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +16,11 @@ from vizenlink_nvr.api.dependencies import (
     RequireOwner,
 )
 from vizenlink_nvr.services.audit import AuditService
+from vizenlink_nvr.services.indexer import scan_and_reconcile
 from vizenlink_nvr.services.storage import (
     DEFAULT_RESERVE_BYTES,
     StorageHealthState,
+    evaluate_storage_health,
     get_storage_config,
     set_storage_path,
 )
@@ -99,18 +102,36 @@ async def set_storage_path_endpoint(
 ) -> StorageStatusResponse:
     """Update active recording storage volume (Owner only)."""
     target = Path(payload.storage_path)
+    if not target.is_absolute():
+        raise HTTPException(
+            status_code=422,
+            detail="Storage path must be an absolute path.",
+        )
+
+    # Validate before saving: a refused request must leave the working storage
+    # settings untouched, otherwise recording stops on a path the API rejected.
+    health_state, health_reason = evaluate_storage_health(
+        target,
+        allow_system_disk=payload.allow_system_disk,
+        reserve_bytes=payload.reserve_bytes,
+    )
+    if health_state == StorageHealthState.SYSTEM_DISK_REFUSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=health_reason or "Recording to system root disk is refused without allow_system_disk",
+        )
+    if health_state in (StorageHealthState.UNMOUNTED, StorageHealthState.READ_ONLY):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=health_reason or "Storage path is not usable.",
+        )
+
     cfg = await set_storage_path(
         session=db,
         target_path=target,
         allow_system_disk=payload.allow_system_disk,
         reserve_bytes=payload.reserve_bytes,
     )
-
-    if cfg.health_state == StorageHealthState.SYSTEM_DISK_REFUSED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=cfg.health_reason or "Recording to system root disk is refused without allow_system_disk",
-        )
 
     await AuditService.record_event(
         session=db,
@@ -145,11 +166,17 @@ async def set_storage_path_endpoint(
 
 @storage_router.post("/scan")
 async def trigger_storage_scan_endpoint(
+    request: Request,
     user: RequireOperator,
     db: DbSession,
 ) -> dict[str, Any]:
-    """Trigger background storage volume reconciliation scan (Operator+)."""
+    """Reconcile the configured recording directory and return actual scan counts."""
+    config = await get_storage_config(db, default_path=_get_default_storage_path(request))
+    if not config.storage_path.is_dir():
+        raise HTTPException(409, "Recording folder is unavailable.")
+    report = await scan_and_reconcile(db, config.storage_path)
     return {
-        "status": "scan_started",
+        "status": "completed",
+        **asdict(report),
         "timestamp": utc_now().isoformat(),
     }

@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -6,6 +7,7 @@ import { useCurrentUser } from "@/lib/queries";
 import type { StorageStatusResponse } from "@/features/dashboard/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SettingsSection } from "./SettingsSection";
 
 export function StorageLocation({ storage }: { storage: StorageStatusResponse }) {
   const user = useCurrentUser();
@@ -25,15 +27,22 @@ export function StorageLocation({ storage }: { storage: StorageStatusResponse })
     },
   });
   if (user?.role !== "owner") return <p className="text-sm text-muted-foreground">Ask the recorder owner to change the recording folder.</p>;
-  return <details className="rounded-xl border border-border bg-card p-6" open={!["ok", "healthy"].includes(storage.health_state) ? true : undefined}>
-    <summary className="cursor-pointer font-semibold">Recording folder</summary>
-    <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="mt-4 flex flex-col gap-4">
-      <label className="vms-field">Folder on the recorder<Input required value={path} onChange={e => setPath(e.target.value)} placeholder="/path/to/recordings" disabled={mutation.isPending} /></label>
-      <p className="text-sm text-muted-foreground">Use an absolute path to a writable folder on the NVR. Changing this location does not move existing recordings.</p>
-      <label className="flex items-center gap-4 text-sm"><input type="checkbox" checked={allowSystemDisk} onChange={e => setAllowSystemDisk(e.target.checked)} disabled={mutation.isPending} />Allow recording on the system disk</label>
-      <p className="text-xs text-muted-foreground">A separate recording drive is preferable. Using the system disk reduces space available to other applications.</p>
+  const dirty = path.trim() !== storage.storage_path || allowSystemDisk !== storage.allow_system_disk;
+  return <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }}>
+    <SettingsSection
+      title="Recording folder"
+      description="Where footage is saved on the recorder. Changing the folder does not move existing recordings."
+      footer={<Button type="submit" disabled={!path.trim() || !dirty || mutation.isPending}>{mutation.isPending ? "Saving…" : "Save recording folder"}</Button>}
+    >
+      <div className="flex flex-col gap-2">
+        <label className="vms-field">Folder on the recorder<Input required className="font-mono" value={path} onChange={e => setPath(e.target.value)} placeholder="/path/to/recordings" disabled={mutation.isPending} /></label>
+        <p className="text-xs text-muted-foreground">Use an absolute path to a writable folder on the NVR.</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm"><Checkbox checked={allowSystemDisk} onCheckedChange={checked => setAllowSystemDisk(checked === true)} disabled={mutation.isPending} />Allow recording on the system disk</label>
+        <p className="text-xs text-muted-foreground">A separate recording drive is preferable. Using the system disk reduces space available to other applications.</p>
+      </div>
       {mutation.isError && <p role="alert" className="text-sm text-critical">{mutation.error.message}</p>}
-      <Button type="submit" disabled={!path.trim() || mutation.isPending} className="self-start">{mutation.isPending ? "Saving…" : "Save recording folder"}</Button>
-    </form>
-  </details>;
+    </SettingsSection>
+  </form>;
 }

@@ -12,7 +12,7 @@ from starlette.requests import ClientDisconnect
 
 from vizenlink_nvr.api.dependencies import DbSession, get_current_user_optional, verify_camera_access
 from vizenlink_nvr.db.models import User
-from vizenlink_nvr.media.config import MediaMtxPorts
+from vizenlink_nvr.media.config import MediaMtxPorts, camera_path_name
 from vizenlink_nvr.services.session_manager import SESSION_COOKIE_NAME
 
 logger = logging.getLogger(__name__)
@@ -60,11 +60,11 @@ async def _read_capped_body(request: Request) -> bytes:
 
     try:
         body = await request.body()
-    except ClientDisconnect:
+    except ClientDisconnect as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Client disconnected",
-        )
+        ) from exc
 
     if len(body) > MAX_BODY_BYTES:
         raise HTTPException(
@@ -98,7 +98,7 @@ def _build_upstream_url(
     session_id: str | None = None,
 ) -> str:
     port = getattr(request.app.state, "mediamtx_webrtc_port", None) or MediaMtxPorts().webrtc
-    path = f"/cam/{serial}/{stream}/whep"
+    path = f"/{camera_path_name(serial, stream)}/whep"
     if session_id is not None:
         path = f"{path}/{session_id}"
     return f"http://127.0.0.1:{port}{path}"
@@ -138,6 +138,14 @@ async def _proxy_request(
     for h in FORWARDED_RESPONSE_HEADERS:
         if h in upstream_resp.headers:
             out_headers[h] = upstream_resp.headers[h]
+
+    # MediaMTX paths are lower-case; hand the session URL back with the caller's serial
+    # so the follow-up PATCH/DELETE passes the same per-camera access check.
+    location = next((k for k in out_headers if k.lower() == "location"), None)
+    if location is not None:
+        upstream_prefix = f"/{camera_path_name(serial, stream)}/"
+        if out_headers[location].startswith(upstream_prefix):
+            out_headers[location] = f"/cam/{serial}/{stream}/" + out_headers[location][len(upstream_prefix):]
 
     return Response(
         content=upstream_resp.content,

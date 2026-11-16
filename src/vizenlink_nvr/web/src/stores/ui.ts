@@ -9,10 +9,8 @@ export interface UiState {
   viewMode: ViewMode;
   readEventIds: Set<number>;
   dismissedAlertIds: Set<string>;
-  setTheme: (theme: Theme) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
-  setViewMode: (mode: ViewMode) => void;
   markEventRead: (id: number) => void;
   dismissAlert: (id: string) => void;
 }
@@ -24,18 +22,6 @@ export function resolvedTheme(theme: Theme): "light" | "dark" {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   return "light";
-}
-
-function getInitialTheme(): Theme {
-  try {
-    const val = localStorage.getItem("nvr_theme");
-    if (val === "light" || val === "dark" || val === "system") {
-      return val;
-    }
-  } catch {
-    // fallback
-  }
-  return "light"; // Phase 10: old VMS defaulted to the light theme
 }
 
 function getInitialSidebarOpen(): boolean {
@@ -55,18 +41,6 @@ function getInitialSidebarOpen(): boolean {
   return true;
 }
 
-function getInitialViewMode(): ViewMode {
-  try {
-    const val = localStorage.getItem("nvr_view_mode");
-    if (val === "advanced") {
-      return "advanced";
-    }
-  } catch {
-    // fallback
-  }
-  return "simple";
-}
-
 function getInitialReadEvents(): Set<number> {
   try {
     const val = localStorage.getItem("nvr_read_events");
@@ -83,20 +57,11 @@ function getInitialReadEvents(): Set<number> {
 }
 
 export const useUiStore = create<UiState>((set, get) => ({
-  theme: getInitialTheme(),
+  theme: "light",
   sidebarOpen: getInitialSidebarOpen(),
-  viewMode: getInitialViewMode(),
+  viewMode: "simple",
   readEventIds: getInitialReadEvents(),
   dismissedAlertIds: new Set<string>(),
-
-  setTheme: (theme: Theme) => {
-    try {
-      localStorage.setItem("nvr_theme", theme);
-    } catch {
-      // ignore storage errors
-    }
-    set({ theme });
-  },
 
   setSidebarOpen: (open: boolean) => {
     try {
@@ -110,15 +75,6 @@ export const useUiStore = create<UiState>((set, get) => ({
   toggleSidebar: () => {
     const next = !get().sidebarOpen;
     get().setSidebarOpen(next);
-  },
-
-  setViewMode: (viewMode: ViewMode) => {
-    try {
-      localStorage.setItem("nvr_view_mode", viewMode);
-    } catch {
-      // ignore storage errors
-    }
-    set({ viewMode });
   },
 
   markEventRead: (id: number) => {

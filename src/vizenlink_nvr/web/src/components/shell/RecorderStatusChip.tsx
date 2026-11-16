@@ -10,8 +10,8 @@ import { cn } from "cn";
 export type RecorderSeverity = "success" | "warning" | "critical";
 
 export const RecorderStatusChip: React.FC<{ className?: string }> = ({ className }) => {
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  const isCollapsed = state === "collapsed" && !isMobile;
 
   const { data: rawCameras } = useCameras();
   const { data: rawRecList } = useRecordingStatus();
@@ -66,7 +66,7 @@ export const RecorderStatusChip: React.FC<{ className?: string }> = ({ className
             data-slot="recorder-status-chip"
             aria-label={label}
             className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-md hover:bg-sidebar-accent cursor-default",
+              "mx-auto flex h-9 w-9 items-center justify-center rounded-md hover:bg-sidebar-accent cursor-default",
               className
             )}
           >

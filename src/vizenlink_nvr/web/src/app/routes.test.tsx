@@ -333,10 +333,10 @@ describe("Feature Route Adapters", () => {
     const dashLink = screen.getByRole("link", { name: "Dashboard" });
     expect(dashLink).toHaveAttribute("aria-current", "page");
     // Multiview must not also be marked current on the start page.
-    expect(screen.getByRole("link", { name: "Multiview" })).not.toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Live View" })).not.toHaveAttribute("aria-current", "page");
   });
 
-  it("sidebar uses the old VMS order and names", async () => {
+  it("groups monitoring, investigation and management with Search and AI", async () => {
     renderRoutesApp(["/"], "owner");
 
     await waitFor(() => {
@@ -344,7 +344,7 @@ describe("Feature Route Adapters", () => {
     });
     const nav = screen.getByRole("navigation", { name: "Primary" });
     const names = within(nav).getAllByRole("link").map((a) => a.textContent?.replace(/\d+$/, "").trim());
-    expect(names).toEqual(["Dashboard", "Cameras", "Alerts", "Multiview", "Playback", "Gallery", "Settings"]);
+    expect(names).toEqual(["Dashboard", "Cameras", "Live View", "Full screen view", "Search", "Alerts", "Playback", "Gallery", "AI Assistant", "Settings"]);
   });
 
   it("redirects unknown routes to / with replace", async () => {

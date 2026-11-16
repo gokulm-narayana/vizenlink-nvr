@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from vizenlink_nvr.api.dependencies import (
@@ -14,6 +14,7 @@ from vizenlink_nvr.api.dependencies import (
     RequireOperator,
 )
 from vizenlink_nvr.db.models import Camera
+from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.health import RecordingState
 from vizenlink_nvr.services.recording_settings import (
     AudioNotSupportedError,
@@ -22,6 +23,12 @@ from vizenlink_nvr.services.recording_settings import (
     set_recording_mode,
     set_recording_retention,
     set_recording_schedule,
+)
+from vizenlink_nvr.services.settings import (
+    CLIP_MINUTES_CHOICES,
+    CLIP_MINUTES_KEY,
+    put_setting,
+    read_clip_minutes,
 )
 from vizenlink_nvr.services.watchdog import check_camera_gaps
 
@@ -51,6 +58,47 @@ class RecordingSettingsUpdate(BaseModel):
     audio_enabled: bool | None = None
     retention_days: int | None = None
     retention_max_gb: int | None = None
+
+
+class RecordingOptions(BaseModel):
+    """Recorder-wide recording options."""
+
+    clip_minutes: int
+    clip_minutes_choices: list[int] = Field(default_factory=lambda: list(CLIP_MINUTES_CHOICES))
+
+
+class RecordingOptionsUpdate(BaseModel):
+    clip_minutes: int
+
+
+@recording_router.get("/options", response_model=RecordingOptions)
+async def get_recording_options(user: CurrentUser, db: DbSession) -> RecordingOptions:
+    """Length of each recorded clip, and the lengths that can be chosen."""
+    return RecordingOptions(clip_minutes=await read_clip_minutes(db))
+
+
+@recording_router.put("/options", response_model=RecordingOptions)
+async def update_recording_options(
+    payload: RecordingOptionsUpdate, user: RequireOperator, db: DbSession
+) -> RecordingOptions:
+    """Change the clip length. The recorder applies it to every camera within about 30 s."""
+    if payload.clip_minutes not in CLIP_MINUTES_CHOICES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Clip length must be one of {list(CLIP_MINUTES_CHOICES)} minutes.",
+        )
+    previous = await read_clip_minutes(db)
+    await put_setting(db, CLIP_MINUTES_KEY, payload.clip_minutes)
+    await AuditService.record_event(
+        session=db,
+        action="recording.update_options",
+        resource_type="recorder",
+        actor_id=user.id,
+        actor_username=user.username,
+        details={"clip_minutes": payload.clip_minutes, "previous_clip_minutes": previous},
+        commit=True,
+    )
+    return RecordingOptions(clip_minutes=payload.clip_minutes)
 
 
 @recording_router.get("/status", response_model=list[RecordingStatusItem])
@@ -98,6 +146,12 @@ async def update_recording_settings(
     db: DbSession,
 ) -> RecordingStatusItem:
     """Update recording mode, schedule, audio, or retention for a camera (Operator+)."""
+    result = await _apply_policy(db, serial, payload)
+    await db.commit()
+    return result
+
+
+async def _apply_policy(db: DbSession, serial: str, payload: RecordingSettingsUpdate) -> RecordingStatusItem:
     cam = await db.get(Camera, serial)
     if cam is None:
         raise HTTPException(
@@ -107,13 +161,13 @@ async def update_recording_settings(
 
     try:
         if payload.mode is not None:
-            await set_recording_mode(db, serial, payload.mode)
+            await set_recording_mode(db, serial, payload.mode, commit=False)
         if payload.schedule_json is not None:
-            await set_recording_schedule(db, serial, payload.schedule_json)
+            await set_recording_schedule(db, serial, payload.schedule_json, commit=False)
         if payload.audio_enabled is not None:
-            await set_recording_audio(db, serial, payload.audio_enabled)
+            await set_recording_audio(db, serial, payload.audio_enabled, commit=False)
         if {"retention_days", "retention_max_gb"} & payload.model_fields_set:
-            current = await get_or_create_recording_settings(db, serial)
+            current = await get_or_create_recording_settings(db, serial, commit=False)
             days = (
                 payload.retention_days
                 if "retention_days" in payload.model_fields_set
@@ -124,9 +178,9 @@ async def update_recording_settings(
                 if "retention_max_gb" in payload.model_fields_set
                 else current.retention_max_gb
             )
-            await set_recording_retention(db, serial, days, max_gb)
+            await set_recording_retention(db, serial, days, max_gb, commit=False)
 
-        updated = await get_or_create_recording_settings(db, serial)
+        updated = await get_or_create_recording_settings(db, serial, commit=False)
         return RecordingStatusItem(
             camera_serial=updated.camera_serial,
             mode=updated.mode,
@@ -145,3 +199,19 @@ async def update_recording_settings(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(err),
         ) from err
+
+
+class BulkPolicyUpdate(BaseModel):
+    serials: list[str] = Field(min_length=1, max_length=256)
+    changes: RecordingSettingsUpdate
+
+
+@recording_router.post("/apply")
+async def apply_recording_policies(
+    payload: BulkPolicyUpdate, user: RequireOperator, db: DbSession
+) -> dict[str, int]:
+    serials = list(dict.fromkeys(payload.serials))
+    for serial in serials:
+        await _apply_policy(db, serial, payload.changes)
+    await db.commit()
+    return {"updated": len(serials)}

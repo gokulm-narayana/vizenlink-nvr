@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { AlertTriangle } from "lucide-react";
+import { useUiStore } from "@/stores/ui";
 import { useAuthStatus } from "@/lib/queries";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +13,10 @@ import { AUTH_COPY } from "./copy";
 export const AuthGate: React.FC = () => {
   const { data, isPending, isError, refetch } = useAuthStatus();
   const { pathname, search } = useLocation();
+
+  React.useLayoutEffect(() => {
+    useUiStore.setState({ theme: data?.user?.theme ?? "system", viewMode: data?.user?.view_mode ?? "simple" });
+  }, [data?.user?.id, data?.user?.theme, data?.user?.view_mode]);
 
   // Row 1: status loading -> full-page skeleton
   if (isPending) {

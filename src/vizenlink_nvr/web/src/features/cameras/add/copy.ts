@@ -1,11 +1,7 @@
 export const ADD_CAMERA_COPY = {
   TITLE: "Add camera",
   PAGE_NOTE:
-    "Enter the camera's details yourself. The web app can't scan your network; to find cameras automatically, run `nvr cameras scan` on the NVR host.",
-  PAGE_NOTE_PRE:
-    "Enter the camera's details yourself. The web app can't scan your network; to find cameras automatically, run ",
-  PAGE_NOTE_CMD: "nvr cameras scan",
-  PAGE_NOTE_POST: " on the NVR host.",
+    "Find a supported camera on the recorder's network or enter its address manually.",
   STEP_CAPTION: (current: number, total: number = 3) => `Step ${current} of ${total}`,
   STEPS: ["Camera", "Details", "Streams"] as const,
 

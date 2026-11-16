@@ -40,49 +40,50 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({ form, disabled = false
         )}
       </Field>
 
-      {/* Location */}
-      <Field className="flex flex-col gap-1">
-        <FieldLabel htmlFor="camera-location" className="text-xs font-semibold">
-          {ADD_CAMERA_COPY.LOCATION_LABEL}
-        </FieldLabel>
-        <Input
-          id="camera-location"
-          placeholder="e.g. Front Door, Warehouse"
-          autoComplete="off"
-          disabled={disabled}
-          className="text-sm font-normal"
-          {...register("location")}
-        />
-        {errors.location ? (
-          <FieldError>{errors.location.message}</FieldError>
-        ) : (
-          <FieldDescription className="text-xs text-muted-foreground">
-            {ADD_CAMERA_COPY.LOCATION_HELPER}
-          </FieldDescription>
-        )}
-      </Field>
+      {/* Location & Group */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field className="flex flex-col gap-1">
+          <FieldLabel htmlFor="camera-location" className="text-xs font-semibold">
+            {ADD_CAMERA_COPY.LOCATION_LABEL}
+          </FieldLabel>
+          <Input
+            id="camera-location"
+            placeholder="e.g. Front Door, Warehouse"
+            autoComplete="off"
+            disabled={disabled}
+            className="text-sm font-normal"
+            {...register("location")}
+          />
+          {errors.location ? (
+            <FieldError>{errors.location.message}</FieldError>
+          ) : (
+            <FieldDescription className="text-xs text-muted-foreground">
+              {ADD_CAMERA_COPY.LOCATION_HELPER}
+            </FieldDescription>
+          )}
+        </Field>
 
-      {/* Group */}
-      <Field className="flex flex-col gap-1">
-        <FieldLabel htmlFor="camera-group" className="text-xs font-semibold">
-          {ADD_CAMERA_COPY.GROUP_LABEL}
-        </FieldLabel>
-        <Input
-          id="camera-group"
-          placeholder="e.g. default, exterior"
-          autoComplete="off"
-          disabled={disabled}
-          className="text-sm font-normal"
-          {...register("group_tag")}
-        />
-        {errors.group_tag ? (
-          <FieldError>{errors.group_tag.message}</FieldError>
-        ) : (
-          <FieldDescription className="text-xs text-muted-foreground">
-            {ADD_CAMERA_COPY.GROUP_HELPER}
-          </FieldDescription>
-        )}
-      </Field>
+        <Field className="flex flex-col gap-1">
+          <FieldLabel htmlFor="camera-group" className="text-xs font-semibold">
+            {ADD_CAMERA_COPY.GROUP_LABEL}
+          </FieldLabel>
+          <Input
+            id="camera-group"
+            placeholder="e.g. default, exterior"
+            autoComplete="off"
+            disabled={disabled}
+            className="text-sm font-normal"
+            {...register("group_tag")}
+          />
+          {errors.group_tag ? (
+            <FieldError>{errors.group_tag.message}</FieldError>
+          ) : (
+            <FieldDescription className="text-xs text-muted-foreground">
+              {ADD_CAMERA_COPY.GROUP_HELPER}
+            </FieldDescription>
+          )}
+        </Field>
+      </div>
     </div>
   );
 };

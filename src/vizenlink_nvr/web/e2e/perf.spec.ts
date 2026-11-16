@@ -40,12 +40,12 @@ test.describe("16-camera 4x4 Live grid performance & style backstop", () => {
 
     // 2. Set grid layout to 4x4 dimension and view mode to advanced
     // Install PerformanceObserver for longtask before load
+    expect((await page.request.patch("/api/v1/auth/preferences", { data: { view_mode: "advanced" } })).ok()).toBe(true);
     await page.addInitScript(() => {
       localStorage.setItem(
         "vizenlink_nvr_grid_layout_v1",
         JSON.stringify({ dimension: 4, page: 0, slotAssignments: {} })
       );
-      localStorage.setItem("nvr_view_mode", "advanced");
 
       (window as any).__longTasks = [];
       try {

@@ -1,4 +1,8 @@
+import { useAccountPreferences } from "@/features/profile/preferences";
 import React, { useState, useMemo } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 import { User, Sun, Moon, Monitor, KeyRound, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,13 +20,17 @@ import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { ROLE_DESCRIPTIONS, PROFILE_COPY } from "./copy";
 
 export const ProfilePage: React.FC = () => {
+  const { setTheme, setViewMode } = useAccountPreferences();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const currentUser = useCurrentUser();
   const theme = useUiStore((s) => s.theme);
-  const setTheme = useUiStore((s) => s.setTheme);
   const viewMode = useUiStore((s) => s.viewMode);
-  const setViewMode = useUiStore((s) => s.setViewMode);
   const signOut = useSignOut();
+  const signOutOthers = useMutation({
+    mutationFn: () => apiFetch<{ revoked: number }>("/api/v1/auth/sessions/sign-out-others", { method: "POST" }),
+    onSuccess: ({ revoked }) => toast.success(revoked ? "Other sessions signed out" : "No other sessions were open"),
+    onError: error => toast.error(error.message),
+  });
 
   const { data: me, isLoading: meLoading, error: meError, refetch: refetchMe } = useMe();
   const { data: cameras = [], isLoading: camerasLoading } = useCameras();
@@ -45,7 +53,7 @@ export const ProfilePage: React.FC = () => {
 
   if (meLoading && !user) {
     return (
-      <div className="flex flex-col gap-6 p-6 min-h-full max-w-[640px]">
+      <div className="flex flex-col gap-6 min-h-full max-w-[640px]">
         <div className="flex flex-col gap-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-32" />
@@ -59,7 +67,7 @@ export const ProfilePage: React.FC = () => {
 
   if (meError && !user) {
     return (
-      <div className="p-6 max-w-[640px]">
+      <div className="max-w-[640px]">
         <InlineError
           message={PROFILE_COPY.LOAD_ERROR}
           actionLabel={PROFILE_COPY.RELOAD_PROFILE}
@@ -70,17 +78,8 @@ export const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-full max-w-[640px]">
-      {/* Page Header */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground tracking-tight">
-          Profile & Preferences
-        </h2>
-        <span className="text-xs font-normal text-muted-foreground">
-          Manage your account and client options
-        </span>
-      </div>
-
+    <div className="grid min-h-full max-w-[1280px] content-start items-start gap-6 xl:grid-cols-2">
+      <div className="flex min-w-0 flex-col gap-6">
       {/* 1. Account Card (Primary visual anchor) */}
       <Card className="border-border bg-card p-6 flex flex-col gap-6">
         <CardHeader className="p-0 pb-4 border-b border-border flex flex-row items-center gap-4">
@@ -161,7 +160,30 @@ export const ProfilePage: React.FC = () => {
             <span>{PROFILE_COPY.CHANGE_PASSWORD_ACTION}</span>
           </Button>
         </CardContent>
+
+        {/* Same row shape as Password: what it is on the left, the action on the right. */}
+        <CardContent className="p-0 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-foreground">Other sessions</span>
+            <span className="text-xs text-muted-foreground">
+              Sign out every other browser and device that is using this account.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={signOutOthers.isPending}
+            onClick={() => signOutOthers.mutate()}
+            className="gap-2 text-xs shrink-0 h-8"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sign out other sessions</span>
+          </Button>
+        </CardContent>
       </Card>
+
+      </div>
 
       {/* 3. Preferences Card */}
       <Card className="border-border bg-card p-6 flex flex-col gap-6">

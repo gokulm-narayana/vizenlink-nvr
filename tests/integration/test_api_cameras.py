@@ -178,3 +178,50 @@ async def test_camera_crud_and_rbac_filtering(app_fixture) -> None:
     # 11. Verify CAM-SECRET is gone
     res_after = await client.get("/api/v1/cameras/CAM-SECRET")
     assert res_after.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_archived_footage_survives_removal_rescan_and_readding(app_fixture, tmp_path) -> None:
+    client, owner, viewer = app_fixture
+    client.cookies.set("session_id", owner)
+    camera = {"serial": "CAM-EVIDENCE", "name": "Entrance", "host": "192.168.1.10"}
+    assert (await client.post("/api/v1/cameras", json=camera)).status_code == 201
+    folder = tmp_path / "recordings"
+    segment = folder / "cam" / "cam-evidence" / "main" / "2026-11-10T09-00-00.mp4"
+    segment.parent.mkdir(parents=True)
+    segment.write_bytes(b"test footage" * 1024)
+    assert (
+        await client.post(
+            "/api/v1/storage/set-path",
+            json={
+                "storage_path": str(folder),
+                "allow_system_disk": True,
+            },
+        )
+    ).is_success
+    assert (await client.post("/api/v1/storage/scan")).json()["adopted"] == 1
+    timeline = "/api/v1/playback/timeline"
+    interval = {
+        "camera_serial": camera["serial"],
+        "start_time": "2026-11-10T00:00:00Z",
+        "end_time": "2026-11-11T00:00:00Z",
+    }
+    indexed = (await client.get(timeline, params=interval)).json()["segments"][0]
+    segment_id = indexed["id"]
+    assert (await client.post(f"/api/v1/playback/segments/{segment_id}/lock")).is_success
+    assert (await client.delete("/api/v1/cameras/CAM-EVIDENCE?keep_recordings=true")).is_success
+    assert (await client.get("/api/v1/cameras")).json() == []
+    archives = (await client.get("/api/v1/cameras?playback=true")).json()
+    assert [(entry["serial"], entry["archived"]) for entry in archives] == [("CAM-EVIDENCE", True)]
+    assert (await client.post("/api/v1/storage/scan")).json()["adopted"] == 0
+    kept = (await client.get(timeline, params=interval)).json()["segments"][0]
+    assert kept["id"] == segment_id and kept["is_protected"]
+    url = f"/api/v1/playback/segment/{segment_id}"
+    assert (await client.get(url)).content == segment.read_bytes()
+    client.cookies.set("session_id", viewer)
+    assert (await client.get(url)).status_code == 403
+    client.cookies.set("session_id", owner)
+    assert (await client.post("/api/v1/cameras", json=camera)).status_code == 201
+    restored = (await client.get("/api/v1/cameras?playback=true")).json()
+    assert len(restored) == 1 and not restored[0]["archived"]
+    assert (await client.get(url)).content == segment.read_bytes()

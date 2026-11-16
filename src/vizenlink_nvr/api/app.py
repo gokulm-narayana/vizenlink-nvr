@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -12,8 +13,12 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from vizenlink_nvr.api.cam_proxy import cam_proxy_router
+from vizenlink_nvr.api.v1.assistant import assistant_router
 from vizenlink_nvr.api.v1.audit import audit_router
 from vizenlink_nvr.api.v1.auth import auth_router
+from vizenlink_nvr.api.v1.camera_accounts import camera_accounts_router
+from vizenlink_nvr.api.v1.camera_features import camera_features_router
+from vizenlink_nvr.api.v1.camera_recordings import camera_recordings_router
 from vizenlink_nvr.api.v1.camera_settings import camera_settings_router
 from vizenlink_nvr.api.v1.cameras import cameras_router
 from vizenlink_nvr.api.v1.events import events_router
@@ -22,36 +27,57 @@ from vizenlink_nvr.api.v1.health import health_router
 from vizenlink_nvr.api.v1.mobile import mobile_router
 from vizenlink_nvr.api.v1.playback import playback_router
 from vizenlink_nvr.api.v1.recording import recording_router
+from vizenlink_nvr.api.v1.search import search_router
 from vizenlink_nvr.api.v1.storage import storage_router
+from vizenlink_nvr.api.v1.system import system_router
 from vizenlink_nvr.api.v1.users import users_router
+from vizenlink_nvr.config import NvrSettings, load_settings
+from vizenlink_nvr.services.runtime import open_runtime
 
 
 def create_app(
     session_factory: async_sessionmaker[AsyncSession] | None = None,
     runtime: Any | None = None,
+    *,
+    settings: NvrSettings | None = None,
+    recorder_port: int | None = None,
+    recorder_lan_access: bool = False,
 ) -> FastAPI:
-    """Create and configure the FastAPI application instance."""
+    """Create and configure the FastAPI application instance.
+
+    ``recorder_port`` (the port this API listens on) starts MediaMTX and the recorder
+    loops for the life of the app; ``nvr run`` sets it. Tests leave it unset.
+    """
 
     @asynccontextmanager
-    async def lifespan(fastapi_app: FastAPI):
-        has_sf = getattr(fastapi_app.state, "session_factory", None) is not None
-        has_rt = getattr(fastapi_app.state, "runtime", None) is not None
-        if not has_sf and not has_rt:
-            from vizenlink_nvr.config import load_settings
-            from vizenlink_nvr.db.engine import create_engine_for, upgrade_to_head
-            from vizenlink_nvr.paths import db_path, ensure_data_dir
+    async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
+        async with AsyncExitStack() as stack:
+            owns_runtime = fastapi_app.state.session_factory is None and fastapi_app.state.runtime is None
+            if owns_runtime:
+                fastapi_app.state.runtime = await stack.enter_async_context(
+                    open_runtime(settings if settings is not None else load_settings())
+                )
+            recorder = None
+            if recorder_port is not None and fastapi_app.state.runtime is not None:
+                from vizenlink_nvr.services.recorder import RecorderSupervisor
 
-            settings = load_settings()
-            ensure_data_dir(settings)
-            db_p = db_path(settings)
-            upgrade_to_head(db_p)
-            engine = create_engine_for(db_p)
-            fastapi_app.state.engine = engine
-            fastapi_app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
-        yield
-        engine = getattr(fastapi_app.state, "engine", None)
-        if engine is not None:
-            await engine.dispose()
+                recorder = RecorderSupervisor(
+                    fastapi_app.state.runtime, nvr_port=recorder_port, lan_access=recorder_lan_access
+                )
+                fastapi_app.state.mediamtx_webrtc_port = recorder.ports.webrtc
+                await recorder.start()
+            fastapi_app.state.recorder = recorder
+            try:
+                yield
+            finally:
+                if recorder is not None:
+                    await recorder.stop()
+                    fastapi_app.state.recorder = None
+                if owns_runtime:
+                    fastapi_app.state.runtime = None
+                camera_settings = getattr(fastapi_app.state, "camera_settings_service", None)
+                if camera_settings is not None:
+                    await camera_settings.http.aclose()
 
     app = FastAPI(
         title="VizenLink NVR API",
@@ -70,13 +96,19 @@ def create_app(
     # V1 API Router
     v1_router = APIRouter(prefix="/api/v1")
     v1_router.include_router(auth_router)
+    v1_router.include_router(system_router)
     v1_router.include_router(users_router)
     v1_router.include_router(cameras_router)
     v1_router.include_router(camera_settings_router)
+    v1_router.include_router(camera_accounts_router)
+    v1_router.include_router(camera_features_router)
+    v1_router.include_router(camera_recordings_router)
     v1_router.include_router(recording_router)
     v1_router.include_router(storage_router)
     v1_router.include_router(health_router)
     v1_router.include_router(audit_router)
+    v1_router.include_router(search_router)
+    v1_router.include_router(assistant_router)
     v1_router.include_router(events_router)
     v1_router.include_router(playback_router)
     v1_router.include_router(gallery_router)
@@ -99,7 +131,7 @@ def create_app(
 
         @app.get("/", include_in_schema=False)
         async def serve_index() -> FileResponse:
-            return FileResponse(index_file)
+            return FileResponse(index_file, headers={"Cache-Control": "no-cache"})
 
         @app.exception_handler(404)
         async def spa_404_handler(request: Request, exc: Exception) -> Response:
@@ -116,7 +148,7 @@ def create_app(
             if candidate.is_file():
                 return FileResponse(candidate)
 
-            return FileResponse(index_file)
+            return FileResponse(index_file, headers={"Cache-Control": "no-cache"})
 
     return app
 

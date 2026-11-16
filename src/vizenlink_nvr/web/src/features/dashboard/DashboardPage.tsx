@@ -14,12 +14,18 @@ import {
   Video,
   Disc,
   Clock,
+  Search,
+  X,
+  LayoutGrid,
+  Columns2,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/InlineError";
+import { CameraHealthLink } from "@/components/CameraHealthLink";
 import {
   useAlerts,
   useCameras,
@@ -38,6 +44,7 @@ import { useOutages, useStorageStatus, useSystemMetrics } from "./api";
 import { bytesToGiB, storageSummary } from "./StorageCard";
 import { OutageHistoryDialog } from "./OutageHistoryDialog";
 import { DASHBOARD_COPY } from "./copy";
+import { PageIntro } from "@/components/PageIntro";
 
 export function formatUptime(seconds?: number): string {
   if (!seconds || seconds <= 0) return "0s";
@@ -220,6 +227,15 @@ const ROW_BADGE: Record<CameraRowState, { text: string; cls: string }> = {
   ok: { text: "Recording", cls: "bg-success-subtle text-success" },
 };
 
+// The dot repeats the badge colour: a green dot beside a red "Not recording" badge read as
+// "this camera is fine".
+const ROW_DOT: Record<CameraRowState, string> = {
+  offline: "bg-offline",
+  not_recording: "bg-critical",
+  disabled: "bg-muted-foreground",
+  ok: "bg-success",
+};
+
 /* ------------------------------------------------------------------------- */
 /* Page                                                                       */
 /* ------------------------------------------------------------------------- */
@@ -229,6 +245,7 @@ export const DashboardPage: React.FC = () => {
   const user = useCurrentUser();
   const isManager = user?.role === "owner" || user?.role === "operator";
   const dismissedAlertIds = useUiStore((s) => s.dismissedAlertIds);
+  const dismissAlert = useUiStore((s) => s.dismissAlert);
   // CPU/memory are diagnostics, not user value (REQUIREMENTS out-of-scope): only in technical view.
   const showTechnical = useUiStore((s) => s.viewMode) === "advanced";
 
@@ -262,6 +279,9 @@ export const DashboardPage: React.FC = () => {
   });
   const rows = buildCameraRows(cameras, recList, openOutageMap, status.storageBroken);
   const onlineCount = rows.filter((r) => r.online).length;
+  const matrixRows = [...rows].sort((a, b) => Number(b.online) - Number(a.online)).slice(0, 4);
+  const firstOnline = rows.find((x) => x.online)?.camera.serial ?? rows[0]?.camera.serial;
+  const syncPlaybackHref = firstOnline ? `/playback?camera=${encodeURIComponent(firstOnline)}&mode=sync` : "/playback?mode=sync";
   const systemAlerts = (Array.isArray(rawAlerts) ? rawAlerts : []).filter((a) => !dismissedAlertIds.has(a.id));
   const latestEvents = (Array.isArray(recentEvents?.items) ? recentEvents.items : []).slice(0, 6);
   const cameraName = (serial?: string) => cameras.find((c) => c.serial === serial)?.name ?? serial ?? "Camera";
@@ -283,6 +303,8 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="flex min-h-full flex-col gap-4 lg:gap-6">
+      <PageIntro description="Keep an eye on recording, check your cameras, and pick up where you left off."
+        actions={<><Button variant="outline" asChild><Link to="/search"><Search className="size-4" />Find footage</Link></Button><Button asChild><Link to="/live"><Video className="size-4" />Watch live</Link></Button></>} />
       {/* 1. Is everything recording? */}
       <div
         role="status"
@@ -392,12 +414,88 @@ export const DashboardPage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-3">
+          {/* Live Camera Matrix Strip */}
+          {matrixRows.length > 0 && (
+            <Panel
+              icon={LayoutGrid}
+              title="Live camera feeds"
+              action={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={syncPlaybackHref}>
+                      <Columns2 className="size-4" />
+                      Sync playback
+                    </Link>
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link to="/live">
+                      <Play className="size-4" />
+                      Open multiview
+                    </Link>
+                  </Button>
+                </div>
+              }
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {matrixRows.map((row, idx) => {
+                  const badge = ROW_BADGE[row.state];
+                  return (
+                    <div key={row.camera.serial} className="group overflow-hidden rounded-lg border border-border bg-card">
+                      <Link
+                        to={`/live?camera=${encodeURIComponent(row.camera.serial)}`}
+                        className="relative flex aspect-video items-center justify-center overflow-hidden bg-video-bg text-video-fg"
+                      >
+                        {row.online ? (
+                          <img
+                            src={`/api/v1/cameras/${encodeURIComponent(row.camera.serial)}/snapshot?profile=low`}
+                            alt=""
+                            loading="lazy"
+                            className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <Cctv className="size-8 text-video-fg/40" />
+                        )}
+                        <span className="absolute left-2 top-2 rounded bg-video-overlay/80 px-2 py-1 text-xs font-semibold tabular-nums text-video-fg">
+                          CH {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <span className={cn("absolute right-2 top-2 rounded-full px-2 py-1 text-xs font-semibold", badge.cls)}>
+                          {badge.text}
+                        </span>
+                      </Link>
+                      <div className="flex items-center justify-between gap-2 px-4 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{row.camera.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{row.camera.location || row.camera.serial}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button variant="ghost" size="icon" className="size-8" title="Watch live" aria-label={`Open live view for ${row.camera.name}`} asChild>
+                            <Link to={`/live?camera=${encodeURIComponent(row.camera.serial)}`}>
+                              <Play className="size-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="size-8" title="Play back" aria-label={`Open playback for ${row.camera.name}`} asChild>
+                            <Link to={`/playback?camera=${encodeURIComponent(row.camera.serial)}`}>
+                              <History className="size-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Panel>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-3">
             {/* 3. Cameras, problems first */}
             <Panel
               icon={Video}
               title={`Cameras (${cameras.length})`}
-              className="xl:col-span-2"
+              className="lg:col-span-2 lg:self-start"
               action={
                 <div className="flex flex-wrap items-center gap-1">
                   <Button variant="ghost" size="sm" onClick={() => setOutageDialogOpen(true)}>
@@ -423,7 +521,22 @@ export const DashboardPage: React.FC = () => {
                     const badge = ROW_BADGE[row.state];
                     return (
                       <li key={row.camera.serial} data-state={row.state} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4">
-                        <span className={cn("size-2 shrink-0 rounded-full", row.online ? "bg-success" : "bg-offline")} aria-hidden />
+                        <span className={cn("size-2 shrink-0 rounded-full", ROW_DOT[row.state])} aria-hidden />
+                        <div className="hidden h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-video-bg sm:flex">
+                          {row.online ? (
+                            <img
+                              src={`/api/v1/cameras/${encodeURIComponent(row.camera.serial)}/snapshot?profile=low`}
+                              alt=""
+                              loading="lazy"
+                              className="size-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <Cctv className="size-4 text-video-fg/40" />
+                          )}
+                        </div>
                         <Link to={`/cameras/${encodeURIComponent(row.camera.serial)}/health`} className="min-w-0 flex-1 basis-40 hover:underline">
                           <span className="block truncate font-semibold">{row.camera.name}</span>
                           <span className="block truncate text-sm text-muted-foreground">{row.problem ?? (row.camera.location || "—")}</span>
@@ -435,7 +548,7 @@ export const DashboardPage: React.FC = () => {
                         <span className={cn("rounded-full px-2 py-1 text-xs font-semibold", badge.cls)}>{badge.text}</span>
                         <span className="flex items-center gap-1">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to="/live" aria-label={`Watch ${row.camera.name} live`}>
+                            <Link to={`/live?camera=${encodeURIComponent(row.camera.serial)}`} aria-label={`Watch ${row.camera.name} live`}>
                               Live
                             </Link>
                           </Button>
@@ -486,7 +599,11 @@ export const DashboardPage: React.FC = () => {
                         <span className="min-w-0 flex-1">
                           <span className="block font-semibold">{a.title ?? a.message}</span>
                           {a.title && <span className="block text-muted-foreground">{a.message}</span>}
+                          <CameraHealthLink serial={a.camera_serial} source={a.source} className="mt-1" />
                         </span>
+                        <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Dismiss alert" title="Dismiss alert" onClick={() => dismissAlert(a.id)}>
+                          <X className="size-4" />
+                        </Button>
                       </li>
                     ))}
                     {latestEvents.map((evt) => (
@@ -515,7 +632,7 @@ export const DashboardPage: React.FC = () => {
                 title="Storage"
                 action={
                   <span className={cn("text-xs font-semibold", status.storageBroken ? "text-critical" : "text-success")}>
-                    {status.storageBroken ? "Unavailable" : "Ready to record"}
+                    {status.storageBroken ? "Unavailable" : "Storage ready"}
                   </span>
                 }
               >

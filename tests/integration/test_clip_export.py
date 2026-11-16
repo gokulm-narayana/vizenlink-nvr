@@ -406,3 +406,104 @@ async def test_api_save_snapshot_workflow(app_fixture):
         audit_event = audit_res.scalar_one_or_none()
         assert audit_event is not None
         assert audit_event.actor_username == "export_owner"
+
+
+@pytest.mark.asyncio
+async def test_api_manual_clip_workflow(app_fixture):
+    """Test POST /api/v1/playback/manual-clip creates manual_clip item, file, and audit log."""
+    app = app_fixture["app"]
+    owner_token = app_fixture["owner_token"]
+    viewer_token = app_fixture["viewer_token"]
+    t1 = app_fixture["t1"]
+    t3 = app_fixture["t3"]
+    session_factory = app_fixture["session_factory"]
+    storage_root = app_fixture["storage_root"]
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        # Viewer access denied to CAM-EXPORT (AUTH-05)
+        resp_denied = await client.post(
+            "/api/v1/playback/manual-clip",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+            json={
+                "camera_serial": "CAM-EXPORT",
+                "start_time": t1.isoformat(),
+                "end_time": t3.isoformat(),
+            },
+        )
+        assert resp_denied.status_code == 403
+
+        # Invalid time range
+        resp_bad = await client.post(
+            "/api/v1/playback/manual-clip",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "camera_serial": "CAM-EXPORT",
+                "start_time": t3.isoformat(),
+                "end_time": t1.isoformat(),
+            },
+        )
+        assert resp_bad.status_code == 400
+
+        # Manual clip assembled from recording segments
+        resp_seg = await client.post(
+            "/api/v1/playback/manual-clip",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "camera_serial": "CAM-EXPORT",
+                "start_time": t1.isoformat(),
+                "end_time": t3.isoformat(),
+                "title": "Live Manual Clip",
+            },
+        )
+        assert resp_seg.status_code == 200
+        seg_data = resp_seg.json()
+        assert seg_data["item_type"] == "manual_clip"
+        assert seg_data["title"] == "Live Manual Clip"
+        assert seg_data["file_path"].startswith("gallery/clips/cam-export/")
+        seg_file = storage_root / seg_data["file_path"]
+        assert seg_file.exists()
+        assert seg_file.stat().st_size == seg_data["file_size_bytes"]
+
+        # Manual clip uploaded via video_base64 fallback on camera without segments
+        raw_mp4 = make_box("ftyp", b"isommp42") + make_box("mdat", b"live_bytes")
+        b64_mp4 = base64.b64encode(raw_mp4).decode("ascii")
+        resp_b64 = await client.post(
+            "/api/v1/playback/manual-clip",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "camera_serial": "CAM-OTHER",
+                "start_time": t1.isoformat(),
+                "end_time": t3.isoformat(),
+                "video_base64": f"data:video/mp4;base64,{b64_mp4}",
+            },
+        )
+        assert resp_b64.status_code == 200
+        b64_data = resp_b64.json()
+        assert b64_data["item_type"] == "manual_clip"
+        assert (storage_root / b64_data["file_path"]).read_bytes() == raw_mp4
+
+        # Unknown camera with no segments -> 404
+        resp_missing = await client.post(
+            "/api/v1/playback/manual-clip",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={
+                "camera_serial": "CAM-UNKNOWN",
+                "start_time": t1.isoformat(),
+                "end_time": t3.isoformat(),
+            },
+        )
+        assert resp_missing.status_code == 404
+
+    async with session_factory() as session:
+        item = await session.get(GalleryItem, seg_data["id"])
+        assert item is not None
+        assert item.item_type == "manual_clip"
+
+        audit_stmt = select(AuditLog).where(
+            AuditLog.action == "gallery.manual_clip",
+            AuditLog.resource_id == str(item.id),
+        )
+        audit_event = (await session.execute(audit_stmt)).scalar_one_or_none()
+        assert audit_event is not None
+        assert audit_event.actor_username == "export_owner"

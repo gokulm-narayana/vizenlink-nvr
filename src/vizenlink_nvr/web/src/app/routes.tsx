@@ -20,6 +20,7 @@ export interface ShellRoute {
   minRole: Role;
   element: React.ReactNode;
   fullBleed?: boolean;
+  stickyContent?: boolean;
 }
 
 const routeModules = import.meta.glob<{ routes: ShellRoute[] }>(

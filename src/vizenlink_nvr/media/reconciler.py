@@ -15,9 +15,11 @@ import httpx
 from sqlalchemy import select
 
 from vizenlink_nvr.db.models import Camera, CameraCredential, CameraStream
+from vizenlink_nvr.media.config import camera_path_name
 from vizenlink_nvr.paths import mediamtx_dir
 from vizenlink_nvr.secrets.vault import SealedSecret, Vault
 from vizenlink_nvr.services.recording_settings import should_record_now
+from vizenlink_nvr.services.settings import read_clip_minutes
 from vizenlink_nvr.timeutil import utc_now
 
 if TYPE_CHECKING:
@@ -170,6 +172,8 @@ async def compute_desired_paths(
     cameras = cam_res.scalars().all()
 
     desired: dict[str, PathConfiguration] = {}
+    # Recorder-wide clip length, read once per pass.
+    clip_duration: str | None = None
 
     for cam in cameras:
         # Decrypt password if credential and vault available
@@ -220,7 +224,9 @@ async def compute_desired_paths(
         if volume_ok:
             record_active = await should_record_now(session, cam.serial, now=now, tz_name=tz_name)
 
-        main_path_name = f"cam/{cam.serial.lower()}/main"
+        main_path_name = camera_path_name(cam.serial, "main")
+        if clip_duration is None:
+            clip_duration = f"{await read_clip_minutes(session) * 60}s"
         record_path_pattern = f"{storage_path}/%path/%Y/%m/%d/%Y-%m-%dT%H-%M-%SZ-%f"
 
         desired[main_path_name] = PathConfiguration(
@@ -230,11 +236,13 @@ async def compute_desired_paths(
             record=record_active,
             record_format="fmp4",
             record_part_duration="1s",
-            record_segment_duration="60s",
+            record_segment_duration=clip_duration,
             record_delete_after="0s",
             record_path=record_path_pattern,
             run_on_record_segment_complete="nvr recording hook-segment-complete",
-            source_fingerprint=cam.tls_fingerprint_sha256 if scheme == "rtsps" else "",
+            source_fingerprint=(
+                (main_stream.tls_fingerprint_sha256 or "") if main_stream and scheme == "rtsps" else ""
+            ),
         )
 
         # 2. Sub stream (if configured)
@@ -253,7 +261,7 @@ async def compute_desired_paths(
             else:
                 sub_source_url = f"{sub_scheme}://{cam.host}:{sub_port}{sub_path}"
 
-            sub_path_name = f"cam/{cam.serial.lower()}/sub"
+            sub_path_name = camera_path_name(cam.serial, "sub")
             desired[sub_path_name] = PathConfiguration(
                 name=sub_path_name,
                 source=sub_source_url,
@@ -265,7 +273,7 @@ async def compute_desired_paths(
                 record_delete_after="0s",
                 record_path="",
                 run_on_record_segment_complete="",
-                source_fingerprint=cam.tls_fingerprint_sha256 if sub_scheme == "rtsps" else "",
+                source_fingerprint=(sub_stream.tls_fingerprint_sha256 or "") if sub_scheme == "rtsps" else "",
             )
 
     return desired

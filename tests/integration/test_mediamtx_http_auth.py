@@ -98,7 +98,7 @@ async def test_full_media_token_issuance_and_auth_handshake(app_and_users) -> No
         "/api/v1/auth/mediamtx",
         json={
             "ip": "192.168.1.42",
-            "path": "cam/CAM-LOBBY/sub",
+            "path": "cam/cam-lobby/sub",
             "protocol": "webrtc",
             "action": "read",
             "query": f"token={media_token}",

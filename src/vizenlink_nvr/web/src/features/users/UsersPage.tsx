@@ -103,7 +103,7 @@ export const UsersPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-full max-w-[1280px]">
+    <div className="flex flex-col gap-6 min-h-full">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold text-foreground tracking-tight">

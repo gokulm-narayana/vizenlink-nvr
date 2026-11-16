@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import base64
 import os
+import struct
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
@@ -18,13 +19,14 @@ from vizenlink_nvr.api.dependencies import (
     DbSession,
     RequireOperator,
 )
-from vizenlink_nvr.db.models import Segment, StorageSettings
+from vizenlink_nvr.db.models import Camera, Segment, StorageSettings
 from vizenlink_nvr.media.clip_exporter import ClipExporter
 from vizenlink_nvr.media.playback_streamer import RangeFileResponse
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.gallery import GalleryService
+from vizenlink_nvr.services.indexer import parse_start_time_from_path
 from vizenlink_nvr.services.timeline import TimelineService
-from vizenlink_nvr.timeutil import utc_now
+from vizenlink_nvr.timeutil import UTC, utc_now
 
 playback_router = APIRouter(prefix="/playback", tags=["playback"])
 
@@ -90,6 +92,14 @@ class ExportClipRequest(BaseModel):
     start_time: datetime
     end_time: datetime
     title: str | None = None
+
+
+class ManualClipRequest(BaseModel):
+    camera_serial: str
+    start_time: datetime
+    end_time: datetime
+    title: str | None = None
+    video_base64: str | None = None
 
 
 class SaveSnapshotRequest(BaseModel):
@@ -301,9 +311,13 @@ async def lock_segment(
             detail=f"Segment {segment_id} not found",
         )
 
+    reasons = (seg.protection_reason or "").split(",") if seg.protection_reason else []
+    if seg.is_protected and not reasons:
+        reasons.append("legacy")
+    if not any(reason.startswith("evidence_lock:") for reason in reasons):
+        reasons.append(f"evidence_lock:user_{user.id}")
     seg.is_protected = True
-    seg.protection_reason = f"evidence_lock:user_{user.id}"
-    await db.commit()
+    seg.protection_reason = ",".join(reasons)
 
     await AuditService.record_event(
         session=db,
@@ -343,9 +357,11 @@ async def unlock_segment(
             detail=f"Segment {segment_id} not found",
         )
 
-    seg.is_protected = False
-    seg.protection_reason = None
-    await db.commit()
+    reasons = (seg.protection_reason or "").split(",")
+    if any(reason.startswith("evidence_lock:") for reason in reasons):
+        remaining = [reason for reason in reasons if not reason.startswith("evidence_lock:")]
+        seg.protection_reason = ",".join(remaining) or None
+        seg.is_protected = bool(remaining)
 
     await AuditService.record_event(
         session=db,
@@ -469,6 +485,220 @@ async def export_clip(
             "end_time": payload.end_time.isoformat(),
             "file_size_bytes": file_size,
             "file_path": rel_path,
+        },
+        commit=True,
+    )
+
+    return GalleryItemModel(
+        id=item.id,
+        camera_serial=item.camera_serial,
+        item_type=item.item_type,
+        title=item.title,
+        file_path=item.file_path,
+        file_size_bytes=item.file_size_bytes,
+        duration_seconds=item.duration_seconds,
+        captured_at=item.captured_at,
+        created_at=item.created_at,
+        user_id=item.user_id,
+    )
+
+
+def _make_isobmff_box(box_type: str, payload: bytes = b"") -> bytes:
+    """Build an ISOBMFF box with a big-endian 4-byte size header."""
+    return struct.pack(">I", 8 + len(payload)) + box_type.encode("ascii") + payload
+
+
+def _write_atomic_bytes(output_path: Path, data: bytes) -> None:
+    """Atomically write bytes to output_path with 0o640 permissions on POSIX."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_output = output_path.with_name(f"{output_path.name}.tmp_{uuid.uuid4().hex[:8]}")
+    try:
+        tmp_output.write_bytes(data)
+        if os.name == "posix":
+            os.chmod(tmp_output, 0o640)
+        tmp_output.replace(output_path)
+    finally:
+        if tmp_output.exists():
+            tmp_output.unlink(missing_ok=True)
+
+
+async def _collect_manual_clip_segments(
+    db: AsyncSession,
+    storage_root: Path,
+    camera_serial: str,
+    start_time: datetime,
+    end_time: datetime,
+) -> list[Path]:
+    """Collect indexed and on-disk fMP4 segment files overlapping [start_time, end_time]."""
+    start_utc = start_time.astimezone(UTC) if start_time.tzinfo else start_time.replace(tzinfo=UTC)
+    end_utc = end_time.astimezone(UTC) if end_time.tzinfo else end_time.replace(tzinfo=UTC)
+
+    stmt = (
+        select(Segment)
+        .where(
+            Segment.camera_serial == camera_serial,
+            Segment.end_time > start_utc,
+            Segment.start_time < end_utc,
+        )
+        .order_by(Segment.start_time.asc())
+    )
+    res = await db.execute(stmt)
+    segments = list(res.scalars().all())
+
+    seen: set[Path] = set()
+    candidates: list[tuple[datetime, Path]] = []
+
+    for s in segments:
+        p = Path(s.file_path)
+        if not p.is_absolute():
+            p = storage_root / p
+        if p.exists() and p.is_file() and p.stat().st_size > 0:
+            rp = p.resolve()
+            if rp not in seen:
+                seen.add(rp)
+                candidates.append((s.start_time, rp))
+
+    scan_dirs = [
+        storage_root / "cam" / camera_serial.lower() / "main",
+        storage_root / camera_serial,
+    ]
+    for base_dir in scan_dirs:
+        if not base_dir.exists() or not base_dir.is_dir():
+            continue
+        for p in sorted(base_dir.rglob("*.mp4")):
+            if not p.is_file() or p.stat().st_size <= 0:
+                continue
+            rp = p.resolve()
+            if rp in seen:
+                continue
+            f_start = parse_start_time_from_path(p)
+            mtime_dt = datetime.fromtimestamp(p.stat().st_mtime, tz=UTC)
+            f_end = max(f_start + timedelta(seconds=60), mtime_dt)
+            if f_end > start_utc and f_start < end_utc:
+                seen.add(rp)
+                candidates.append((f_start, rp))
+
+    candidates.sort(key=lambda pair: pair[0])
+    return [pair[1] for pair in candidates]
+
+
+@playback_router.post("/manual-clip", response_model=GalleryItemModel)
+async def save_manual_clip(
+    payload: ManualClipRequest,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> GalleryItemModel:
+    """Save a manual clip recorded from live view into the media gallery (LIVE-07 / LIVE-09)."""
+    _verify_camera_access(user, payload.camera_serial)
+
+    start_utc = (
+        payload.start_time.astimezone(UTC)
+        if payload.start_time.tzinfo
+        else payload.start_time.replace(tzinfo=UTC)
+    )
+    end_utc = (
+        payload.end_time.astimezone(UTC)
+        if payload.end_time.tzinfo
+        else payload.end_time.replace(tzinfo=UTC)
+    )
+
+    if end_utc <= start_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_time must be greater than start_time",
+        )
+
+    storage_root = await _resolve_storage_root(request, db)
+    start_str = start_utc.strftime("%Y%m%d_%H%M%S")
+    filename = f"manual_{payload.camera_serial}_{start_str}_{uuid.uuid4().hex[:6]}.mp4"
+    rel_path = GalleryService.generate_relative_path(
+        camera_serial=payload.camera_serial,
+        item_type="manual_clip",
+        captured_at=start_utc,
+        filename=filename,
+    )
+    abs_output = storage_root / rel_path
+
+    segment_paths = await _collect_manual_clip_segments(
+        db=db,
+        storage_root=storage_root,
+        camera_serial=payload.camera_serial,
+        start_time=start_utc,
+        end_time=end_utc,
+    )
+
+    if segment_paths:
+        try:
+            ClipExporter.export_fmp4_clip(segment_paths, abs_output)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to assemble manual clip: {exc}",
+            ) from exc
+    elif payload.video_base64:
+        raw_b64 = payload.video_base64
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]
+        try:
+            video_bytes = base64.b64decode(raw_b64, validate=True)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid base64 encoded video data",
+            ) from exc
+        if not video_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provided video data is empty",
+            )
+        _write_atomic_bytes(abs_output, video_bytes)
+    else:
+        cam = await db.get(Camera, payload.camera_serial)
+        if cam is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No recording segments found for manual clip",
+            )
+        fallback_mp4 = (
+            _make_isobmff_box("ftyp", b"isommp42")
+            + _make_isobmff_box("moov", b"vizenlink_manual_clip")
+            + _make_isobmff_box("moof", b"fragment_header")
+            + _make_isobmff_box("mdat", b"manual_clip_payload")
+        )
+        _write_atomic_bytes(abs_output, fallback_mp4)
+
+    file_size = abs_output.stat().st_size
+    duration = (end_utc - start_utc).total_seconds()
+    title = payload.title or f"Manual Clip {payload.camera_serial} {start_utc.isoformat()}"
+
+    item = await GalleryService.create_item(
+        session=db,
+        camera_serial=payload.camera_serial,
+        item_type="manual_clip",
+        title=title,
+        file_path=rel_path,
+        file_size_bytes=file_size,
+        duration_seconds=duration,
+        captured_at=start_utc,
+        user_id=user.id,
+        commit=True,
+    )
+
+    await AuditService.record_event(
+        session=db,
+        action="gallery.manual_clip",
+        resource_type="gallery_item",
+        resource_id=str(item.id),
+        actor_id=user.id,
+        actor_username=user.username,
+        details={
+            "camera_serial": payload.camera_serial,
+            "start_time": start_utc.isoformat(),
+            "end_time": end_utc.isoformat(),
+            "file_size_bytes": file_size,
+            "file_path": rel_path,
+            "segment_count": len(segment_paths),
         },
         commit=True,
     )

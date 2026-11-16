@@ -21,6 +21,16 @@ export const GALLERY_COPY = {
   PREVIEW_CLOSE_LABEL: "Close preview",
   DOWNLOAD_SNAPSHOT: "Download snapshot",
   DOWNLOAD_CLIP: "Download clip",
+  SHARE_QR: "Share QR",
+  HIDE_QR: "Hide QR",
+  SHARE_QR_TITLE: "Scan QR code on mobile",
+  SHARE_QR_DESCRIPTION:
+    "Scan with your phone on the same Wi-Fi or LAN to open or download this file.",
+  COPY_SHARE_LINK: "Copy share link",
+  SHARE_LINK_COPIED_TOAST: "Share link copied",
+  SHARE_ERROR_MESSAGE:
+    "Couldn't generate QR share link. Check your connection and try again.",
+  SHARE_ERROR_ACTION: "Retry QR share" as const,
   OPEN_IN_PLAYBACK: "Open in Playback",
 
   DELETE_SNAPSHOT: "Delete snapshot",

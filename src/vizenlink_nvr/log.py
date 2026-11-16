@@ -74,3 +74,6 @@ def configure_logging(level: str = "INFO") -> None:
     handler.setFormatter(formatter)
     handler.addFilter(RedactingFilter())
     root.addHandler(handler)
+    # The recorder polls MediaMTX every few seconds; per-request lines would bury real events.
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)

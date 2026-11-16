@@ -119,7 +119,7 @@ async def test_cam_proxy_full_matrix(test_db_app: tuple[Any, Any], tmp_path: Pat
                             201,
                             headers={
                                 "content-type": "application/sdp",
-                                "location": "/cam/CAM1/sub/whep/sess-123",
+                                "location": "/cam/cam1/sub/whep/sess-123",
                                 "etag": '"sdp-etag-456"',
                                 "accept-patch": "application/trickle-ice-sdpfrag",
                             },
@@ -151,7 +151,7 @@ async def test_cam_proxy_full_matrix(test_db_app: tuple[Any, Any], tmp_path: Pat
                 assert len(recorded_upstream) == 1
                 req0 = recorded_upstream[0]
                 assert req0.method == "POST"
-                assert str(req0.url) == "http://127.0.0.1:8889/cam/CAM1/sub/whep?token=tokenABC"
+                assert str(req0.url) == "http://127.0.0.1:8889/cam/cam1/sub/whep?token=tokenABC"
                 assert req0.headers["content-type"] == "application/sdp"
                 assert "cookie" not in req0.headers
                 assert "authorization" not in req0.headers
@@ -242,7 +242,7 @@ async def test_cam_proxy_full_matrix(test_db_app: tuple[Any, Any], tmp_path: Pat
                 assert res_patch.status_code == 204
                 patch_req = recorded_upstream[-1]
                 assert patch_req.method == "PATCH"
-                assert str(patch_req.url) == "http://127.0.0.1:8889/cam/CAM1/sub/whep/sess-123"
+                assert str(patch_req.url) == "http://127.0.0.1:8889/cam/cam1/sub/whep/sess-123"
                 assert patch_req.headers["if-match"] == '"sdp-etag-456"'
                 assert patch_req.headers["content-type"] == "application/trickle-ice-sdpfrag"
                 assert "cookie" not in patch_req.headers
@@ -254,7 +254,7 @@ async def test_cam_proxy_full_matrix(test_db_app: tuple[Any, Any], tmp_path: Pat
                 assert res_del.status_code == 200
                 del_req = recorded_upstream[-1]
                 assert del_req.method == "DELETE"
-                assert str(del_req.url) == "http://127.0.0.1:8889/cam/CAM1/sub/whep/sess-123"
+                assert str(del_req.url) == "http://127.0.0.1:8889/cam/cam1/sub/whep/sess-123"
                 assert "cookie" not in del_req.headers
 
                 # Case K: Upstream failure -> 502 {"detail": "Live video service unavailable"}

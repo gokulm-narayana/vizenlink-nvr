@@ -48,7 +48,7 @@ export const EventSheet: React.FC<EventSheetProps> = ({
   const [localLocked, setLocalLocked] = useState(false);
   const [mutationError, setMutationError] = useState<{
     message: string;
-    actionLabel: "Retry lock event" | "Retry unlock event";
+    actionLabel: typeof EVENTS_COPY.LOCK_ERROR_ACTION | typeof EVENTS_COPY.UNLOCK_ERROR_ACTION;
     action: () => void;
   } | null>(null);
 

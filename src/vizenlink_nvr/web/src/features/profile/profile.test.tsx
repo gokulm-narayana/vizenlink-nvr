@@ -79,6 +79,7 @@ describe("Profile & Change Password Feature", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
+    queryClient.setQueryData(["authStatus"], { authenticated: true, user: mockCurrentUser });
     return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>{ui}</MemoryRouter>
@@ -260,18 +261,20 @@ describe("Profile & Change Password Feature", () => {
     });
 
     it("changes theme and view mode from preferences card", async () => {
+      const save = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
       const user = userEvent.setup();
       renderWithProviders(<ProfilePage />);
 
       // Click Light theme
       const lightLabel = screen.getByText("Light");
       await user.click(lightLabel);
-      expect(useUiStore.getState().theme).toBe("light");
+      await waitFor(() => expect(useUiStore.getState().theme).toBe("light"));
 
       // Click Simple view mode
       const simpleBtn = screen.getByRole("radio", { name: "Simple" });
       await user.click(simpleBtn);
-      expect(useUiStore.getState().viewMode).toBe("simple");
+      await waitFor(() => expect(useUiStore.getState().viewMode).toBe("simple"));
+      save.mockRestore();
 
       // Click Sign out
       const signOutBtn = screen.getByRole("button", { name: "Sign out" });

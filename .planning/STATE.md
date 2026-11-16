@@ -4,10 +4,10 @@ current_phase: 08
 current_phase_name: Cross-Platform Packaging & Soak
 status: completed
 stopped_at: Phase 9 UI-SPEC approved (7/7)
-last_updated: "2026-11-05T07:12:50.135Z"
-last_activity: 2026-11-04
+last_updated: "2026-11-13T13:24:24.856Z"
+last_activity: 2026-11-13
 last_activity_desc: "Phase 08 complete (Plan 08-05: Phase 8 tracer, 15/15 phase gate passed 100% green)"
-state_head: ede5dafc99c6f3bd2daa8198dc23500a00dbb062
+state_head: d28a0b882bc6d7d2f7b6a20e5a319b52fa75d954
 progress:
   total_phases: 9
   completed_phases: 8
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-26)
 Phase: 08 (Cross-Platform Packaging & Soak) — COMPLETED
 Plans: 5 of 5 complete (100% Phase 08 complete)
 Status: All milestone phases complete
-Last activity: 2026-11-04 — Plan 08-05 complete (Phase 8 tracer, 15/15 phase gate passed 100% green)
+Last activity: 2026-11-13 - Completed quick task 261113-q9c: live snapshot saves to Gallery
 
 Progress: [█████████░] 89% (All 8 Phases Complete)
 
@@ -62,6 +62,17 @@ Decisions are logged in PROJECT.md Key Decisions table and Phase Contexts:
 - Phase 9 added: UI Redesign (Tailwind v4 + shadcn/ui design system, sidebar shell with router, restyled pages, web stack bump, fix Settings/Devices nav build break)
 - Phase 10 added (2026-11-10): UI v2 - Old VMS Parity (dashboard home with 2x2 zones, old VMS blue look, honest recording status, multiview/playback/alerts parity). Owner chose to build it in the verification session. PTZ, zone drawing and two-way talk deferred until `camera_api` covers them.
 - Phases 11-13 added (2026-11-10, owner-approved recommendations beyond old-VMS parity): 11 Footage Protection, 12 Find Footage Faster, 13 Daily Operations and Admin. Order: finish Phase 10 first.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261112-9kw | Fix UI audit findings from the 2026-11-12 browser audit (uncommitted, working tree only) | 2026-11-12 | 1449418 (local bundle) | [261112-9kw-fix-11-ui-audit-findings-from-the-2026-1](./quick/261112-9kw-fix-11-ui-audit-findings-from-the-2026-1/) |
+| 261113-kag | Storage set-path validates before saving; refused or relative paths no longer overwrite settings (uncommitted, working tree only) | 2026-11-13 | none | [261113-kag-fix-storage-set-path-validate-before-sav](./quick/261113-kag-fix-storage-set-path-validate-before-sav/) |
+| 261113-n59 | Privacy zone editor: picture reloads after save, saved zone stays selected, Zone-mode notice (uncommitted, working tree only) | 2026-11-13 | none | [261113-n59-privacy-zone-editor-clear-save-flow-and-](./quick/261113-n59-privacy-zone-editor-clear-save-flow-and-/) |
+| 261113-peb | Multiview: tile buttons no longer lost to drag or double-click, one page-level full screen view, sidebar Full screen view item (uncommitted, working tree only) | 2026-11-13 | none | [261113-peb-multiview-reliable-tile-buttons-one-full](./quick/261113-peb-multiview-reliable-tile-buttons-one-full/) |
+| 261113-q7h | Recorder-wide clip length setting (1 to 60 minutes) in Settings > Recording (uncommitted, working tree only) | 2026-11-13 | none | [261113-q7h-recording-clip-length-setting](./quick/261113-q7h-recording-clip-length-setting/) |
+| 261113-q9c | Live snapshot saves to the NVR Gallery instead of downloading (uncommitted, working tree only) | 2026-11-13 | none | [261113-q9c-live-snapshot-saves-to-gallery](./quick/261113-q9c-live-snapshot-saves-to-gallery/) |
 
 ## Session Continuity
 

@@ -16,6 +16,7 @@ import { EventFilters } from "./EventFilters";
 import { EventCard } from "./EventCard";
 import { EventSheet } from "./EventSheet";
 import { EVENTS_COPY } from "./copy";
+import { PageIntro } from "@/components/PageIntro";
 
 function formatDateToIso(d: Date): string {
   const y = d.getFullYear();
@@ -202,8 +203,12 @@ export const EventsPage: React.FC = () => {
 
   return (
     <div className="flex min-h-full flex-col gap-6">
+      <PageIntro description="Review camera events, investigate the footage, and keep your team up to date." />
       {/* Filter Bar & Summary */}
-      <div className="flex flex-col gap-4">
+      <section
+        aria-label="Alert filters and actions"
+        className="sticky top-16 z-20 flex max-h-[45dvh] shrink-0 flex-col gap-4 overflow-y-auto bg-background py-2"
+      >
         <div className="flex flex-wrap items-center justify-end gap-4">
           {total > 0 && (
             <span className="text-xs font-normal text-muted-foreground">
@@ -257,7 +262,7 @@ export const EventsPage: React.FC = () => {
           status={statusParam}
           onStatusChange={(v) => setParam("status", v, "open")}
         />
-      </div>
+      </section>
 
       {/* Load Error State */}
       {error && (

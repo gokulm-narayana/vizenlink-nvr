@@ -1,5 +1,8 @@
+import { FIT_PARAM, WALL_PARAM, enterPageFullscreen, fullscreenElement } from "@/lib/fullscreen";
+import { Checkbox } from "@/components/ui/checkbox";
+import { NativeSelect } from "@/components/ui/native-select";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   Cctv,
   Plus,
@@ -17,9 +20,14 @@ import {
   ArrowLeftRight,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Clock,
+  SlidersHorizontal,
+  Video,
+  Square,
 } from "lucide-react";
-import { useCameras, useRecordingStatus, useCurrentUser } from "@/lib/queries";
+import { useAlerts, useCameras, useRecordingStatus, useCurrentUser } from "@/lib/queries";
+import { isCameraOffline } from "@/lib/recorder-status";
 import { useUiStore } from "@/stores/ui";
 import { GridStorage, type GridDimension } from "@/services/grid_storage";
 import { Button } from "@/components/ui/button";
@@ -93,6 +101,8 @@ export const LivePage: React.FC = () => {
   const cameras = useMemo(() => (Array.isArray(rawCameras) ? rawCameras : []), [rawCameras]);
   const user = useCurrentUser();
   const navigate = useNavigate();
+  const [routeParams, setRouteParams] = useSearchParams();
+  const [showTools, setShowTools] = useState(false);
   const isMobile = useIsMobile();
   // Fit-to-screen grid only on landscape screens; portrait tablets/phones get 16:9 tiles that scroll.
   const [isLandscape, setIsLandscape] = useState(() =>
@@ -106,6 +116,12 @@ export const LivePage: React.FC = () => {
     return () => mq.removeEventListener?.("change", onChange);
   }, []);
   const viewMode = useUiStore((s) => s.viewMode);
+  const dismissedAlertIds = useUiStore((s) => s.dismissedAlertIds);
+  const { data: rawAlerts } = useAlerts();
+  const activeAlertCount = useMemo(
+    () => Math.min(2, (Array.isArray(rawAlerts) ? rawAlerts : []).filter((a) => !dismissedAlertIds.has(a.id)).length),
+    [rawAlerts, dismissedAlertIds]
+  );
   const isManager = user?.role === "operator" || user?.role === "owner";
 
   const storageKey = `vizenlink_live_preferences_${user?.id ?? "guest"}`;
@@ -117,13 +133,18 @@ export const LivePage: React.FC = () => {
     setOrder(readOrder(orderKey));
   }, [storageKey, orderKey]);
 
-  const [dimension, setDimension] = useState<GridDimension>(() => GridStorage.load().dimension);
+  const [savedDimension, setDimension] = useState<GridDimension>(() => GridStorage.load().dimension);
+  // "Full screen view" from the sidebar shows every camera: filters are ignored and the grid is
+  // the smallest one that holds them all (up to 4×4; more than 16 cameras are paged).
+  const fitAll = routeParams.get(WALL_PARAM) === "1" && routeParams.get(FIT_PARAM) === "all";
+  const dimension: GridDimension = fitAll
+    ? (Math.min(4, Math.max(1, Math.ceil(Math.sqrt(cameras.length)))) as GridDimension)
+    : savedDimension;
   const [page, setPage] = useState(() => GridStorage.load().page);
   useEffect(() => {
     if (cameras.length === 1 && !localStorage.getItem("vizenlink_nvr_grid_layout_v1")) setDimension(1);
   }, [cameras.length]);
 
-  const [maximizedSerial, setMaximizedSerial] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -134,21 +155,155 @@ export const LivePage: React.FC = () => {
   const [chooseOpen, setChooseOpen] = useState(false);
   const [draftSelection, setDraftSelection] = useState<string[]>([]);
   const [dragSerial, setDragSerial] = useState<string | null>(null);
+  // The URL is the single source of truth for the two view states, so every button,
+  // menu item and shortcut agrees: ?camera=<serial> enlarges one camera, ?wall=1 is full screen.
+  const maximizedSerial = routeParams.get("camera");
+  const wall = routeParams.get(WALL_PARAM) === "1";
+  const editParams = useCallback(
+    (edit: (params: URLSearchParams) => void) =>
+      setRouteParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          edit(next);
+          return next;
+        },
+        { replace: true }
+      ),
+    [setRouteParams]
+  );
+  const enlarge = (serial: string | null) => editParams((p) => (serial ? p.set("camera", serial) : p.delete("camera")));
+  // Changing which cameras are listed goes back to the grid.
+  const filtersKey = `${search}|${group}|${favoritesOnly}|${selection?.join(",") ?? ""}`;
+  const lastFilters = useRef(filtersKey);
   useEffect(() => {
-    setMaximizedSerial(null);
-  }, [search, group, favoritesOnly, selection]);
+    if (lastFilters.current === filtersKey) return;
+    lastFilters.current = filtersKey;
+    editParams((p) => p.delete("camera"));
+  }, [filtersKey, editParams]);
 
-  // Whole-grid fullscreen (old VMS "layout full screen").
+  // Full screen: this page covers the header and sidebar, and the browser is asked to go
+  // full screen too. If the browser refuses, the page still fills the window.
   const rootRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  // How full screen was entered, so the camera's corner button can undo exactly that.
+  const wallEntry = useRef<"grid" | "camera" | "enlarged-camera">("grid");
+  const enterWall = (camera?: string) => {
+    wallEntry.current = camera ? (maximizedSerial === camera ? "enlarged-camera" : "camera") : "grid";
+    editParams((p) => {
+      p.set(WALL_PARAM, "1");
+      if (camera) p.set("camera", camera);
+    });
+    enterPageFullscreen();
+  };
+  // The shell leaves browser full screen as soon as ?wall=1 is gone (useWallFullscreenGuard).
+  const exitWall = useCallback(
+    (alsoBackToGrid = false) =>
+      editParams((p) => {
+        p.delete(WALL_PARAM);
+        p.delete(FIT_PARAM);
+        if (alsoBackToGrid) p.delete("camera");
+      }),
+    [editParams]
+  );
+  const wallRef = useRef(wall);
+  wallRef.current = wall;
   useEffect(() => {
-    const onChange = () => setIsFullscreen(rootRef.current !== null && document.fullscreenElement === rootRef.current);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-  const toggleGridFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen?.();
-    else void rootRef.current?.requestFullscreen?.();
+    // Esc in browser full screen never reaches the page as a key; watch the state instead.
+    let wasFullscreen = Boolean(fullscreenElement());
+    const changed = () => {
+      const now = Boolean(fullscreenElement());
+      if (wasFullscreen && !now && wallRef.current) exitWall();
+      wasFullscreen = now;
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = Boolean(target?.closest?.("input, textarea, select, [contenteditable=true]"));
+      const popupOpen = Boolean(document.querySelector('[role="dialog"], [role="menu"]'));
+      if (event.key === "Escape" && wallRef.current && !fullscreenElement() && !popupOpen && !typing) exitWall();
+      else if ((event.key === "f" || event.key === "F") && !typing && !popupOpen && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        if (wallRef.current) exitWall();
+        else {
+          wallEntry.current = "grid";
+          editParams((p) => p.set(WALL_PARAM, "1"));
+          enterPageFullscreen();
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", changed);
+    document.addEventListener("webkitfullscreenchange", changed);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("fullscreenchange", changed);
+      document.removeEventListener("webkitfullscreenchange", changed);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [exitWall, editParams]);
+
+  // In full screen the camera controls show on any mouse, touch or key activity and hide after 3 s.
+  // The toolbar is separate: it would cover the top row's labels and buttons every time the
+  // mouse moved, so it only opens when the pointer goes to the top edge (or its small handle
+  // is pressed), and closes again once the pointer leaves it.
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [toolbarOpen, setToolbarOpen] = useState(false);
+  const overToolbar = useRef(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    overToolbar.current = false;
+    setToolbarOpen(false);
+    if (!wall) return;
+    let closing: ReturnType<typeof setTimeout> | undefined;
+    const moved = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      const bottom = toolbarRef.current?.getBoundingClientRect().bottom ?? 0;
+      const inZone = event.clientY < 12 || overToolbar.current;
+      if (inZone) {
+        clearTimeout(closing);
+        closing = undefined;
+        setToolbarOpen(true);
+      } else if (event.clientY > bottom + 24 && !closing) {
+        closing = setTimeout(() => {
+          closing = undefined;
+          // Stay open while someone is typing in the search box.
+          if (!overToolbar.current && !toolbarRef.current?.contains(document.activeElement)) setToolbarOpen(false);
+        }, 400);
+      }
+    };
+    window.addEventListener("pointermove", moved);
+    return () => {
+      clearTimeout(closing);
+      window.removeEventListener("pointermove", moved);
+    };
+  }, [wall]);
+  useEffect(() => {
+    setControlsVisible(true);
+    if (!wall) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const hide = () => {
+      const busy = overToolbar.current || Boolean(rootRef.current?.querySelector("[data-video-chrome] :focus-visible, .live-toolbar :focus-visible"));
+      if (busy) timer = setTimeout(hide, 3000);
+      else setControlsVisible(false);
+    };
+    const reveal = () => {
+      setControlsVisible(true);
+      clearTimeout(timer);
+      timer = setTimeout(hide, 3000);
+    };
+    timer = setTimeout(hide, 3000);
+    const events = ["pointermove", "pointerdown", "keydown", "wheel", "touchstart"] as const;
+    for (const name of events) window.addEventListener(name, reveal, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      for (const name of events) window.removeEventListener(name, reveal);
+    };
+  }, [wall]);
+
+  // The corner button on a camera always ends with that camera filling the screen, or undoes it.
+  const cameraFullscreen = (serial: string) => {
+    if (!wall) enterWall(serial);
+    else if (maximizedSerial !== serial) enlarge(serial);
+    else if (wallEntry.current === "camera") exitWall(true);
+    else if (wallEntry.current === "enlarged-camera") exitWall();
+    else enlarge(null);
   };
 
   const persist = (next: Preferences) => {
@@ -187,7 +342,7 @@ export const LivePage: React.FC = () => {
   };
 
   const groups = [...new Set(cameras.map((c) => c.group_tag || c.location).filter(Boolean))].sort();
-  const filtered = ordered.filter(
+  const filtered = fitAll ? ordered : ordered.filter(
     (c) =>
       (!selection || selection.includes(c.serial)) &&
       (!group || (c.group_tag || c.location) === group) &&
@@ -206,7 +361,7 @@ export const LivePage: React.FC = () => {
   const currentPage = Math.min(page, totalPages - 1);
   const visible = filtered.slice(currentPage * perPage, (currentPage + 1) * perPage);
   const expanded = cameras.find((c) => c.serial === maximizedSerial);
-  const isFiltered = Boolean(search || group || favoritesOnly || selection);
+  const isFiltered = !fitAll && Boolean(search || group || favoritesOnly || selection);
 
   const resetFilters = () => {
     setSearch("");
@@ -219,11 +374,17 @@ export const LivePage: React.FC = () => {
   const changeLayout = (dim: GridDimension) => {
     setDimension(dim);
     setPage(0);
+    // Choosing a grid by hand also ends "show every camera".
+    if (maximizedSerial || fitAll)
+      editParams((p) => {
+        p.delete("camera");
+        p.delete(FIT_PARAM);
+      });
     GridStorage.save({ dimension: dim, page: 0, slotAssignments: {} });
   };
   const changePage = (p: number) => {
     setPage(p);
-    GridStorage.save({ dimension, page: p, slotAssignments: {} });
+    GridStorage.save({ dimension: savedDimension, page: p, slotAssignments: {} });
   };
   const selectView = (name: string) => {
     resetFilters();
@@ -284,7 +445,7 @@ export const LivePage: React.FC = () => {
       </div>
     );
 
-  const fitToScreen = !isMobile && isLandscape;
+  const fitToScreen = wall || (!isMobile && isLandscape);
   const cols = expanded ? 1 : dimension;
   const cells: Array<(typeof cameras)[number] | null> = expanded
     ? [expanded]
@@ -295,16 +456,56 @@ export const LivePage: React.FC = () => {
   return (
     <div
       ref={rootRef}
-      className={cn("flex min-w-0 flex-col gap-2 bg-background", isFullscreen && "p-2")}
-      // dynamic-style: fit the grid to the viewport below the app header (or the whole screen in fullscreen).
-      style={fitToScreen ? { height: isFullscreen ? "100dvh" : "calc(100dvh - 4.5rem)" } : undefined}
+      data-live-fullscreen={wall}
+      data-controls-visible={controlsVisible}
+      className={cn("flex min-w-0 flex-col gap-2 bg-background", wall && "fixed inset-0 z-50 h-dvh w-screen bg-video-bg")}
+      // dynamic-style: fit the grid to the viewport below the app header and any active alert banners (or the whole screen in fullscreen).
+      style={fitToScreen ? { height: wall ? "100dvh" : activeAlertCount > 0 ? `calc(100dvh - ${5 + activeAlertCount * 3}rem)` : "calc(100dvh - 5rem)" } : undefined}
     >
+      {/* Full screen: the way out is always in the top-right corner whenever the mouse moves. */}
+      {wall && (
+        <Button
+          data-video-chrome
+          variant="ghost"
+          size="icon"
+          aria-label="Exit full screen"
+          title="Exit full screen (Esc)"
+          className={cn(OVERLAY_BTN, "absolute right-2 top-2 z-40")}
+          onClick={() => exitWall()}
+        >
+          <Minimize className="size-4" />
+        </Button>
+      )}
+      {/* Full screen: a small handle at the top edge opens the toolbar (also the way in on touch screens). */}
+      {wall && !toolbarOpen && (
+        <Button
+          data-video-chrome
+          variant="secondary"
+          size="sm"
+          aria-label="Show toolbar"
+          className="dark absolute left-1/2 top-0 z-30 h-4 w-12 -translate-x-1/2 rounded-t-none p-0"
+          onPointerEnter={(e) => { if (e.pointerType !== "touch") setToolbarOpen(true); }}
+          onClick={() => setToolbarOpen(true)}
+        >
+          <ChevronDown className="size-4" />
+        </Button>
+      )}
       {/* One toolbar row (wraps on small screens). */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
+      <div
+        ref={toolbarRef}
+        onPointerEnter={() => { overToolbar.current = true; }}
+        onPointerLeave={() => { overToolbar.current = false; }}
+        className={cn(
+          "live-toolbar flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2",
+          // Full screen: the toolbar floats over the video, and only while it is asked for.
+          wall && "dark absolute left-2 right-12 top-2 z-30 bg-card/90 text-foreground backdrop-blur-sm transition-opacity duration-150",
+          wall && !toolbarOpen && "pointer-events-none opacity-0 focus-within:pointer-events-auto focus-within:opacity-100"
+        )}
+      >
         <ToggleGroup
           type="single"
-          value={dimension.toString()}
-          onValueChange={(v) => v && changeLayout(parseInt(v, 10) as GridDimension)}
+          value={(expanded ? 1 : dimension).toString()}
+          onValueChange={(v) => changeLayout((v ? parseInt(v, 10) : expanded ? 1 : dimension) as GridDimension)}
           variant="outline"
           size="sm"
           aria-label="Grid layout"
@@ -330,10 +531,13 @@ export const LivePage: React.FC = () => {
           />
         </div>
 
+        <Button variant={showTools ? "secondary" : "outline"} size="sm" aria-expanded={showTools} onClick={() => setShowTools(!showTools)}><SlidersHorizontal className="size-4" />View options</Button>
+        <div className={cn("order-last basis-full flex flex-wrap items-center gap-2 border-t border-border pt-2", !showTools && "hidden")}>
         {groups.length > 0 && (
-          <select
+          <NativeSelect
             aria-label="Camera group"
-            className="vms-select h-8 py-0"
+            size="sm"
+            className="w-auto"
             value={group}
             onChange={(e) => {
               setGroup(e.target.value);
@@ -346,7 +550,7 @@ export const LivePage: React.FC = () => {
                 {g}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         )}
 
         <Button
@@ -375,14 +579,14 @@ export const LivePage: React.FC = () => {
         <label htmlFor="saved-view" className="sr-only">
           Saved views
         </label>
-        <select id="saved-view" className="vms-select h-8 py-0" value={selectedView} onChange={(e) => selectView(e.target.value)}>
+        <NativeSelect id="saved-view" size="sm" className="w-auto" value={selectedView} onChange={(e) => selectView(e.target.value)}>
           <option value="">All cameras</option>
           {preferences.views.map((v) => (
             <option key={v.name} value={v.name}>
               {v.name}
             </option>
           ))}
-        </select>
+        </NativeSelect>
         <Button size="sm" variant="ghost" disabled={!filtered.length} onClick={() => setSaveOpen(true)} aria-label="Save current view">
           <Save className="size-4" />
           <span className="hidden xl:inline">Save view</span>
@@ -405,6 +609,7 @@ export const LivePage: React.FC = () => {
             Show all
           </Button>
         )}
+        </div>
 
         <div className="ml-auto flex items-center gap-2">
           {totalPages > 1 && !expanded && (
@@ -420,12 +625,12 @@ export const LivePage: React.FC = () => {
           )}
           <span className="hidden text-xs text-muted-foreground sm:inline">{LIVE_COPY.CAMERAS_COUNT(filtered.length)}</span>
           {expanded && (
-            <Button size="sm" variant="outline" onClick={() => setMaximizedSerial(null)}>
+            <Button size="sm" variant="outline" onClick={() => enlarge(null)}>
               <X className="size-4" />
               Back to grid
             </Button>
           )}
-          {isManager && !isFullscreen && (
+          {isManager && !wall && (
             <Button size="sm" asChild>
               <Link to="/cameras/add" aria-label="Add camera">
                 <Plus className="size-4" />
@@ -433,9 +638,11 @@ export const LivePage: React.FC = () => {
               </Link>
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={toggleGridFullscreen} aria-label={isFullscreen ? "Exit full screen" : "Full screen grid"}>
-            {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-          </Button>
+          {!wall && (
+            <Button size="sm" variant="outline" onClick={() => enterWall()} aria-label="Full screen grid">
+              <Maximize className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -482,11 +689,16 @@ export const LivePage: React.FC = () => {
                   name={cam.name}
                   channel={channel}
                   fill={fitToScreen}
+                  isOnline={!isCameraOffline(cam) || cam.state === "online"}
                   isRecording={recordingSet.has(cam.serial)}
                   isMaximized={!!expanded}
                   lastSeenAt={cam.last_seen_at}
                   viewMode={viewMode}
-                  onToggleMaximize={() => setMaximizedSerial(expanded ? null : cam.serial)}
+                  onFullscreen={() => cameraFullscreen(cam.serial)}
+                  fullscreenActive={wall && Boolean(expanded)}
+                  // The top-right camera makes room for the exit button.
+                  cornerInset={wall && idx === cols - 1}
+                  onToggleMaximize={() => enlarge(expanded ? null : cam.serial)}
                   onDragStartTile={() => setDragSerial(cam.serial)}
                   onDropTile={() => {
                     if (dragSerial && dragSerial !== cam.serial) moveChannel(dragSerial, cam.serial);
@@ -530,13 +742,17 @@ export const LivePage: React.FC = () => {
                         <Expand />
                         Full screen
                       </ContextMenuItem>
-                      <ContextMenuItem onSelect={() => setMaximizedSerial(expanded ? null : cam.serial)}>
+                      <ContextMenuItem onSelect={() => enlarge(expanded ? null : cam.serial)}>
                         <Maximize />
                         {expanded ? "Back to grid" : "Enlarge in grid"}
                       </ContextMenuItem>
                       <ContextMenuItem onSelect={tile.snapshot}>
                         <Camera />
                         Take snapshot
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={tile.toggleClip}>
+                        {tile.isRecordingClip ? <Square /> : <Video />}
+                        {tile.isRecordingClip ? LIVE_COPY.STOP_CLIP_LABEL : LIVE_COPY.RECORD_CLIP_LABEL}
                       </ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem onSelect={() => void navigate(playbackHref)}>
@@ -633,11 +849,10 @@ export const LivePage: React.FC = () => {
           <div className="max-h-80 overflow-y-auto">
             {ordered.map((c) => (
               <label key={c.serial} className="flex cursor-pointer items-center gap-4 border-b border-border py-4">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={draftSelection.includes(c.serial)}
-                  onChange={(e) =>
-                    setDraftSelection(e.target.checked ? [...draftSelection, c.serial] : draftSelection.filter((s) => s !== c.serial))
+                  onCheckedChange={checked =>
+                    setDraftSelection(checked === true ? [...draftSelection, c.serial] : draftSelection.filter((s) => s !== c.serial))
                   }
                 />
                 <span>

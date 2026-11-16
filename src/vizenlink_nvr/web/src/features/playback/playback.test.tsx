@@ -425,7 +425,7 @@ describe("Playback Toolbar & TransportBar behavior", () => {
     expect(await screen.findByRole("combobox", { name: "Select camera" })).toBeInTheDocument();
 
     // Events link
-    const eventsLink = screen.getByRole("link", { name: /Events/i });
+    const eventsLink = screen.getByRole("link", { name: /Alerts/i });
     expect(eventsLink).toHaveAttribute("href", "/events?camera=CAM1");
 
     // Jump to time input
@@ -574,6 +574,62 @@ describe("Playback Toolbar & TransportBar behavior", () => {
 
     await waitFor(() => {
       expect(attempts).toBe(2);
+    });
+  });
+
+  it("supports digital zoom controls in single view and opens single view when clicking a multi-view sync tile", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/v1/playback/timeline")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            camera_serial: "CAM1",
+            segments: [
+              {
+                id: 1,
+                start_time: "2026-11-05T00:00:00.000Z",
+                end_time: "2026-11-05T23:59:59.000Z",
+                is_protected: false,
+                duration_seconds: 86400,
+              },
+            ],
+            outages: [],
+            events: [],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ days: ["2026-11-05"] }),
+      });
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/playback?camera=CAM1&t=2026-11-05T09:30:00Z&mode=sync"]}>
+          <PlaybackPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    const backyardTile = await screen.findByRole("button", { name: "Open Backyard in single view" });
+    await userEvent.click(backyardTile);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Open Backyard in single view" })).toBeNull();
+    });
+
+    const zoomInBtn = await screen.findByRole("button", { name: "Zoom in" });
+    expect(screen.getByRole("button", { name: "Zoom 1 times" })).toHaveTextContent("1.0×");
+
+    await userEvent.click(zoomInBtn);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Zoom 1.5 times, reset zoom" })).toHaveTextContent("1.5×");
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Zoom 1 times" })).toHaveTextContent("1.0×");
     });
   });
 });

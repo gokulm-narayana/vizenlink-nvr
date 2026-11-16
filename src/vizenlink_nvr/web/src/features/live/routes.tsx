@@ -5,7 +5,7 @@ import type { ShellRoute } from "@/app/routes";
 export const routes: ShellRoute[] = [
   {
     path: "/live",
-    title: "Multiview",
+    title: "Live View",
     minRole: "viewer",
     fullBleed: true,
     element: <LivePage />,

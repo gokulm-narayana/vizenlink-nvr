@@ -1,18 +1,37 @@
+import { NativeSelect } from "@/components/ui/native-select";
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { TriangleAlert } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { SettingsForm } from "../SettingsForm";
 import { isWdrVisible, availableNightVisionTypes } from "../capabilities";
 import { useSaveImaging, type CameraSettingsData } from "../api";
 import { CAMERAS_COPY } from "../copy";
+
+const DAY_NIGHT_LABELS: Record<string, string> = {
+  AUTO: "Auto (switches with light)",
+  ON: "Day (colour)",
+  OFF: "Night (infrared, black & white)",
+};
 
 export interface ImageTabProps {
   serial: string;
   cameraName: string;
   settings: CameraSettingsData;
 }
+
+function previewFactor(value: number, saved: number, range: [number, number]) {
+  return 1 + (value - saved) / Math.max(1, range[1] - range[0]);
+}
+
+const orientations: Record<string, [number, number]> = {
+  off: [1, 1],
+  mirror: [-1, 1],
+  flip: [1, -1],
+  flip_mirror: [-1, -1],
+};
 
 export const ImageTab: React.FC<ImageTabProps> = ({
   serial,
@@ -24,6 +43,9 @@ export const ImageTab: React.FC<ImageTabProps> = ({
   const options = imaging?.options;
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [snapshotVersion, setSnapshotVersion] = useState(0);
+  const [snapshotError, setSnapshotError] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const saveMutation = useSaveImaging(serial);
 
   const [form, setForm] = useState({
@@ -65,8 +87,13 @@ export const ImageTab: React.FC<ImageTabProps> = ({
       });
       setIsDirty(false);
       setErrorMessage(null);
+      setShowSaved(false);
     }
   }, [current, serial]);
+
+  useEffect(() => {
+    setSnapshotError(false);
+  }, [serial]);
 
   if (!imaging || !current || !options) {
     return (
@@ -78,9 +105,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
 
   const wdrSupported = isWdrVisible(options);
   const nightVisionChoices = availableNightVisionTypes(options);
-  const irCutModes = options.ir_cut_filter_modes?.length
-    ? options.ir_cut_filter_modes
-    : ["AUTO", "DAY", "NIGHT"];
+  // Day/Night mode is ONVIF IrCutFilter (SETTINGS_API_GUIDE): ON = day/colour, OFF = night/IR,
+  // AUTO = switch with light. The camera's own list is the only valid choice set; empty = not offered.
+  const irCutModes = options.ir_cut_filter_modes ?? [];
+  const dayNightNow = current?.day_night_now ?? null;
 
   // Exposure / white balance (old VMS parity): the camera owns the choice lists.
   const exposureModes = options.exposure_modes ?? [];
@@ -88,6 +116,19 @@ export const ImageTab: React.FC<ImageTabProps> = ({
   const isManualExposure = form.exposureMode.toUpperCase() === "MANUAL";
   const showExposureCard = exposureModes.length > 0 || whiteBalanceModes.length > 0;
   const modeLabel = (m: string) => m.charAt(0) + m.slice(1).toLowerCase();
+  const snapshotUrl = `/api/v1/cameras/${encodeURIComponent(serial)}/snapshot?profile=medium&v=${snapshotVersion}`;
+  const brightness = previewFactor(form.brightness, current.brightness, options.brightness_range ?? [0, 100]);
+  const contrast = previewFactor(form.contrast, current.contrast, options.contrast_range ?? [0, 100]);
+  const saturation = previewFactor(form.saturation, current.color_saturation, options.color_saturation_range ?? [0, 100]);
+  const [draftX, draftY] = orientations[form.mirrorFlip] ?? orientations.off;
+  const [savedX, savedY] = orientations[current.mirror_flip] ?? orientations.off;
+  const hasVisualDraft = isDirty && (brightness !== 1 || contrast !== 1 || saturation !== 1 || draftX !== savedX || draftY !== savedY);
+  const showDraft = hasVisualDraft && !showSaved;
+
+  const refreshSnapshot = () => {
+    setSnapshotError(false);
+    setSnapshotVersion((version) => version + 1);
+  };
 
   const handleFieldChange = (field: keyof typeof form, val: any) => {
     setForm((prev) => ({ ...prev, [field]: val }));
@@ -113,6 +154,7 @@ export const ImageTab: React.FC<ImageTabProps> = ({
     });
     setIsDirty(false);
     setErrorMessage(null);
+    setShowSaved(false);
   };
 
   const handleSubmit = async () => {
@@ -123,9 +165,8 @@ export const ImageTab: React.FC<ImageTabProps> = ({
         contrast: Number(form.contrast),
         color_saturation: Number(form.saturation),
         sharpness: Number(form.sharpness),
-        ir_cut_filter: form.irCutFilter,
-        wdr_mode: form.wdrMode,
-        wdr_level: Number(form.wdrLevel),
+        ...(irCutModes.length ? { ir_cut_filter: form.irCutFilter } : {}),
+        ...(wdrSupported ? { wdr_mode: form.wdrMode, wdr_level: Number(form.wdrLevel) } : {}),
         night_vision_type: form.nightVisionType,
         mirror_flip: form.mirrorFlip,
         anti_flicker: form.antiFlicker,
@@ -137,37 +178,134 @@ export const ImageTab: React.FC<ImageTabProps> = ({
       });
       toast(CAMERAS_COPY.SETTINGS_SAVED);
       setIsDirty(false);
+      setShowSaved(false);
+      refreshSnapshot();
     } catch {
       setErrorMessage(CAMERAS_COPY.SAVE_FAILED(cameraName));
     }
   };
 
   return (
-    <SettingsForm
-      isDirty={isDirty}
-      isSubmitting={saveMutation.isPending}
-      errorMessage={errorMessage}
-      onDiscard={handleDiscard}
-      onSubmit={handleSubmit}
-      retryLabel={CAMERAS_COPY.RETRY_SAVE}
-    >
-      {/* Day / Night & Night Vision */}
-      <Card className="border-border bg-card p-4 flex flex-col gap-4">
-        <CardHeader className="p-0 pb-2 border-b border-border">
-          <CardTitle className="text-sm font-semibold text-foreground">
-            Day / Night & Night Vision
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-semibold">Image &amp; night mode</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Adjust day/night switching, infrared or full-color night vision, WDR, and picture levels with live preview.</p>
+      </div>
+      <SettingsForm
+        isDirty={isDirty}
+        isSubmitting={saveMutation.isPending}
+        errorMessage={errorMessage}
+        onDiscard={handleDiscard}
+        onSubmit={handleSubmit}
+        retryLabel={CAMERAS_COPY.RETRY_SAVE}
+      >
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <aside className="order-2 xl:sticky xl:top-4">
+        <Card className="rounded-xl border-border bg-card p-6 flex flex-col gap-4">
+          <CardHeader className="p-0 flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold">Preview</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              {hasVisualDraft && !snapshotError && (
+                <Button type="button" size="sm" variant="outline" aria-pressed={showSaved} onClick={() => setShowSaved(!showSaved)}>
+                  Show saved image
+                </Button>
+              )}
+              <Button type="button" size="sm" variant="outline" onClick={refreshSnapshot} disabled={saveMutation.isPending}>
+                Refresh snapshot
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 flex flex-col gap-2">
+            <div className="aspect-video w-full max-w-sm overflow-hidden rounded-lg bg-video-bg xl:max-w-none">
+              {snapshotError ? (
+                <p role="status" className="grid size-full place-items-center p-4 text-center text-sm text-video-fg">
+                  Camera snapshot unavailable. Try refreshing the snapshot.
+                </p>
+              ) : (
+                <img
+                  key={snapshotUrl}
+                  src={snapshotUrl}
+                  alt={`${cameraName} ${showDraft ? "estimated image preview" : "camera snapshot"}`}
+                  className="size-full object-contain"
+                  onError={() => setSnapshotError(true)}
+                  style={showDraft ? {
+                    // dynamic-style: live estimated ISP slider preview
+                    filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`,
+                    transform: `scale(${draftX * savedX}, ${draftY * savedY})`,
+                  } : undefined}
+                />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {showDraft
+                ? "Estimated preview. Other changes appear after you save."
+                : "Latest snapshot from the camera."}
+            </p>
+          </CardContent>
+        </Card>
+        </aside>
+        <div className="order-1 flex min-w-0 flex-col gap-4">
+
+        {/* Day / Night & Night Vision */}
+        <Card className="rounded-xl border-border bg-card p-6 flex flex-col gap-4">
+          <CardHeader className="p-0 pb-2 border-b border-border">
+            <CardTitle className="text-sm font-semibold text-foreground">
+              Day &amp; night
+            </CardTitle>
+          </CardHeader>
+        <CardContent className="p-0 grid grid-cols-1 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="img-ircut" className="text-xs font-semibold text-foreground">
+              Day / night mode
+            </label>
+            {irCutModes.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Quick day or night mode">
+                  {irCutModes.map((mode) => {
+                    const active = form.irCutFilter.toUpperCase() === mode.toUpperCase();
+                    return (
+                      <Button
+                        key={mode}
+                        type="button"
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        aria-pressed={active}
+                        onClick={() => handleFieldChange("irCutFilter", mode)}
+                      >
+                        {mode.toUpperCase() === "AUTO" ? "Auto" : mode.toUpperCase() === "ON" ? "Day (Colour)" : mode.toUpperCase() === "OFF" ? "Night (Infrared)" : mode}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <NativeSelect
+                  id="img-ircut"
+                  value={form.irCutFilter}
+                  onChange={(e) => handleFieldChange("irCutFilter", e.target.value)}
+                >
+                  {irCutModes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {DAY_NIGHT_LABELS[mode.toUpperCase()] ?? mode}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Not available on this camera.</p>
+            )}
+            {dayNightNow && (
+              <p role="status" className="text-xs text-muted-foreground">
+                Right now: {dayNightNow === "day" ? "Day (colour)" : "Night (infrared)"}
+              </p>
+            )}
+          </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="img-nv-type" className="text-xs font-semibold text-foreground">
               Night Vision Mode
             </label>
-            <select
+            <NativeSelect
               id="img-nv-type"
               value={form.nightVisionType}
               onChange={(e) => handleFieldChange("nightVisionType", e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {nightVisionChoices.map((t) => (
                 <option key={t} value={t}>
@@ -178,32 +316,15 @@ export const ImageTab: React.FC<ImageTabProps> = ({
                       : "Smart Dual-Mode (Color on Motion)"}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="img-ircut" className="text-xs font-semibold text-foreground">
-              IR Cut Filter
-            </label>
-            <select
-              id="img-ircut"
-              value={form.irCutFilter}
-              onChange={(e) => handleFieldChange("irCutFilter", e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {irCutModes.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </div>
         </CardContent>
       </Card>
 
       {/* WDR (Hidden if not supported, not disabled) */}
       {wdrSupported && (
-        <Card className="border-border bg-card p-4 flex flex-col gap-4">
+        <Card className="rounded-xl border-border bg-card p-6 flex flex-col gap-4">
           <CardHeader className="p-0 pb-2 border-b border-border">
             <CardTitle className="text-sm font-semibold text-foreground">
               Wide Dynamic Range (WDR)
@@ -222,16 +343,15 @@ export const ImageTab: React.FC<ImageTabProps> = ({
                 <label htmlFor="img-wdr-mode" className="text-xs font-semibold text-foreground">
                   WDR Mode
                 </label>
-                <select
+                <NativeSelect
                   id="img-wdr-mode"
                   value={form.wdrMode}
                   onChange={(e) => handleFieldChange("wdrMode", e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="OFF">Off</option>
                   <option value="ON">On</option>
                   <option value="AUTO">Auto</option>
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -257,10 +377,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
       )}
 
       {/* ISP Sliders */}
-      <Card className="border-border bg-card p-4 flex flex-col gap-4">
+      <Card className="rounded-xl border-border bg-card p-6 flex flex-col gap-4">
         <CardHeader className="p-0 pb-2 border-b border-border">
           <CardTitle className="text-sm font-semibold text-foreground">
-            Image Signal Processing (ISP)
+            Picture
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -345,17 +465,16 @@ export const ImageTab: React.FC<ImageTabProps> = ({
             <label htmlFor="img-mirror" className="text-xs font-semibold text-foreground">
               Orientation
             </label>
-            <select
+            <NativeSelect
               id="img-mirror"
               value={form.mirrorFlip}
               onChange={(e) => handleFieldChange("mirrorFlip", e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="off">Normal</option>
               <option value="flip">Flip (Vertical)</option>
               <option value="mirror">Mirror (Horizontal)</option>
               <option value="flip_mirror">Flip & Mirror (180°)</option>
-            </select>
+            </NativeSelect>
           </div>
 
           {/* Anti-flicker */}
@@ -363,22 +482,21 @@ export const ImageTab: React.FC<ImageTabProps> = ({
             <label htmlFor="img-flicker" className="text-xs font-semibold text-foreground">
               Anti-Flicker Frequency
             </label>
-            <select
+            <NativeSelect
               id="img-flicker"
               value={form.antiFlicker}
               onChange={(e) => handleFieldChange("antiFlicker", e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="Auto">Auto</option>
               <option value="50Hz">50 Hz</option>
               <option value="60Hz">60 Hz</option>
               <option value="Off">Off</option>
-            </select>
+            </NativeSelect>
           </div>
         </CardContent>
       </Card>
       {showExposureCard && (
-        <Card className="border-border bg-card p-4 flex flex-col gap-4">
+        <Card className="rounded-xl border-border bg-card p-6 flex flex-col gap-4">
           <CardHeader className="p-0 pb-2 border-b border-border">
             <CardTitle className="text-sm font-semibold text-foreground">Exposure &amp; White Balance</CardTitle>
           </CardHeader>
@@ -388,11 +506,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
                 <label htmlFor="img-exposure-mode" className="text-xs font-semibold text-foreground">
                   Exposure Control
                 </label>
-                <select
+                <NativeSelect
                   id="img-exposure-mode"
                   value={form.exposureMode}
                   onChange={(e) => handleFieldChange("exposureMode", e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {!form.exposureMode && <option value="">Camera default</option>}
                   {exposureModes.map((m) => (
@@ -400,7 +517,7 @@ export const ImageTab: React.FC<ImageTabProps> = ({
                       {modeLabel(m)}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
             )}
             {whiteBalanceModes.length > 0 && (
@@ -408,11 +525,10 @@ export const ImageTab: React.FC<ImageTabProps> = ({
                 <label htmlFor="img-wb-mode" className="text-xs font-semibold text-foreground">
                   White Balance Mode
                 </label>
-                <select
+                <NativeSelect
                   id="img-wb-mode"
                   value={form.whiteBalanceMode}
                   onChange={(e) => handleFieldChange("whiteBalanceMode", e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {!form.whiteBalanceMode && <option value="">Camera default</option>}
                   {whiteBalanceModes.map((m) => (
@@ -420,7 +536,7 @@ export const ImageTab: React.FC<ImageTabProps> = ({
                       {modeLabel(m)}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
             )}
             {isManualExposure && options.exposure_time_range && (
@@ -464,6 +580,9 @@ export const ImageTab: React.FC<ImageTabProps> = ({
           </CardContent>
         </Card>
       )}
-    </SettingsForm>
+      </div>
+      </div>
+      </SettingsForm>
+    </div>
   );
 };

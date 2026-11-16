@@ -15,8 +15,11 @@ from vizenlink_nvr.services.scan import ScanService, run_scan
 async def test_tracer_scan_two_simulated_cameras(
     discovery_responder: DiscoveryResponder,
     fake_camera: pytest.FixtureRequest,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Tracer test: scan finds two simulated cameras and names them with blank credentials (DSC-05)."""
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("NO_PROXY", "")
     cam1: FakeCamera = await fake_camera(
         serial="VZL-CAM-SCAN01",
         name="Front Porch",
@@ -196,9 +199,12 @@ async def test_scan_unicast_fallback_and_thorough(
                 self.multicast_called = 0
                 self.unicast_called = 0
                 self.multicast_results: list[DiscoveredDevice] = []
+                self.multicast_blocked = False
 
             async def scan_multicast(self) -> list[DiscoveredDevice]:
                 self.multicast_called += 1
+                if self.multicast_blocked:
+                    raise PermissionError("multicast blocked")
                 return self.multicast_results
 
             async def scan_unicast(self) -> list[DiscoveredDevice]:
@@ -231,5 +237,20 @@ async def test_scan_unicast_fallback_and_thorough(
         assert disc.unicast_called == 1
         assert rep3.tiers_used == ["multicast", "unicast"]
         assert len(rep3.cameras) == 1  # merged by host
+
+        disc.multicast_blocked = True
+        assert (await service.scan()).cameras == rep1.cameras
+
+        # An unrelated ONVIF reply must not suppress unicast discovery.
+        disc.multicast_blocked = False
+        unrelated = await fake_camera(serial="VZL-CAM-UNRELATED", genuine=False)
+        disc.multicast_results = [DiscoveredDevice(
+            host=unrelated.host,
+            port=unrelated.port,
+            scheme="https",
+            xaddr=f"https://{unrelated.host}:{unrelated.port}/onvif/device_service",
+            scopes=[],
+        )]
+        assert (await service.scan()).cameras == rep1.cameras
     finally:
         await layer.aclose()

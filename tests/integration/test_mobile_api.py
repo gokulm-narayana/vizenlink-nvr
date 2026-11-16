@@ -252,8 +252,8 @@ async def test_mobile_live_stream_relay(app_fixture: dict[str, Any]) -> None:
     assert data_sub["camera_serial"] == "CAM-MOB-1"
     assert data_sub["profile"] == "sub"
     assert "token" in data_sub
-    assert "/cam/CAM-MOB-1/sub/whep?token=" in data_sub["webrtc_url"]
-    assert "/cam/CAM-MOB-1/sub/index.m3u8?token=" in data_sub["hls_url"]
+    assert "/cam/cam-mob-1/sub/whep?token=" in data_sub["webrtc_url"]
+    assert "/cam/cam-mob-1/sub/index.m3u8?token=" in data_sub["hls_url"]
     assert "rtsp://" in data_sub["rtsp_url"]
 
     # 2. Explicit main stream request

@@ -81,3 +81,15 @@ def test_parse_segment_metadata_truncated(tmp_path: Path) -> None:
     meta = parse_segment_metadata(env)
     assert meta.file_size_bytes == 500
     assert meta.status == "truncated"
+
+
+def test_legacy_local_filename_uses_file_creation_time(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    path = Path("/recordings/2026-11-12T12-25-46Z-010792.mp4")
+    actual = datetime(2026, 11, 12, 6, 55, 46, tzinfo=UTC)
+    monkeypatch.setattr("vizenlink_nvr.services.indexer.default_site_zone_name", lambda: "Asia/Kolkata")
+    monkeypatch.setattr(Path, "stat", lambda _: SimpleNamespace(st_birthtime=actual.timestamp() + 0.01))
+    assert parse_start_time_from_path(path) == actual
+    utc_path = Path("/recordings/2026-11-12T06-55-46Z-010792.mp4")
+    assert parse_start_time_from_path(utc_path) == actual

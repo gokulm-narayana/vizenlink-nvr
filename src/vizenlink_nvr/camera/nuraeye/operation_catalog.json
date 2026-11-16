@@ -1,0 +1,899 @@
+{
+  "source": "camera_api 6b78d89a (2026-11-04)",
+  "sha256": "d8d227f3b99576d05e657b10180aca44d25881839e22876469cdc94d205fa13d",
+  "operations": {
+    "identityChallenge": {
+      "method": "POST",
+      "path": "/nuraeye/identity",
+      "schema": {
+        "type": "object",
+        "required": [
+          "nonce",
+          "created",
+          "digest"
+        ],
+        "properties": {
+          "nonce": {
+            "type": "string",
+            "description": "Base64-encoded random nonce",
+            "client-generated": null
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "digest": {
+            "type": "string",
+            "description": "Base64(SHA256(nonce+created+\"are-you-onchip-nuraeye\"))"
+          }
+        }
+      },
+      "query": {}
+    },
+    "sessionLogin": {
+      "method": "POST",
+      "path": "/nuraeye/session/login",
+      "schema": {
+        "type": "object",
+        "required": [
+          "auth_credentials"
+        ],
+        "properties": {
+          "auth_credentials": {
+            "type": "object",
+            "required": [
+              "username",
+              "password_digest",
+              "nonce",
+              "created"
+            ],
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "password_digest": {
+                "type": "string",
+                "description": "Base64(SHA256(nonce+created+device_password))"
+              },
+              "nonce": {
+                "type": "string"
+              },
+              "created": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "client_label": {
+            "type": "string",
+            "description": "Optional display label, e.g. \"Mom's iPhone\" \u2014 audit/UX only, never a security boundary"
+          }
+        }
+      },
+      "query": {}
+    },
+    "sessionLogout": {
+      "method": "POST",
+      "path": "/nuraeye/session/logout",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getWifi": {
+      "method": "GET",
+      "path": "/nuraeye/wifi",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setWifi": {
+      "method": "POST",
+      "path": "/nuraeye/wifi",
+      "schema": {
+        "type": "object",
+        "required": [
+          "ssid",
+          "psk"
+        ],
+        "properties": {
+          "ssid": {
+            "type": "string"
+          },
+          "psk": {
+            "type": "string"
+          },
+          "verify": {
+            "type": "boolean",
+            "default": true,
+            "description": "true = connect & verify before saving; false = save only, no connect attempt. Forced false server-side if the camera is currently reached over Ethernet, regardless of the requested value (NW5 safety override).\n"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getWifiSignal": {
+      "method": "GET",
+      "path": "/nuraeye/wifi/signal",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getTimezones": {
+      "method": "GET",
+      "path": "/nuraeye/timezones",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getCloudParameters": {
+      "method": "GET",
+      "path": "/nuraeye/cloud/parameters",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getCloudStreamingStatus": {
+      "method": "GET",
+      "path": "/nuraeye/cloud/streaming",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "stopCloudStreaming": {
+      "method": "POST",
+      "path": "/nuraeye/cloud/streaming",
+      "schema": {
+        "type": "object",
+        "required": [
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "enum": [
+              false
+            ],
+            "description": "Only false is accepted"
+          }
+        }
+      },
+      "query": {}
+    },
+    "queryAlertRule": {
+      "method": "POST",
+      "path": "/nuraeye/alert-rules/query",
+      "schema": {
+        "type": "object",
+        "required": [
+          "rule"
+        ],
+        "properties": {
+          "rule": {
+            "type": "string",
+            "example": "MyPersonDetectorRule"
+          }
+        }
+      },
+      "query": {}
+    },
+    "setAlertRule": {
+      "method": "POST",
+      "path": "/nuraeye/alert-rules",
+      "schema": {
+        "type": "object",
+        "required": [
+          "rule",
+          "mobile_notifications",
+          "buzzer_activation"
+        ],
+        "properties": {
+          "rule": {
+            "type": "string"
+          },
+          "mobile_notifications": {
+            "type": "boolean"
+          },
+          "buzzer_activation": {
+            "type": "boolean"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getEventPreferences": {
+      "method": "GET",
+      "path": "/nuraeye/events/preferences",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setEventPreferences": {
+      "method": "POST",
+      "path": "/nuraeye/events/preferences",
+      "schema": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "boolean"
+        },
+        "example": {
+          "VideoModeChanged": false
+        }
+      },
+      "query": {}
+    },
+    "getEventResponseActions": {
+      "method": "GET",
+      "path": "/nuraeye/events/response-actions",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setEventResponseActions": {
+      "method": "POST",
+      "path": "/nuraeye/events/response-actions",
+      "schema": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "PersonDetected": [
+            "siren",
+            "mobile_alert"
+          ]
+        }
+      },
+      "query": {}
+    },
+    "getLoiteringDuration": {
+      "method": "GET",
+      "path": "/nuraeye/events/loitering-duration",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setLoiteringDuration": {
+      "method": "POST",
+      "path": "/nuraeye/events/loitering-duration",
+      "schema": {
+        "type": "object",
+        "required": [
+          "loitering_duration_seconds"
+        ],
+        "properties": {
+          "loitering_duration_seconds": {
+            "type": "integer"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getBboxOverlay": {
+      "method": "GET",
+      "path": "/nuraeye/events/bbox-overlay",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setBboxOverlay": {
+      "method": "POST",
+      "path": "/nuraeye/events/bbox-overlay",
+      "schema": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getAudioRecording": {
+      "method": "GET",
+      "path": "/nuraeye/audio/recording",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setAudioRecording": {
+      "method": "POST",
+      "path": "/nuraeye/audio/recording",
+      "schema": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getAudioSettings": {
+      "method": "GET",
+      "path": "/nuraeye/audio/settings",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setAudioSettings": {
+      "method": "POST",
+      "path": "/nuraeye/audio/settings",
+      "schema": {
+        "type": "object",
+        "minProperties": 1,
+        "description": "Provide mic_gain and/or speaker_volume \u2014 either alone is valid, both together is valid. Neither is a 400 (not enforceable by this schema alone; see caveat noted when this spec was scoped).",
+        "properties": {
+          "mic_gain": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "speaker_volume": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "query": {}
+    },
+    "getTestSoundStatus": {
+      "method": "GET",
+      "path": "/nuraeye/audio/test-sound",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setTestSound": {
+      "method": "POST",
+      "path": "/nuraeye/audio/test-sound",
+      "schema": {
+        "type": "object",
+        "required": [
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getLocalStorage": {
+      "method": "GET",
+      "path": "/nuraeye/local-storage",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setLocalStorage": {
+      "method": "POST",
+      "path": "/nuraeye/local-storage",
+      "schema": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getRecordings": {
+      "method": "GET",
+      "path": "/nuraeye/recordings",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {
+        "start": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "end": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "getRecordingClipDuration": {
+      "method": "GET",
+      "path": "/nuraeye/recordings/clip-duration",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setRecordingClipDuration": {
+      "method": "POST",
+      "path": "/nuraeye/recordings/clip-duration",
+      "schema": {
+        "type": "object",
+        "required": [
+          "clip_duration_seconds"
+        ],
+        "properties": {
+          "clip_duration_seconds": {
+            "type": "integer"
+          }
+        }
+      },
+      "query": {}
+    },
+    "deleteRecordings": {
+      "method": "POST",
+      "path": "/nuraeye/recordings/delete",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Clip ids to delete (GET /nuraeye/recordings' id field). Ignored if delete_all is true."
+          },
+          "delete_all": {
+            "type": "boolean",
+            "description": "Delete every recording on the card except the currently-recording segment."
+          }
+        }
+      },
+      "query": {}
+    },
+    "getRecordingMode": {
+      "method": "GET",
+      "path": "/nuraeye/recordings/mode",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setRecordingMode": {
+      "method": "POST",
+      "path": "/nuraeye/recordings/mode",
+      "schema": {
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "continuous",
+              "scheduled",
+              "event_triggered"
+            ]
+          },
+          "schedule": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day_of_week": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 6
+                },
+                "start_minute": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1439
+                },
+                "end_minute": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1439
+                }
+              }
+            }
+          }
+        }
+      },
+      "query": {}
+    },
+    "getRecordingDates": {
+      "method": "GET",
+      "path": "/nuraeye/recordings/dates",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {
+        "start": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "end": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tz_offset_minutes": {
+          "type": "integer"
+        }
+      }
+    },
+    "getCapabilities": {
+      "method": "GET",
+      "path": "/nuraeye/capabilities",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getPrivacyMode": {
+      "method": "GET",
+      "path": "/nuraeye/privacy-mode",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setPrivacyMode": {
+      "method": "POST",
+      "path": "/nuraeye/privacy-mode",
+      "schema": {
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "None",
+              "Zone",
+              "Full"
+            ]
+          }
+        }
+      },
+      "query": {}
+    },
+    "getBuzzerStatus": {
+      "method": "GET",
+      "path": "/nuraeye/buzzer",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setBuzzer": {
+      "method": "POST",
+      "path": "/nuraeye/buzzer",
+      "schema": {
+        "type": "object",
+        "required": [
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "description": "Required when active is true"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getVideoMode": {
+      "method": "GET",
+      "path": "/nuraeye/video/mode",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getNightVisionType": {
+      "method": "GET",
+      "path": "/nuraeye/video/night-vision-type",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setNightVisionType": {
+      "method": "POST",
+      "path": "/nuraeye/video/night-vision-type",
+      "schema": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Grey",
+              "Color",
+              "Smart"
+            ]
+          }
+        }
+      },
+      "query": {}
+    },
+    "getMirrorFlip": {
+      "method": "GET",
+      "path": "/nuraeye/video/mirror-flip",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setMirrorFlip": {
+      "method": "POST",
+      "path": "/nuraeye/video/mirror-flip",
+      "schema": {
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "Off",
+              "Mirror",
+              "Flip",
+              "Both"
+            ]
+          }
+        }
+      },
+      "query": {}
+    },
+    "getAntiFlickerMode": {
+      "method": "GET",
+      "path": "/nuraeye/video/anti-flicker",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setAntiFlickerMode": {
+      "method": "POST",
+      "path": "/nuraeye/video/anti-flicker",
+      "schema": {
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "50Hz",
+              "60Hz",
+              "Auto",
+              "None"
+            ]
+          }
+        }
+      },
+      "query": {}
+    },
+    "getImageDefaults": {
+      "method": "GET",
+      "path": "/nuraeye/video/image-defaults",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getPreviewKey": {
+      "method": "GET",
+      "path": "/nuraeye/preview-key",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getLiveStreamUri": {
+      "method": "POST",
+      "path": "/nuraeye/live-stream-uri",
+      "schema": {
+        "type": "object",
+        "required": [
+          "profile_token"
+        ],
+        "properties": {
+          "profile_token": {
+            "type": "string",
+            "enum": [
+              "Profile_1",
+              "Profile_2",
+              "Profile_3"
+            ]
+          }
+        }
+      },
+      "query": {}
+    },
+    "getTalkUri": {
+      "method": "POST",
+      "path": "/nuraeye/talk-uri",
+      "schema": {
+        "type": "object"
+      },
+      "query": {}
+    },
+    "getDeterrenceStatus": {
+      "method": "GET",
+      "path": "/nuraeye/deterrence",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setDeterrence": {
+      "method": "POST",
+      "path": "/nuraeye/deterrence",
+      "schema": {
+        "type": "object",
+        "required": [
+          "action",
+          "active"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "siren",
+              "spotlight",
+              "warning"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "query": {}
+    },
+    "getDeterrenceDurations": {
+      "method": "GET",
+      "path": "/nuraeye/deterrence/durations",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setDeterrenceDurations": {
+      "method": "POST",
+      "path": "/nuraeye/deterrence/durations",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "siren_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "spotlight_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "warning_repeat_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      },
+      "query": {}
+    },
+    "getDeterrenceDurationOptions": {
+      "method": "GET",
+      "path": "/nuraeye/deterrence/durations/options",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getDeviceHealth": {
+      "method": "GET",
+      "path": "/nuraeye/health",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "getMovementProtection": {
+      "method": "GET",
+      "path": "/nuraeye/movement-protection",
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "query": {}
+    },
+    "setMovementProtectionSensitivity": {
+      "method": "POST",
+      "path": "/nuraeye/movement-protection",
+      "schema": {
+        "type": "object",
+        "required": [
+          "sensitivity"
+        ],
+        "properties": {
+          "sensitivity": {
+            "type": "string",
+            "description": "One of supported_movement_sensitivities in GET /nuraeye/capabilities; anything else is a 400"
+          }
+        }
+      },
+      "query": {}
+    },
+    "calibrateMovementProtection": {
+      "method": "POST",
+      "path": "/nuraeye/movement-protection/calibrate",
+      "schema": {
+        "type": "object"
+      },
+      "query": {}
+    }
+  }
+}

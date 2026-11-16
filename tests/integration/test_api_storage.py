@@ -102,7 +102,8 @@ async def test_storage_status_and_path_configuration(app_fixture) -> None:
     # 5. Owner triggers storage scan
     res_scan = await client.post("/api/v1/storage/scan")
     assert res_scan.status_code == 200
-    assert res_scan.json()["status"] == "scan_started"
+    assert res_scan.json()["status"] == "completed"
+    assert res_scan.json()["adopted"] == 0
 
     # 6. Overall system health endpoint
     res_health = await client.get("/api/v1/health")
@@ -111,3 +112,92 @@ async def test_storage_status_and_path_configuration(app_fixture) -> None:
     assert "status" in h_data
     assert h_data["db_ok"] is True
 
+
+@pytest.mark.asyncio
+async def test_refused_storage_path_leaves_settings_unchanged(
+    app_fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rejected set-path request must not overwrite the working storage settings."""
+    client, owner_session, _, tmp_path = app_fixture
+    client.cookies.set("session_id", owner_session)
+
+    good_dir = tmp_path / "good_recordings"
+    res_good = await client.post(
+        "/api/v1/storage/set-path",
+        json={"storage_path": str(good_dir), "allow_system_disk": True},
+    )
+    assert res_good.status_code == 200
+    saved = (await client.get("/api/v1/storage/status")).json()
+    assert saved["allow_system_disk"] is True
+
+    async def assert_unchanged() -> None:
+        now = (await client.get("/api/v1/storage/status")).json()
+        assert now["storage_path"] == saved["storage_path"]
+        assert now["allow_system_disk"] is True
+        assert now["health_state"] == saved["health_state"]
+
+    # 1. System disk without the override: refused, nothing saved, no folder created.
+    monkeypatch.setattr("vizenlink_nvr.services.storage.is_system_drive", lambda p: True)
+    refused_dir = tmp_path / "refused_recordings"
+    res_refused = await client.post(
+        "/api/v1/storage/set-path",
+        json={"storage_path": str(refused_dir), "allow_system_disk": False},
+    )
+    assert res_refused.status_code == 400
+    assert not refused_dir.exists()
+    await assert_unchanged()
+
+    # 2. Relative path: rejected before any filesystem or database change.
+    monkeypatch.chdir(tmp_path)
+    res_relative = await client.post(
+        "/api/v1/storage/set-path",
+        json={"storage_path": "relative/dir", "allow_system_disk": True},
+    )
+    assert res_relative.status_code == 422
+    assert not (tmp_path / "relative").exists()
+    await assert_unchanged()
+
+    # 3. A path that cannot be created (its parent is a file): refused, nothing saved.
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+    res_bad = await client.post(
+        "/api/v1/storage/set-path",
+        json={"storage_path": str(blocker / "recordings"), "allow_system_disk": True},
+    )
+    assert res_bad.status_code == 400
+    await assert_unchanged()
+
+    # None of the refused attempts is recorded as a storage change.
+    logs = (await client.get("/api/v1/audit-logs", params={"action": "storage.update_path"})).json()
+    items = logs if isinstance(logs, list) else logs.get("items", logs.get("logs", []))
+    assert len(items) == 1
+
+
+@pytest.mark.asyncio
+async def test_recorder_settings_and_account_isolation(app_fixture) -> None:
+    client, owner, viewer, _ = app_fixture
+    client.cookies.set("session_id", viewer)
+    system = {"recorder_name": "Front office", "site_timezone": "Asia/Kolkata"}
+    assert (await client.put("/api/v1/system", json=system)).status_code == 403
+    assert (await client.patch("/api/v1/auth/preferences", json={"theme": "dark"})).is_success
+    assert (await client.patch("/api/v1/auth/preferences", json={"theme": "invalid"})).status_code == 422
+    client.cookies.set("session_id", owner)
+    assert (await client.get("/api/v1/auth/me")).json()["theme"] == "light"
+    assert (await client.put("/api/v1/system", json=system)).json()["version"]
+    assert (
+        await client.put("/api/v1/system", json={**system, "site_timezone": "invalid"})
+    ).status_code == 422
+    client.cookies.clear()
+    login = await client.post(
+        "/api/v1/auth/login", json={"username": "owner_user", "password": "OwnerPassword123!"}
+    )
+    assert login.is_success
+    assert (await client.post("/api/v1/auth/sessions/sign-out-others")).json() == {"revoked": 1}
+    assert (await client.get("/api/v1/auth/me")).is_success
+    client.cookies.clear()
+    client.cookies.set("session_id", owner)
+    assert (await client.get("/api/v1/auth/me")).status_code == 401
+    client.cookies.set("session_id", viewer)
+    status = (await client.get("/api/v1/auth/status")).json()
+    assert status["site_timezone"] == "Asia/Kolkata" and status["user"]["theme"] == "dark"
+    assert (await client.get("/api/v1/system")).json()["recorder_name"] == "Front office"

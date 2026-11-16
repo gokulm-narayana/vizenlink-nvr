@@ -26,8 +26,17 @@ export const LIVE_COPY = {
 
   // Actions / Tooltips
   SNAPSHOT_LABEL: "Take snapshot",
+  RECORD_CLIP_LABEL: "Record clip",
+  STOP_CLIP_LABEL: "Stop clip recording",
+  CLIP_PROMPT_TITLE: "Continue manual clip recording?",
+  CLIP_PROMPT_DESCRIPTION: (name: string, seconds: number) =>
+    `Manual clip recording on ${name} has reached ${seconds}s. Continue recording for another 30 seconds or stop and save the clip to the Gallery?`,
+  CLIP_PROMPT_CONTINUE: "Continue recording (+30s)",
+  CLIP_PROMPT_STOP: "Stop & save clip",
   MUTE_LABEL: "Mute audio",
   UNMUTE_LABEL: "Unmute audio",
   MAXIMIZE_LABEL: "Maximize tile",
   MINIMIZE_LABEL: "Close maximized tile",
+  FULLSCREEN_LABEL: "Full screen camera",
+  EXIT_FULLSCREEN_LABEL: "Exit full screen camera",
 };

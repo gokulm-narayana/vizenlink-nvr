@@ -1,3 +1,4 @@
+import { NativeSelect } from "@/components/ui/native-select";
 import { isCameraOffline } from "@/lib/recorder-status";
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -40,18 +41,18 @@ export const CameraList: React.FC<CameraListProps> = ({
           Select camera
         </label>
         <div className="flex items-center gap-2">
-          <select
+          <NativeSelect
             id="camera-select"
             value={selectedSerial}
             onChange={handleSelectChange}
-            className="flex-1 h-9 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="min-w-0 flex-1"
           >
             {cameras.map((cam) => (
               <option key={cam.serial} value={cam.serial}>
                 {cam.name} ({cam.serial})
               </option>
             ))}
-          </select>
+          </NativeSelect>
           <Button
             asChild
             variant="outline"
@@ -66,10 +67,10 @@ export const CameraList: React.FC<CameraListProps> = ({
         </div>
       </div>
 
-      {/* Desktop Master Sidebar (>=1024px, hidden lg:flex) */}
+      {/* Desktop Master Sidebar (>=1024px): stays in view below the header while details scroll */}
       <aside
         aria-label="Cameras"
-        className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-border bg-card pr-4"
+        className="hidden lg:flex lg:sticky lg:top-20 lg:self-start lg:h-[calc(100dvh-6rem)] overflow-y-auto flex-col w-60 shrink-0 border-r border-border bg-card pr-4"
       >
         <div className="flex items-center justify-between pb-4">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

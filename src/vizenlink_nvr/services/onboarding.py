@@ -9,6 +9,7 @@ from enum import StrEnum
 from typing import Any, Protocol
 
 from pydantic import BaseModel, SecretStr
+from sqlalchemy import select
 
 from vizenlink_nvr.camera.connection import CameraConnection
 from vizenlink_nvr.camera.http import fetch_certificate_sha256
@@ -20,6 +21,7 @@ from vizenlink_nvr.camera.onvif.media2 import OnvifMedia2Client
 from vizenlink_nvr.camera.result import Failure, FailureKind, Success, Timeout
 from vizenlink_nvr.cli.prompts import PasswordMismatch
 from vizenlink_nvr.config import NvrSettings
+from vizenlink_nvr.db.models import Camera
 from vizenlink_nvr.secrets.vault import Vault, open_vault
 from vizenlink_nvr.services.passwords import (
     PasswordRuleError,
@@ -221,7 +223,9 @@ class OnboardingService:
 
         return VerifyOutcome(kind=VerifyKind.OK, capabilities=cap_res.value)
 
-    async def add(self, req: AddRequest, passwords: PasswordProvider) -> AddOutcome:
+    async def add(
+        self, req: AddRequest, passwords: PasswordProvider, *, username: str | None = None
+    ) -> AddOutcome:
         """Run complete camera onboarding sequence."""
         # 1. Host and port validation
         if req.port <= 0 or req.port > 65535:
@@ -257,6 +261,18 @@ class OnboardingService:
                     detail=f"Failed to resolve hostname {req.host}: {exc}",
                 )
 
+        # Existing-account onboarding: refuse an already registered address before any
+        # camera sign-in, so a repeat add cannot spend the camera's login attempts.
+        if username is not None:
+            async with self.rt.sessions() as session:
+                registered = await session.scalar(
+                    select(Camera.serial)
+                    .where(Camera.host == req.host, Camera.https_port == req.port)
+                    .limit(1)
+                )
+            if registered is not None:
+                return AddOutcome(kind=AddOutcomeKind.ALREADY_REGISTERED, serial=registered)
+
         # 2. Identity probe on blank connection
         blank_conn = CameraConnection.blank(req.host, req.port)
         nura_blank = NuraeyeClient(blank_conn, self.layer.http, self.layer.clock, self.layer.sessions)
@@ -290,7 +306,11 @@ class OnboardingService:
         bound_conn = CameraConnection(host=req.host, port=req.port, serial=serial, tls_pin_sha256=pin)
 
         # 5. Probe factory credentials
-        factory_result, retry_after = await self.probe_factory(bound_conn)
+        account = FACTORY_USERNAME if username is None else username
+        factory_result, retry_after = (
+            await self.probe_factory(bound_conn)
+            if username is None else (FactoryProbe.CONFIGURED, None)
+        )
         if factory_result == FactoryProbe.BLOCKED:
             return AddOutcome(kind=AddOutcomeKind.BLOCKED, serial=serial, retry_after_seconds=retry_after)
         if factory_result == FactoryProbe.UNREACHABLE:
@@ -338,7 +358,7 @@ class OnboardingService:
         else:
             current_pw = await passwords.current_password()
 
-        authed_conn = bound_conn.with_credentials(FACTORY_USERNAME, current_pw)
+        authed_conn = bound_conn.with_credentials(account, current_pw)
 
         # 7. Authenticated verification via GetCapabilities
         verify_res = await self.verify_credentials(authed_conn)
@@ -347,6 +367,8 @@ class OnboardingService:
             try:
                 new_pw = await passwords.new_password()
                 validate_new_camera_password(new_pw)
+            except RuntimeError:
+                return AddOutcome(kind=AddOutcomeKind.NEEDS_NEW_PASSWORD, serial=serial)
             except (PasswordRuleError, PasswordMismatch) as err:
                 return AddOutcome(
                     kind=AddOutcomeKind.INVALID_INPUT,
@@ -355,7 +377,7 @@ class OnboardingService:
                 )
 
             onvif_authed_device = OnvifDeviceClient(authed_conn, self.layer.http, self.layer.clock)
-            set_res = await onvif_authed_device.set_user_password(FACTORY_USERNAME, new_pw)
+            set_res = await onvif_authed_device.set_user_password(account, new_pw)
 
             if isinstance(set_res, Timeout):
                 return AddOutcome(
@@ -379,7 +401,7 @@ class OnboardingService:
 
             self.layer.sessions.clear_session_for(bound_conn.host)
             current_pw = new_pw
-            authed_conn = bound_conn.with_credentials(FACTORY_USERNAME, current_pw)
+            authed_conn = bound_conn.with_credentials(account, current_pw)
             notice = "Use this new password in the VizenLink mobile app too."
             verify_res = await self.verify_credentials(authed_conn)
 
@@ -425,6 +447,8 @@ class OnboardingService:
         ident_res = await onvif_authed.get_device_identity()
         name = ident_res.value.name if isinstance(ident_res, Success) else ""
         location = ident_res.value.location if isinstance(ident_res, Success) else ""
+        if username is not None and not name:
+            name = model or serial
 
         # Apply name and location to camera if requested (CAM-08, D-13)
         if req.name is not None:
@@ -458,7 +482,7 @@ class OnboardingService:
         async with self.rt.sessions() as session:
             existing = await get_camera(session, serial)
             if existing is not None:
-                if existing.host == req.host and existing.https_port == req.port:
+                if username is not None or (existing.host == req.host and existing.https_port == req.port):
                     return AddOutcome(
                         kind=AddOutcomeKind.ALREADY_REGISTERED,
                         serial=serial,
@@ -485,7 +509,7 @@ class OnboardingService:
         streams = streams_res
 
         # 11. Seal password and atomic commit
-        sealed = self.vault.seal(serial, FACTORY_USERNAME, current_pw)
+        sealed = self.vault.seal(serial, account, current_pw)
         if isinstance(verify_res.capabilities, Capabilities):
             caps_dict = verify_res.capabilities.raw
             camera_id_check_val = verify_res.capabilities.camera_id_check
@@ -527,7 +551,7 @@ class OnboardingService:
             hardware_id=hardware_id,
             tls_fingerprint_sha256=pin,
             camera_id_check=camera_id_check_val,
-            username=FACTORY_USERNAME,
+            username=account,
             sealed_password=sealed,
             capabilities_raw=caps_raw,
             streams=streams,

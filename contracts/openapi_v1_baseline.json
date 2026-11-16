@@ -1,6 +1,68 @@
 {
   "components": {
     "schemas": {
+      "AccountAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "create",
+              "role",
+              "password",
+              "delete"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "confirmation": {
+            "title": "Confirmation",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Operator",
+                  "User"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "username": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "username",
+          "confirmation"
+        ],
+        "title": "AccountAction",
+        "type": "object"
+      },
       "AlertItemResponse": {
         "description": "Active in-app alert notification schema.",
         "properties": {
@@ -39,6 +101,225 @@
           "source"
         ],
         "title": "AlertItemResponse",
+        "type": "object"
+      },
+      "AssistantAction": {
+        "properties": {
+          "href": {
+            "title": "Href",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "href"
+        ],
+        "title": "AssistantAction",
+        "type": "object"
+      },
+      "AssistantReply": {
+        "properties": {
+          "actions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AssistantAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "default": "recorder",
+            "title": "Mode",
+            "type": "string"
+          },
+          "tool_results": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AssistantToolResult"
+            },
+            "title": "Tool Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message",
+          "checked_at"
+        ],
+        "title": "AssistantReply",
+        "type": "object"
+      },
+      "AssistantRequest": {
+        "properties": {
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "use_model": {
+            "default": false,
+            "title": "Use Model",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "AssistantRequest",
+        "type": "object"
+      },
+      "AssistantStatus": {
+        "properties": {
+          "active_provider": {
+            "default": "ollama",
+            "title": "Active Provider",
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "managed_by_environment": {
+            "default": false,
+            "title": "Managed By Environment",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_configured": {
+            "title": "Model Configured",
+            "type": "boolean"
+          },
+          "providers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProviderSummary"
+            },
+            "title": "Providers",
+            "type": "array"
+          },
+          "tools_available": {
+            "default": [
+              "get_camera_snapshot",
+              "set_camera_night_mode",
+              "update_camera_imaging",
+              "set_camera_deterrence",
+              "set_recording_mode",
+              "get_camera_health",
+              "search_events",
+              "open_camera_view"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools Available",
+            "type": "array"
+          }
+        },
+        "required": [
+          "model_configured",
+          "model",
+          "capabilities"
+        ],
+        "title": "AssistantStatus",
+        "type": "object"
+      },
+      "AssistantToolResult": {
+        "properties": {
+          "brightness": {
+            "default": 50.0,
+            "title": "Brightness",
+            "type": "number"
+          },
+          "camera_name": {
+            "title": "Camera Name",
+            "type": "string"
+          },
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "contrast": {
+            "default": 50.0,
+            "title": "Contrast",
+            "type": "number"
+          },
+          "day_night_now": {
+            "default": "day",
+            "title": "Day Night Now",
+            "type": "string"
+          },
+          "ir_cut_filter": {
+            "default": "AUTO",
+            "title": "Ir Cut Filter",
+            "type": "string"
+          },
+          "night_vision_type": {
+            "default": "smart",
+            "title": "Night Vision Type",
+            "type": "string"
+          },
+          "snapshot_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Url"
+          },
+          "status": {
+            "default": "applied",
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "tool_name": {
+            "title": "Tool Name",
+            "type": "string"
+          },
+          "wdr_mode": {
+            "default": "OFF",
+            "title": "Wdr Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_name",
+          "summary",
+          "camera_serial",
+          "camera_name"
+        ],
+        "title": "AssistantToolResult",
         "type": "object"
       },
       "AuditLogQueryResponse": {
@@ -202,6 +483,28 @@
         "title": "AuthStatusResponse",
         "type": "object"
       },
+      "BulkPolicyUpdate": {
+        "properties": {
+          "changes": {
+            "$ref": "#/components/schemas/RecordingSettingsUpdate"
+          },
+          "serials": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Serials",
+            "type": "array"
+          }
+        },
+        "required": [
+          "serials",
+          "changes"
+        ],
+        "title": "BulkPolicyUpdate",
+        "type": "object"
+      },
       "CalendarDaysResponse": {
         "properties": {
           "camera_serial": {
@@ -231,6 +534,34 @@
           "days"
         ],
         "title": "CalendarDaysResponse",
+        "type": "object"
+      },
+      "CameraActionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "query": {
+            "additionalProperties": true,
+            "title": "Query",
+            "type": "object"
+          }
+        },
+        "title": "CameraActionRequest",
         "type": "object"
       },
       "CameraCreateRequest": {
@@ -464,6 +795,11 @@
             "title": "Added At",
             "type": "string"
           },
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
           "camera_id_check": {
             "title": "Camera Id Check",
             "type": "boolean"
@@ -612,8 +948,57 @@
         "title": "CreateUserRequest",
         "type": "object"
       },
+      "DiscoveredCameraCredentials": {
+        "properties": {
+          "host": {
+            "format": "ipv4",
+            "title": "Host",
+            "type": "string"
+          },
+          "new_camera_password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Camera Password"
+          },
+          "password": {
+            "format": "password",
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "port": {
+            "default": 443,
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Port",
+            "type": "integer"
+          },
+          "username": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "title": "DiscoveredCameraCredentials",
+        "type": "object"
+      },
       "EncoderUpdateRequest": {
-        "description": "Request payload for updating video encoder configuration.",
+        "additionalProperties": false,
         "properties": {
           "bitrate_limit_kbps": {
             "anyOf": [
@@ -625,6 +1010,17 @@
               }
             ],
             "title": "Bitrate Limit Kbps"
+          },
+          "cbr": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cbr"
           },
           "encoding": {
             "anyOf": [
@@ -669,6 +1065,17 @@
               }
             ],
             "title": "Height"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
           },
           "quality": {
             "anyOf": [
@@ -766,6 +1173,39 @@
               }
             ],
             "title": "Raw Topic"
+          },
+          "review_state": {
+            "default": "new",
+            "title": "Review State",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "severity": {
+            "default": "info",
+            "title": "Severity",
+            "type": "string"
           },
           "snapshot_path": {
             "anyOf": [
@@ -1082,6 +1522,35 @@
         "title": "GalleryListResponse",
         "type": "object"
       },
+      "GalleryShareResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "qr_payload": {
+            "title": "Qr Payload",
+            "type": "string"
+          },
+          "share_url": {
+            "title": "Share Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "share_url",
+          "qr_payload",
+          "expires_at"
+        ],
+        "title": "GalleryShareResponse",
+        "type": "object"
+      },
       "GenericStatusResponse": {
         "description": "Standard success response envelope.",
         "properties": {
@@ -1172,7 +1641,7 @@
         "type": "object"
       },
       "ImagingUpdateRequest": {
-        "description": "Request payload for updating camera imaging and sensor parameters.",
+        "additionalProperties": false,
         "properties": {
           "anti_flicker": {
             "anyOf": [
@@ -1217,6 +1686,39 @@
               }
             ],
             "title": "Contrast"
+          },
+          "exposure_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Gain"
+          },
+          "exposure_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Mode"
+          },
+          "exposure_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Time"
           },
           "ir_cut_filter": {
             "anyOf": [
@@ -1288,6 +1790,17 @@
               }
             ],
             "title": "Wdr Mode"
+          },
+          "white_balance_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "White Balance Mode"
           }
         },
         "title": "ImagingUpdateRequest",
@@ -1311,6 +1824,110 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "ManualClipRequest": {
+        "properties": {
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "end_time": {
+            "format": "date-time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "video_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Base64"
+          }
+        },
+        "required": [
+          "camera_serial",
+          "start_time",
+          "end_time"
+        ],
+        "title": "ManualClipRequest",
+        "type": "object"
+      },
+      "MaskPoint": {
+        "properties": {
+          "x": {
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "MaskPoint",
+        "type": "object"
+      },
+      "MaskRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "polygon": {
+            "items": {
+              "$ref": "#/components/schemas/MaskPoint"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Polygon",
+            "type": "array"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "polygon"
+        ],
+        "title": "MaskRequest",
         "type": "object"
       },
       "MediaMtxAuthRequest": {
@@ -1865,13 +2482,53 @@
         "title": "MobileUserSummary",
         "type": "object"
       },
-      "OsdUpdateRequest": {
-        "description": "Request payload for updating on-screen display overlay.",
+      "ModelSelection": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "title": "ModelSelection",
+        "type": "object"
+      },
+      "OsdCreateRequest": {
         "properties": {
           "date_format": {
-            "default": "YYYY/MM/DD",
+            "default": "dd/MM/yyyy",
             "title": "Date Format",
             "type": "string"
+          },
+          "font_color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OsdFontColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "font_size": {
+            "anyOf": [
+              {
+                "maximum": 256.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Font Size"
           },
           "osd_type": {
             "default": "DateAndTime",
@@ -1894,8 +2551,166 @@
             "title": "Position",
             "type": "string"
           },
+          "position_x": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position X"
+          },
+          "position_y": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Y"
+          },
           "time_format": {
-            "default": "HH:mm:ss",
+            "default": "hh:mm:ss tt",
+            "title": "Time Format",
+            "type": "string"
+          },
+          "token": {
+            "default": "",
+            "title": "Token",
+            "type": "string"
+          },
+          "video_source_token": {
+            "default": "VideoSourceCfg_1",
+            "title": "Video Source Token",
+            "type": "string"
+          }
+        },
+        "title": "OsdCreateRequest",
+        "type": "object"
+      },
+      "OsdFontColor": {
+        "properties": {
+          "colorspace": {
+            "maxLength": 200,
+            "title": "Colorspace",
+            "type": "string"
+          },
+          "x": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          },
+          "z": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Z",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z",
+          "colorspace"
+        ],
+        "title": "OsdFontColor",
+        "type": "object"
+      },
+      "OsdUpdateRequest": {
+        "description": "Request payload for updating on-screen display overlay.",
+        "properties": {
+          "date_format": {
+            "default": "dd/MM/yyyy",
+            "title": "Date Format",
+            "type": "string"
+          },
+          "font_color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OsdFontColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "font_size": {
+            "anyOf": [
+              {
+                "maximum": 256.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Font Size"
+          },
+          "osd_type": {
+            "default": "DateAndTime",
+            "title": "Osd Type",
+            "type": "string"
+          },
+          "plain_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plain Text"
+          },
+          "position": {
+            "default": "UpperLeft",
+            "title": "Position",
+            "type": "string"
+          },
+          "position_x": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position X"
+          },
+          "position_y": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Y"
+          },
+          "time_format": {
+            "default": "hh:mm:ss tt",
             "title": "Time Format",
             "type": "string"
           },
@@ -2010,6 +2825,256 @@
         "title": "PasswordChangeRequest",
         "type": "object"
       },
+      "PreferencesUpdate": {
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "light",
+                  "dark",
+                  "system"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
+          "view_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "simple",
+                  "advanced"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Mode"
+          }
+        },
+        "title": "PreferencesUpdate",
+        "type": "object"
+      },
+      "ProviderConfigRequest": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "clear_key": {
+            "default": false,
+            "title": "Clear Key",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "gemini",
+              "claude",
+              "ollama",
+              "recorder"
+            ],
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "title": "ProviderConfigRequest",
+        "type": "object"
+      },
+      "ProviderDetectRequest": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "gemini",
+              "claude",
+              "ollama"
+            ],
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "title": "ProviderDetectRequest",
+        "type": "object"
+      },
+      "ProviderDetectResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "recommended_model": {
+            "title": "Recommended Model",
+            "type": "string"
+          },
+          "verified": {
+            "default": true,
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provider",
+          "recommended_model",
+          "models"
+        ],
+        "title": "ProviderDetectResponse",
+        "type": "object"
+      },
+      "ProviderSummary": {
+        "properties": {
+          "active": {
+            "default": false,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "api_key_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Masked"
+          },
+          "auto_model": {
+            "default": true,
+            "title": "Auto Model",
+            "type": "boolean"
+          },
+          "has_api_key": {
+            "default": false,
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "requires_key": {
+            "default": true,
+            "title": "Requires Key",
+            "type": "boolean"
+          },
+          "selected_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Model"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "models"
+        ],
+        "title": "ProviderSummary",
+        "type": "object"
+      },
+      "RecordingOptions": {
+        "description": "Recorder-wide recording options.",
+        "properties": {
+          "clip_minutes": {
+            "title": "Clip Minutes",
+            "type": "integer"
+          },
+          "clip_minutes_choices": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Clip Minutes Choices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "clip_minutes"
+        ],
+        "title": "RecordingOptions",
+        "type": "object"
+      },
+      "RecordingOptionsUpdate": {
+        "properties": {
+          "clip_minutes": {
+            "title": "Clip Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clip_minutes"
+        ],
+        "title": "RecordingOptionsUpdate",
+        "type": "object"
+      },
       "RecordingSettingsUpdate": {
         "description": "Payload for updating per-camera recording settings.",
         "properties": {
@@ -2083,9 +3148,43 @@
             "title": "Camera Serial",
             "type": "string"
           },
+          "is_recording": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Recording"
+          },
+          "last_segment_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Segment At"
+          },
           "mode": {
             "title": "Mode",
             "type": "string"
+          },
+          "recording_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recording Detail"
           },
           "retention_days": {
             "anyOf": [
@@ -2137,6 +3236,51 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "ReviewAllRequest": {
+        "description": "Acknowledge every open alert matching the same filters as the list.",
+        "properties": {
+          "camera_serial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Camera Serial"
+          },
+          "event_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Type"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "critical",
+                  "warning",
+                  "info"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          }
+        },
+        "title": "ReviewAllRequest",
+        "type": "object"
+      },
       "SaveSnapshotRequest": {
         "properties": {
           "camera_serial": {
@@ -2176,6 +3320,125 @@
           "image_base64"
         ],
         "title": "SaveSnapshotRequest",
+        "type": "object"
+      },
+      "SearchItem": {
+        "properties": {
+          "camera_name": {
+            "title": "Camera Name",
+            "type": "string"
+          },
+          "camera_serial": {
+            "title": "Camera Serial",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "href": {
+            "title": "Href",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_protected": {
+            "default": false,
+            "title": "Is Protected",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "camera_serial",
+          "camera_name",
+          "location",
+          "title",
+          "timestamp",
+          "href"
+        ],
+        "title": "SearchItem",
+        "type": "object"
+      },
+      "SearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SearchItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "SearchResponse",
         "type": "object"
       },
       "SearchResultItem": {
@@ -2654,6 +3917,123 @@
         "title": "SystemHealthResponse",
         "type": "object"
       },
+      "SystemInfo": {
+        "properties": {
+          "recorder_name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Recorder Name",
+            "type": "string"
+          },
+          "site_timezone": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Site Timezone",
+            "type": "string"
+          },
+          "version": {
+            "default": "0.1.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recorder_name",
+          "site_timezone"
+        ],
+        "title": "SystemInfo",
+        "type": "object"
+      },
+      "SystemMetricsResponse": {
+        "description": "Host resource metrics for the dashboard System zone.",
+        "properties": {
+          "cpu_count": {
+            "title": "Cpu Count",
+            "type": "integer"
+          },
+          "cpu_percent": {
+            "title": "Cpu Percent",
+            "type": "number"
+          },
+          "host_uptime_seconds": {
+            "title": "Host Uptime Seconds",
+            "type": "number"
+          },
+          "load_average": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Average"
+          },
+          "memory_percent": {
+            "title": "Memory Percent",
+            "type": "number"
+          },
+          "memory_total_bytes": {
+            "title": "Memory Total Bytes",
+            "type": "integer"
+          },
+          "memory_used_bytes": {
+            "title": "Memory Used Bytes",
+            "type": "integer"
+          },
+          "nvr_uptime_seconds": {
+            "title": "Nvr Uptime Seconds",
+            "type": "number"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cpu_percent",
+          "cpu_count",
+          "memory_total_bytes",
+          "memory_used_bytes",
+          "memory_percent",
+          "nvr_uptime_seconds",
+          "host_uptime_seconds",
+          "platform",
+          "version"
+        ],
+        "title": "SystemMetricsResponse",
+        "type": "object"
+      },
+      "SystemSettings": {
+        "properties": {
+          "recorder_name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Recorder Name",
+            "type": "string"
+          },
+          "site_timezone": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Site Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recorder_name",
+          "site_timezone"
+        ],
+        "title": "SystemSettings",
+        "type": "object"
+      },
       "TimelineEventModel": {
         "properties": {
           "camera_serial": {
@@ -3011,8 +4391,18 @@
             "title": "Role",
             "type": "string"
           },
+          "theme": {
+            "default": "light",
+            "title": "Theme",
+            "type": "string"
+          },
           "username": {
             "title": "Username",
+            "type": "string"
+          },
+          "view_mode": {
+            "default": "simple",
+            "title": "View Mode",
             "type": "string"
           }
         },
@@ -3074,6 +4464,351 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/assistant/chat": {
+      "post": {
+        "description": "Answer using this user's accessible cameras and execute safe camera tools on demand.",
+        "operationId": "chat_api_v1_assistant_chat_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/model": {
+      "put": {
+        "operationId": "select_model_api_v1_assistant_model_put",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Model",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/models": {
+      "get": {
+        "description": "List installed models from the host-configured server; never download a model.",
+        "operationId": "available_models_api_v1_assistant_models_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "title": "Response Available Models Api V1 Assistant Models Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Available Models",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/provider": {
+      "put": {
+        "description": "Configure an external BYOK AI provider (OpenAI, Gemini, Claude) or Ollama.",
+        "operationId": "configure_provider_api_v1_assistant_provider_put",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Provider",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/provider/detect": {
+      "post": {
+        "description": "Detect available chat models for a provider using an entered or stored API key.",
+        "operationId": "detect_provider_models_api_v1_assistant_provider_detect_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderDetectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDetectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detect Provider Models",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/status": {
+      "get": {
+        "operationId": "assistant_status_api_v1_assistant_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assistant Status",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
     "/api/v1/audit-logs": {
       "get": {
         "description": "Retrieve system audit logs with filtering and pagination (Owner only).",
@@ -3483,6 +5218,111 @@
         ]
       }
     },
+    "/api/v1/auth/preferences": {
+      "patch": {
+        "operationId": "update_preferences_api_v1_auth_preferences_patch",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Preferences",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions/sign-out-others": {
+      "post": {
+        "operationId": "sign_out_other_sessions_api_v1_auth_sessions_sign_out_others_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Sign Out Other Sessions Api V1 Auth Sessions Sign Out Others Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sign Out Other Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/setup": {
       "post": {
         "description": "Execute first-run setup wizard: create owner account, set timezone and storage path.",
@@ -3582,6 +5422,16 @@
         "description": "List cameras. Viewers only see their assigned cameras (AUTH-05).",
         "operationId": "list_cameras_endpoint_api_v1_cameras_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "playback",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Playback",
+              "type": "boolean"
+            }
+          },
           {
             "in": "cookie",
             "name": "session_id",
@@ -3684,6 +5534,118 @@
           }
         },
         "summary": "Add Camera Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/discover": {
+      "post": {
+        "description": "Discover cameras from the recorder's LAN without terminal access.",
+        "operationId": "discover_cameras_endpoint_api_v1_cameras_discover_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Discover Cameras Endpoint Api V1 Cameras Discover Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover Cameras Endpoint",
+        "tags": [
+          "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/onboard": {
+      "post": {
+        "description": "Verify credentials and register the camera with its actual device and stream information.",
+        "operationId": "onboard_discovered_camera_api_v1_cameras_onboard_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveredCameraCredentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Onboard Discovered Camera",
         "tags": [
           "cameras"
         ]
@@ -3817,6 +5779,136 @@
         ]
       }
     },
+    "/api/v1/cameras/{serial}/accounts": {
+      "get": {
+        "operationId": "list_accounts_api_v1_cameras__serial__accounts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Accounts Api V1 Cameras  Serial  Accounts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Accounts",
+        "tags": [
+          "camera-accounts"
+        ]
+      },
+      "post": {
+        "operationId": "change_account_api_v1_cameras__serial__accounts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Change Account Api V1 Cameras  Serial  Accounts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Account",
+        "tags": [
+          "camera-accounts"
+        ]
+      }
+    },
     "/api/v1/cameras/{serial}/factory-reset": {
       "post": {
         "description": "Trigger camera factory reset (Soft or Hard) with confirmation check (SET-06).",
@@ -3883,6 +5975,511 @@
         "summary": "Factory Reset Camera Endpoint",
         "tags": [
           "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/features": {
+      "get": {
+        "operationId": "feature_groups_api_v1_cameras__serial__features_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Feature Groups Api V1 Cameras  Serial  Features Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feature Groups",
+        "tags": [
+          "camera-features"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/features/actions/{operation}": {
+      "post": {
+        "operationId": "feature_action_api_v1_cameras__serial__features_actions__operation__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation",
+            "required": true,
+            "schema": {
+              "title": "Operation",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CameraActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Feature Action Api V1 Cameras  Serial  Features Actions  Operation  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feature Action",
+        "tags": [
+          "camera-features"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/features/privacy/masks": {
+      "get": {
+        "operationId": "list_masks_api_v1_cameras__serial__features_privacy_masks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Masks Api V1 Cameras  Serial  Features Privacy Masks Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Masks",
+        "tags": [
+          "camera-features"
+        ]
+      },
+      "post": {
+        "operationId": "save_mask_api_v1_cameras__serial__features_privacy_masks_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save Mask Api V1 Cameras  Serial  Features Privacy Masks Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Mask",
+        "tags": [
+          "camera-features"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/features/privacy/masks/{token}": {
+      "delete": {
+        "operationId": "delete_mask_api_v1_cameras__serial__features_privacy_masks__token__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Mask Api V1 Cameras  Serial  Features Privacy Masks  Token  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Mask",
+        "tags": [
+          "camera-features"
+        ]
+      },
+      "put": {
+        "operationId": "save_mask_api_v1_cameras__serial__features_privacy_masks__token__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save Mask Api V1 Cameras  Serial  Features Privacy Masks  Token  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Mask",
+        "tags": [
+          "camera-features"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/features/{group}": {
+      "get": {
+        "operationId": "feature_state_api_v1_cameras__serial__features__group__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Feature State Api V1 Cameras  Serial  Features  Group  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feature State",
+        "tags": [
+          "camera-features"
         ]
       }
     },
@@ -4076,7 +6673,7 @@
     },
     "/api/v1/cameras/{serial}/reprobe": {
       "post": {
-        "description": "Trigger camera reprobe (Operator or Owner only).",
+        "description": "Check the camera connection now (old VMS \"Retry connection\").\n\nVerifies the camera at its stored address, follows it if DHCP moved it, and refreshes\ncapabilities and streams. Never accepts a changed certificate automatically.",
         "operationId": "reprobe_camera_endpoint_api_v1_cameras__serial__reprobe_post",
         "parameters": [
           {
@@ -4132,6 +6729,81 @@
         "summary": "Reprobe Camera Endpoint",
         "tags": [
           "cameras"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/sd-recordings/{clip_id}/clip": {
+      "get": {
+        "operationId": "camera_clip_api_v1_cameras__serial__sd_recordings__clip_id__clip_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "clip_id",
+            "required": true,
+            "schema": {
+              "title": "Clip Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Download",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Camera Clip",
+        "tags": [
+          "camera-recordings"
         ]
       }
     },
@@ -4410,6 +7082,76 @@
       }
     },
     "/api/v1/cameras/{serial}/settings/osd": {
+      "post": {
+        "operationId": "create_osd_endpoint_api_v1_cameras__serial__settings_osd_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OsdCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Osd Endpoint Api V1 Cameras  Serial  Settings Osd Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Osd Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      },
       "put": {
         "description": "Update On-Screen Display (OSD) overlay text and timestamp positioning (SET-04).",
         "operationId": "update_osd_endpoint_api_v1_cameras__serial__settings_osd_put",
@@ -4480,9 +7222,162 @@
         ]
       }
     },
+    "/api/v1/cameras/{serial}/settings/osd/{token}": {
+      "delete": {
+        "operationId": "delete_osd_endpoint_api_v1_cameras__serial__settings_osd__token__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Delete Osd Endpoint Api V1 Cameras  Serial  Settings Osd  Token  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Osd Endpoint",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
+    "/api/v1/cameras/{serial}/snapshot": {
+      "get": {
+        "description": "Read one authenticated camera snapshot; no synthetic image fallback.",
+        "operationId": "camera_snapshot_api_v1_cameras__serial__snapshot_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serial",
+            "required": true,
+            "schema": {
+              "title": "Serial",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "default": "medium",
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ],
+              "title": "Profile",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "osd",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Osd",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Camera Snapshot",
+        "tags": [
+          "camera-settings"
+        ]
+      }
+    },
     "/api/v1/events": {
       "get": {
-        "description": "Retrieve event history with filtering and RBAC camera scoping.",
+        "description": "Retrieve event history with filtering and RBAC camera scoping.\n\nHidden events are never listed. review_state=open means new or acknowledged.",
         "operationId": "query_events_api_v1_events_get",
         "parameters": [
           {
@@ -4569,6 +7464,61 @@
           },
           {
             "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "critical",
+                    "warning",
+                    "info"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "review_state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(new|acknowledged|resolved|open)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -4635,6 +7585,70 @@
         ]
       }
     },
+    "/api/v1/events/acknowledge-all": {
+      "post": {
+        "description": "Acknowledge all new alerts the user can see (optionally filtered).",
+        "operationId": "acknowledge_all_events_api_v1_events_acknowledge_all_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewAllRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Acknowledge All Events Api V1 Events Acknowledge All Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge All Events",
+        "tags": [
+          "events"
+        ]
+      }
+    },
     "/api/v1/events/subscriptions/status": {
       "get": {
         "description": "Retrieve event subscription states across cameras.",
@@ -4691,7 +7705,7 @@
     },
     "/api/v1/events/{event_id}": {
       "get": {
-        "description": "Retrieve event detail by ID.",
+        "description": "Retrieve event detail by ID (removed/hidden alerts are not found, same as the lists).",
         "operationId": "get_event_detail_api_v1_events__event_id__get",
         "parameters": [
           {
@@ -4743,6 +7757,128 @@
           }
         },
         "summary": "Get Event Detail",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{event_id}/acknowledge": {
+      "post": {
+        "description": "Mark an alert as seen (any user with access to the camera).",
+        "operationId": "acknowledge_event_api_v1_events__event_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge Event",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{event_id}/hide": {
+      "post": {
+        "description": "Remove an alert from lists (old VMS \"Delete\").\n\nThe event row is kept so footage protection and the audit trail stay intact.\nLocked events cannot be hidden.",
+        "operationId": "hide_event_api_v1_events__event_id__hide_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Hide Event Api V1 Events  Event Id  Hide Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hide Event",
         "tags": [
           "events"
         ]
@@ -4802,6 +7938,124 @@
           }
         },
         "summary": "Lock Event",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{event_id}/reopen": {
+      "post": {
+        "description": "Undo acknowledge/resolve.",
+        "operationId": "reopen_event_api_v1_events__event_id__reopen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reopen Event",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{event_id}/resolve": {
+      "post": {
+        "description": "Mark an alert as handled.",
+        "operationId": "resolve_event_api_v1_events__event_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Event",
         "tags": [
           "events"
         ]
@@ -5235,6 +8489,128 @@
         ]
       }
     },
+    "/api/v1/gallery/{item_id}/share": {
+      "post": {
+        "description": "Generate a signed LAN-accessible share URL and QR payload for a gallery item.",
+        "operationId": "share_gallery_item_api_v1_gallery__item_id__share_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expires_in_seconds",
+            "required": false,
+            "schema": {
+              "default": 3600,
+              "maximum": 86400,
+              "minimum": 60,
+              "title": "Expires In Seconds",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GalleryShareResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Gallery Item",
+        "tags": [
+          "gallery"
+        ]
+      }
+    },
+    "/api/v1/gallery/{item_id}/shared": {
+      "get": {
+        "description": "Download or open a gallery item using a signed QR share token.",
+        "operationId": "download_shared_gallery_item_api_v1_gallery__item_id__shared_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Shared Gallery Item",
+        "tags": [
+          "gallery"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "description": "Retrieve overall system health and subsystem statuses.",
@@ -5427,6 +8803,56 @@
           }
         },
         "summary": "Get Camera Outages",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/health/system": {
+      "get": {
+        "description": "CPU, memory and uptime of the recorder host (old VMS dashboard parity).",
+        "operationId": "get_system_metrics_api_v1_health_system_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemMetricsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get System Metrics",
         "tags": [
           "health"
         ]
@@ -6406,6 +9832,66 @@
         ]
       }
     },
+    "/api/v1/playback/manual-clip": {
+      "post": {
+        "description": "Save a manual clip recorded from live view into the media gallery (LIVE-07 / LIVE-09).",
+        "operationId": "save_manual_clip_api_v1_playback_manual_clip_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualClipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GalleryItemModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Manual Clip",
+        "tags": [
+          "playback"
+        ]
+      }
+    },
     "/api/v1/playback/search": {
       "get": {
         "description": "Search recordings by event occurrences and timeline intervals (GAL-03).",
@@ -6833,6 +10319,177 @@
         ]
       }
     },
+    "/api/v1/recording/apply": {
+      "post": {
+        "operationId": "apply_recording_policies_api_v1_recording_apply_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkPolicyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Apply Recording Policies Api V1 Recording Apply Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Recording Policies",
+        "tags": [
+          "recording"
+        ]
+      }
+    },
+    "/api/v1/recording/options": {
+      "get": {
+        "description": "Length of each recorded clip, and the lengths that can be chosen.",
+        "operationId": "get_recording_options_api_v1_recording_options_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Recording Options",
+        "tags": [
+          "recording"
+        ]
+      },
+      "put": {
+        "description": "Change the clip length. The recorder applies it to every camera within about 30 s.",
+        "operationId": "update_recording_options_api_v1_recording_options_put",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingOptionsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Recording Options",
+        "tags": [
+          "recording"
+        ]
+      }
+    },
     "/api/v1/recording/status": {
       "get": {
         "description": "Retrieve recording policies for all accessible cameras.",
@@ -6956,9 +10613,194 @@
         ]
       }
     },
+    "/api/v1/search": {
+      "get": {
+        "description": "Find indexed events, active footage or snapshots; never scan video with a model.",
+        "operationId": "search_index_api_v1_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "events",
+              "enum": [
+                "events",
+                "recordings",
+                "snapshots"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 100,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "camera_serial",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Camera Serial"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "camera_serials",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Camera Serials"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Index",
+        "tags": [
+          "search"
+        ]
+      }
+    },
     "/api/v1/storage/scan": {
       "post": {
-        "description": "Trigger background storage volume reconciliation scan (Operator+).",
+        "description": "Reconcile the configured recording directory and return actual scan counts.",
         "operationId": "trigger_storage_scan_endpoint_api_v1_storage_scan_post",
         "parameters": [
           {
@@ -7115,6 +10957,112 @@
         "summary": "Get Storage Status Endpoint",
         "tags": [
           "storage"
+        ]
+      }
+    },
+    "/api/v1/system": {
+      "get": {
+        "operationId": "read_system_api_v1_system_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read System",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "update_system_api_v1_system_put",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update System",
+        "tags": [
+          "settings"
         ]
       }
     },

@@ -11,7 +11,7 @@ from typing import Any, Literal
 from pydantic import SecretStr
 
 from vizenlink_nvr.camera.connection import CameraConnection
-from vizenlink_nvr.camera.http import CameraHttp
+from vizenlink_nvr.camera.http import CameraHttp, HttpResponse
 from vizenlink_nvr.camera.nuraeye.capabilities import Capabilities, parse_capabilities
 from vizenlink_nvr.camera.nuraeye.live_stream_uri import (
     LiveStreamUri,
@@ -271,6 +271,44 @@ class NuraeyeClient:
         if isinstance(parsed, Failure):
             return parsed
         return Success(parsed)
+
+    async def request(
+        self,
+        method: Literal["GET", "POST"],
+        path: str,
+        payload: Any = None,
+        timeout: float = 8.0,
+    ) -> CameraResult[dict[str, Any]]:
+        """Session-authenticated REST dispatch, including one token refresh on HTTP 401."""
+        if not path.startswith("/nuraeye/") or ".." in path or "#" in path:
+            return Failure(FailureKind.GENERIC, "Invalid camera API path")
+        return await self._authed(method, path, payload, timeout)
+
+    async def recording_chunk(self, clip_id: int, byte_range: str) -> HttpResponse | Failure | Timeout:
+        """Read a bounded MP4 range, keeping camera session credentials server-side."""
+        key = NuraeyeSessionCache.session_key(self.conn.host, self.conn.username)
+        for attempt in range(2):
+            session = self.sessions.get(key)
+            if session is None:
+                login = await self.sessions.single_flight(key, lambda: self._do_login(timeout=8))
+                if not isinstance(login, Success):
+                    return login
+                session = login.value
+            result = await self.http.send(
+                self.conn,
+                "GET",
+                f"/nuraeye/recordings/{clip_id}/clip",
+                headers=[("Authorization", f"Bearer {session.token}"), ("Range", byte_range)],
+                timeout=30,
+                max_bytes=1024 * 1024 + 1024,
+            )
+            if isinstance(result, HttpResponse) and result.status == 401 and attempt == 0:
+                self.sessions.drop(key, session.token)
+                continue
+            if isinstance(result, HttpResponse) and result.status in (200, 206):
+                self.sessions.extend(key, session.token)
+            return result
+        return Failure(FailureKind.UNAUTHORIZED, "Camera rejected the recording request")
 
     # --- Movement protection (camera_api 2026-11-04, FR-NE-132 / FEAT-091). LAN only. ---
     # Raw dispatch parity with NuraeyeClient.call('GetMovementProtection' | 'SetMovementProtectionSensitivity'

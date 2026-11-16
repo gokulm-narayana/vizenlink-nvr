@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -61,7 +61,8 @@ vi.mock("@/services/player", () => {
 function renderLivePage(
   camerasData: any[] = [],
   role: "viewer" | "operator" | "owner" = "viewer",
-  recordingData: any[] = []
+  recordingData: any[] = [],
+  initialEntries: string[] = ["/"]
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -100,13 +101,31 @@ function renderLivePage(
         })
       );
     }
+    if (urlStr.includes("/api/v1/playback/manual-clip")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: 99,
+            camera_serial: "CAM1",
+            item_type: "manual_clip",
+            title: "Manual clip",
+            file_path: "gallery/clips/cam1/manual.mp4",
+            file_size_bytes: 1024,
+            duration_seconds: 60,
+            captured_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+    }
     return Promise.resolve(new Response(null, { status: 404 }));
   });
 
   return render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={0}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <LivePage />
         </MemoryRouter>
       </TooltipProvider>
@@ -221,25 +240,123 @@ describe("LivePage & VideoTile", () => {
     });
   });
 
-  it("handles maximize and switches stream to main, restoring on close", async () => {
-    const user = userEvent.setup();
-    const cameras = [{ id: 1, serial: "CAM1", name: "Driveway", state: "online" }];
+  describe("full screen", () => {
+    const setFullscreenElement = (value: Element | null) => {
+      Object.defineProperty(document, "fullscreenElement", { configurable: true, value });
+      act(() => { document.dispatchEvent(new Event("fullscreenchange")); });
+    };
+    let request: ReturnType<typeof vi.fn>;
+    const twoCameras = [
+      { id: 1, serial: "CAM1", name: "Driveway", state: "online" },
+      { id: 2, serial: "CAM2", name: "Yard", state: "online" },
+    ];
+    const root = () => document.querySelector("[data-live-fullscreen]") as HTMLElement;
 
-    renderLivePage(cameras, "owner");
+    beforeEach(() => {
+      request = vi.fn(function (this: HTMLElement) { setFullscreenElement(this); return Promise.resolve(); });
+      HTMLElement.prototype.requestFullscreen = request as unknown as typeof HTMLElement.prototype.requestFullscreen;
+    });
+    afterEach(() => setFullscreenElement(null));
 
-    await waitFor(() => {
-      expect(screen.getByText("Driveway")).toBeInTheDocument();
+    it("corner button fills the screen with that camera on the main stream and undoes it", async () => {
+      const user = userEvent.setup();
+      GridStorage.save({ dimension: 2, page: 0, slotAssignments: {} });
+      renderLivePage(twoCameras, "owner");
+      await screen.findByText("Driveway");
+
+      await user.click(screen.getAllByRole("button", { name: "Full screen camera" })[0]);
+      // The whole page goes full screen, so menus and dialogs mounted on <body> stay visible.
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request.mock.contexts[0]).toBe(document.documentElement);
+      expect(root()).toHaveAttribute("data-live-fullscreen", "true");
+      expect(screen.queryByText("Yard")).not.toBeInTheDocument();
+      await waitFor(() => expect(mockSwitchStream).toHaveBeenCalledWith("main"));
+
+      await user.click(screen.getByRole("button", { name: "Exit full screen camera" }));
+      expect(root()).toHaveAttribute("data-live-fullscreen", "false");
+      expect(screen.getByText("Yard")).toBeInTheDocument();
+      await waitFor(() => expect(mockSwitchStream).toHaveBeenCalledWith("sub"));
     });
 
-    const maxBtn = screen.getByRole("button", { name: "Maximize tile" });
-    await user.click(maxBtn);
+    it("toolbar button shows every camera full screen and Esc in the browser leaves it", async () => {
+      const user = userEvent.setup();
+      GridStorage.save({ dimension: 2, page: 0, slotAssignments: {} });
+      renderLivePage(twoCameras, "viewer");
+      await screen.findByText("Driveway");
 
-    expect(mockSwitchStream).toHaveBeenCalledWith("main");
+      await user.click(screen.getByRole("button", { name: "Full screen grid" }));
+      expect(request.mock.contexts[0]).toBe(document.documentElement);
+      expect(root()).toHaveAttribute("data-live-fullscreen", "true");
+      expect(screen.getByText("Driveway")).toBeInTheDocument();
+      expect(screen.getByText("Yard")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Exit full screen" })).toBeVisible();
 
-    const minBtn = screen.getByRole("button", { name: "Close maximized tile" });
-    await user.click(minBtn);
+      // The toolbar stays out of the picture until it is asked for, so it cannot cover the top row.
+      const toolbar = document.querySelector(".live-toolbar") as HTMLElement;
+      expect(toolbar).toHaveClass("opacity-0", "pointer-events-none");
+      await user.click(screen.getByRole("button", { name: "Show toolbar" }));
+      expect(toolbar).not.toHaveClass("opacity-0");
+      expect(screen.queryByRole("button", { name: "Show toolbar" })).not.toBeInTheDocument();
 
-    expect(mockSwitchStream).toHaveBeenCalledWith("sub");
+      // The browser's own Esc only changes the fullscreen state; the page must follow it.
+      setFullscreenElement(null);
+      await waitFor(() => expect(root()).toHaveAttribute("data-live-fullscreen", "false"));
+    });
+
+    it("sidebar full screen view shows every camera, whatever grid and page were saved", async () => {
+      const user = userEvent.setup();
+      GridStorage.save({ dimension: 2, page: 1, slotAssignments: {} });
+      const five = [1, 2, 3, 4, 5].map((i) => ({ id: i, serial: `CAM${i}`, name: `Camera ${i}`, state: "online" }));
+      renderLivePage(five, "viewer", [], ["/live?wall=1&fit=all"]);
+      for (const cam of five) expect(await screen.findByText(cam.name)).toBeInTheDocument();
+      expect(root()).toHaveAttribute("data-live-fullscreen", "true");
+      // Five cameras need a 3×3 grid; the saved 2×2 would have hidden one on a second page.
+      expect(screen.getByRole("radio", { name: "3 by 3 grid" })).toBeChecked();
+
+      // Leaving goes back to the saved grid.
+      await user.click(screen.getByRole("button", { name: "Exit full screen" }));
+      expect(screen.getByRole("radio", { name: "2 by 2 grid" })).toBeChecked();
+    });
+
+    it("still fills the window when the browser refuses full screen, and Esc leaves it", async () => {
+      const user = userEvent.setup();
+      HTMLElement.prototype.requestFullscreen = vi.fn(() => Promise.reject(new Error("denied"))) as unknown as typeof HTMLElement.prototype.requestFullscreen;
+      renderLivePage(twoCameras, "viewer");
+      await screen.findByText("Driveway");
+      await user.click(screen.getByRole("button", { name: "Full screen grid" }));
+      expect(root()).toHaveAttribute("data-live-fullscreen", "true");
+      await user.keyboard("{Escape}");
+      expect(root()).toHaveAttribute("data-live-fullscreen", "false");
+    });
+  });
+
+  it("a double-click or a drag that starts on a tile button never moves or enlarges the tile", async () => {
+    const user = userEvent.setup();
+    GridStorage.save({ dimension: 2, page: 0, slotAssignments: {} });
+    renderLivePage(
+      [
+        { id: 1, serial: "CAM1", name: "Driveway", state: "online" },
+        { id: 2, serial: "CAM2", name: "Yard", state: "online" },
+      ],
+      "owner"
+    );
+    await screen.findByText("Driveway");
+    const star = screen.getByRole("button", { name: "Add Driveway to favorites" });
+
+    await user.dblClick(star);
+    expect(screen.getByText("Yard")).toBeInTheDocument();
+
+    // A drag from a button is cancelled, so the browser delivers the click instead.
+    // The browser reports the tile, not the button, as the drag target.
+    const tileEl = screen.getByRole("group", { name: /Driveway/i });
+    fireEvent.pointerDown(star);
+    expect(fireEvent.dragStart(tileEl)).toBe(false);
+    fireEvent.pointerDown(tileEl);
+    // A drag from the picture itself is still allowed (drag to swap channels).
+    expect(fireEvent.dragStart(screen.getByRole("group", { name: /Driveway/i }), { dataTransfer: { setData: vi.fn(), effectAllowed: "" } })).toBe(true);
+
+    await user.dblClick(screen.getByRole("group", { name: /Driveway/i }));
+    expect(screen.queryByText("Yard")).not.toBeInTheDocument();
   });
 
   it("maximizes tile on Enter key and un-maximizes on Escape", async () => {
@@ -354,5 +471,69 @@ describe("LivePage & VideoTile", () => {
     renderLivePage([{ id: 1, serial: "CAM1", name: "Gate", state: "online" }], "viewer");
     await screen.findByText("Gate");
     expect(screen.getByRole("button", { name: "Full screen grid" })).toBeInTheDocument();
+  });
+
+  it("switches back from maximized single camera to multi-camera grid when clicking 2x2", async () => {
+    const user = userEvent.setup();
+    GridStorage.save({ dimension: 2, page: 0, slotAssignments: {} });
+    const cameras = [
+      { id: 1, serial: "CAM1", name: "Gate", state: "online" },
+      { id: 2, serial: "CAM2", name: "Yard", state: "online" },
+    ];
+    renderLivePage(cameras, "owner");
+    await screen.findByText("Gate");
+    expect(screen.getByText("Yard")).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByRole("group", { name: /Gate/i }), { key: "Enter" });
+    expect(screen.queryByText("Yard")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: "2 by 2 grid" }));
+    expect(screen.getByText("Yard")).toBeInTheDocument();
+  });
+
+  it("records a manual clip, prompts at 30s to continue or stop, and saves on stop", async () => {
+    renderLivePage([{ id: 1, serial: "CAM1", name: "Gate", state: "online" }], "owner");
+    await screen.findByText("Gate");
+
+    vi.useFakeTimers();
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Record clip" }));
+    expect(screen.getByText("CLIP 0:00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop clip recording" })).toBeInTheDocument();
+
+    // Advance 30s to trigger continue/stop prompt
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByText("Continue manual clip recording?")).toBeInTheDocument();
+    expect(screen.getByText(/has reached 30s/i)).toBeInTheDocument();
+
+    // Continue for another 30s
+    fireEvent.click(screen.getByRole("button", { name: "Continue recording (+30s)" }));
+    expect(screen.queryByText("Continue manual clip recording?")).not.toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByText("Continue manual clip recording?")).toBeInTheDocument();
+    expect(screen.getByText(/has reached 60s/i)).toBeInTheDocument();
+
+    // Stop & save clip
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Stop & save clip" }));
+      await Promise.resolve();
+    });
+
+    const fetchCalls = vi.mocked(globalThis.fetch).mock.calls;
+    const manualClipCall = fetchCalls.find(([u]) => u.toString().includes("/api/v1/playback/manual-clip"));
+    expect(manualClipCall).toBeDefined();
+    const requestInit = manualClipCall?.[1] as RequestInit;
+    expect(requestInit.method).toBe("POST");
+    expect(JSON.parse(String(requestInit.body))).toMatchObject({
+      camera_serial: "CAM1",
+    });
   });
 });

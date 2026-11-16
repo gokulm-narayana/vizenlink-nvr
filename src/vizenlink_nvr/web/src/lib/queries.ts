@@ -5,6 +5,8 @@ import { useUiStore } from "@/stores/ui";
 
 export interface AuthUser {
   id: number;
+  theme?: import("@/stores/ui").Theme;
+  view_mode?: import("@/stores/ui").ViewMode;
   username: string;
   role: string;
   permissions: string[];
@@ -67,10 +69,11 @@ export function useCurrentUser(): AuthUser | null {
   return data?.user ?? null;
 }
 
-export function useCameras() {
+export function useCameras(playback = false) {
   return useQuery<CameraInfo[]>({
-    queryKey: ["cameras"],
-    queryFn: () => apiFetch<CameraInfo[]>("/api/v1/cameras"),
+    queryKey: playback ? ["cameras", "playback"] : ["cameras"],
+    queryFn: () => apiFetch<CameraInfo[]>(playback ? "/api/v1/cameras?playback=true" : "/api/v1/cameras"),
+    select: playback ? items => items.map(camera => camera.archived ? { ...camera, name: `${camera.name || camera.serial} (archived)` } : camera) : undefined,
     staleTime: 30000,
   });
 }

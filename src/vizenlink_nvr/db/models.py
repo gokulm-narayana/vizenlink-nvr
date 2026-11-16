@@ -13,8 +13,17 @@ from sqlalchemy import (
     LargeBinary,
     Text,
     UniqueConstraint,
+    event,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    ORMExecuteState,
+    mapped_column,
+    relationship,
+    with_loader_criteria,
+)
+from sqlalchemy.orm import Session as OrmSession
 
 from vizenlink_nvr.db.types import UtcDateTime
 from vizenlink_nvr.timeutil import utc_now
@@ -44,6 +53,7 @@ class Camera(Base):
     __tablename__ = "camera"
 
     serial: Mapped[str] = mapped_column(Text, primary_key=True)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0", default=False)
     host: Mapped[str] = mapped_column(Text, nullable=False)
     https_port: Mapped[int] = mapped_column(Integer, nullable=False, default=443)
     mac: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -135,6 +145,15 @@ class Camera(Base):
     )
 
 
+@event.listens_for(OrmSession, "do_orm_execute")
+def filter_registered_cameras(state: ORMExecuteState) -> None:
+    """Live registry queries exclude archived identities retained for footage and gallery FKs."""
+    if state.is_select and not state.execution_options.get("include_archived"):
+        state.statement = state.statement.options(
+            with_loader_criteria(Camera, Camera.archived.is_(False), include_aliases=True)
+        )
+
+
 class CameraCredential(Base):
     """Encrypted credential envelope bound to camera serial."""
 
@@ -196,6 +215,9 @@ class CameraStream(Base):
     source: Mapped[str] = mapped_column(Text, nullable=False)
     sub_is_main: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     probed_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    # Certificate pin for an RTSPS source. The camera's RTSPS ports use a different
+    # certificate than HTTPS, so Camera.tls_fingerprint_sha256 cannot be reused here.
+    tls_fingerprint_sha256: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     camera: Mapped["Camera"] = relationship("Camera", back_populates="streams")
 
@@ -288,6 +310,8 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    theme: Mapped[str] = mapped_column(Text, nullable=False, server_default="light")
+    view_mode: Mapped[str] = mapped_column(Text, nullable=False, server_default="simple")
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False, default="viewer")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

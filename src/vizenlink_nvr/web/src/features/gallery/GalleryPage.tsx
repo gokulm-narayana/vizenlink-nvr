@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
+import { PageIntro } from "@/components/PageIntro";
 import { Images } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +56,13 @@ export const GalleryPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState("all");
 
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
+  const linkedItemId = Number(searchParams.get("item"));
+  const linkedItem = useQuery({
+    queryKey: ["gallery", "item", linkedItemId],
+    queryFn: () => apiFetch<GalleryItem>(`/api/v1/gallery/${linkedItemId}`),
+    enabled: Number.isInteger(linkedItemId) && linkedItemId > 0,
+  });
+  const activePreview = previewItem || linkedItem.data || null;
 
   // Parse date range
   const dateRange: DateRange | undefined = useMemo(() => {
@@ -182,7 +192,9 @@ export const GalleryPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-full">
+    <div className="flex flex-col gap-6 min-h-full">
+      <PageIntro description="Browse saved snapshots and clips. Open a moment to review, download or return to its recording." />
+      {linkedItem.error && <InlineError message={linkedItem.error.message} actionLabel="Reload snapshot" onAction={() => void linkedItem.refetch()} />}
       {/* Top Controls: Tabs & Filter Bar */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -296,10 +308,10 @@ export const GalleryPage: React.FC = () => {
 
       {/* Preview Dialog */}
       <PreviewDialog
-        item={previewItem}
-        cameraName={previewItem ? cameraMap.get(previewItem.camera_serial) : undefined}
-        isOpen={Boolean(previewItem)}
-        onClose={() => setPreviewItem(null)}
+        item={activePreview}
+        cameraName={activePreview ? cameraMap.get(activePreview.camera_serial) : undefined}
+        isOpen={Boolean(activePreview)}
+        onClose={() => { setPreviewItem(null); if (searchParams.has("item")) setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete("item"); return next; }, { replace: true }); }}
         zone={siteZone}
       />
     </div>

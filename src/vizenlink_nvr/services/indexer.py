@@ -9,11 +9,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 
 from vizenlink_nvr.db.models import Camera, Segment
-from vizenlink_nvr.timeutil import UTC, utc_now
+from vizenlink_nvr.timeutil import UTC, default_site_zone_name, utc_now
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,7 +75,21 @@ def parse_start_time_from_path(file_path: Path) -> datetime:
     match = DATETIME_PATTERN.search(stem)
     if match:
         year, month, day, hour, minute, second = (int(x) for x in match.groups())
-        return datetime(year, month, day, hour, minute, second, tzinfo=UTC)
+        timestamp = datetime(year, month, day, hour, minute, second, tzinfo=UTC)
+        try:
+            # Older MediaMTX processes used host-local time in filenames ending in Z.
+            # File creation time distinguishes those files from correctly stamped UTC files.
+            birth = getattr(file_path.stat(), "st_birthtime", None)
+            local_start = timestamp.replace(tzinfo=ZoneInfo(default_site_zone_name())).astimezone(UTC)
+            if (
+                birth is not None
+                and abs(local_start.timestamp() - birth) < 5
+                and abs(timestamp.timestamp() - birth) > 5
+            ):
+                return local_start
+        except OSError:
+            pass
+        return timestamp
 
     try:
         mtime = file_path.stat().st_mtime
@@ -160,35 +176,20 @@ async def record_segment_from_hook(
     actual_serial = cam.serial
     norm_path = str(meta.file_path)
 
-    # Upsert segment record
-    stmt = select(Segment).where(Segment.file_path == norm_path)
-    res = await session.execute(stmt)
-    seg = res.scalar_one_or_none()
-
-    if seg is None:
-        seg = Segment(
-            camera_serial=actual_serial,
-            stream_type=meta.stream_type,
-            file_path=norm_path,
-            start_time=meta.start_time,
-            end_time=meta.end_time,
-            duration_seconds=meta.duration_seconds,
-            file_size_bytes=meta.file_size_bytes,
-            status=meta.status,
-            is_protected=False,
-            protection_reason=None,
-            created_at=utc_now(),
-        )
-        session.add(seg)
-    else:
-        seg.file_size_bytes = meta.file_size_bytes
-        seg.duration_seconds = meta.duration_seconds
-        seg.start_time = meta.start_time
-        seg.end_time = meta.end_time
-        seg.status = meta.status
-
+    # The completion hook supplies precise timing even if a simultaneous scan adopted the file.
+    timing = dict(
+        start_time=meta.start_time,
+        end_time=meta.end_time,
+        status=meta.status,
+        duration_seconds=meta.duration_seconds,
+        file_size_bytes=meta.file_size_bytes,
+    )
+    stmt = insert(Segment).values(
+        camera_serial=actual_serial, stream_type=meta.stream_type, file_path=norm_path, **timing
+    )
+    await session.execute(stmt.on_conflict_do_update(index_elements=[Segment.file_path], set_=timing))
     await session.commit()
-    return seg
+    return await session.scalar(select(Segment).where(Segment.file_path == norm_path))
 
 
 async def scan_and_reconcile(
@@ -198,7 +199,7 @@ async def scan_and_reconcile(
 ) -> ScanReport:
     """Reconcile SQLite segment index with actual video files present on disk."""
     # 1. Fetch registered cameras
-    cam_stmt = select(Camera)
+    cam_stmt = select(Camera).execution_options(include_archived=True)
     if serial_filter:
         cam_stmt = cam_stmt.where(Camera.serial == serial_filter)
     cam_res = await session.execute(cam_stmt)
@@ -227,6 +228,15 @@ async def scan_and_reconcile(
                 missing_marked += 1
         else:
             try:
+                parsed_start = parse_start_time_from_path(p)
+                filename_time = DATETIME_PATTERN.search(p.stem)
+                if filename_time:
+                    year, month, day, hour, minute, second = (int(part) for part in filename_time.groups())
+                    stored_filename_start = datetime(year, month, day, hour, minute, second, tzinfo=UTC)
+                    if seg.start_time == stored_filename_start and parsed_start != seg.start_time:
+                        delta = parsed_start - seg.start_time
+                        seg.start_time = parsed_start
+                        seg.end_time += delta
                 sz = p.stat().st_size  # noqa: ASYNC240
                 seg.file_size_bytes = sz
                 if sz < MIN_VALID_SEGMENT_BYTES:
@@ -282,7 +292,7 @@ async def scan_and_reconcile(
                 end_time = start_time + timedelta(seconds=duration)
                 status = "truncated" if file_size < MIN_VALID_SEGMENT_BYTES else "active"
 
-                new_seg = Segment(
+                adoption = insert(Segment).values(
                     camera_serial=matched_serial,
                     stream_type=stream_type,
                     file_path=norm_full,
@@ -295,9 +305,12 @@ async def scan_and_reconcile(
                     protection_reason=None,
                     created_at=utc_now(),
                 )
-                session.add(new_seg)
+                inserted_id = await session.scalar(
+                    adoption.on_conflict_do_nothing(index_elements=[Segment.file_path]).returning(Segment.id)
+                )
                 indexed_paths.add(norm_full)
-                adopted += 1
+                if inserted_id is not None:
+                    adopted += 1
                 if status == "active":
                     total_valid += 1
 

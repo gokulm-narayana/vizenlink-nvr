@@ -5,12 +5,13 @@ import { Cctv, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CameraSettingsNav, SETTINGS_SECTION_IDS, sectionLabel } from "./CameraSettingsNav";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 import { InlineError } from "@/components/InlineError";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCameras, useCurrentUser, useRecordingStatus } from "@/lib/queries";
 import { useUiStore } from "@/stores/ui";
+import { ApiError } from "@/lib/api";
 import { CameraList } from "./CameraList";
 import { IdentityTab } from "./tabs/IdentityTab";
 import { VideoTab } from "./tabs/VideoTab";
@@ -20,6 +21,9 @@ import { HealthTab } from "./tabs/HealthTab";
 import { MaintenanceTab } from "./tabs/MaintenanceTab";
 import { useCameraSettings } from "./api";
 import { CAMERAS_COPY } from "./copy";
+import { CameraOverview } from "./CameraOverview";
+import { CameraFeaturesTab, CAMERA_FEATURE_TABS } from "./CameraFeaturesTab";
+import { ZonePreview } from "./PrivacyZones";
 
 export const CamerasPage: React.FC = () => {
   const { serial: serialParam } = useParams<{ serial?: string }>();
@@ -47,8 +51,8 @@ export const CamerasPage: React.FC = () => {
   // Selected camera
   const selectedSerial = serialParam || rawCameras[0]?.serial || "";
   const selectedCamera = useMemo(() => {
-    return rawCameras.find((c) => c.serial === selectedSerial) || rawCameras[0];
-  }, [rawCameras, selectedSerial]);
+    return serialParam ? rawCameras.find((c) => c.serial === selectedSerial) : rawCameras[0];
+  }, [rawCameras, selectedSerial, serialParam]);
 
   // Tab computation
   const tabParam = searchParams.get("tab") || "identity";
@@ -56,7 +60,7 @@ export const CamerasPage: React.FC = () => {
 
   const visibleTabs = useMemo(() => {
     if (isAdvanced) {
-      return ["identity", "video", "image", "overlays", "health", "maintenance"];
+      return SETTINGS_SECTION_IDS;
     }
     return ["identity", "health"];
   }, [isAdvanced]);
@@ -68,22 +72,29 @@ export const CamerasPage: React.FC = () => {
     }
     return "identity";
   }, [tabParam, visibleTabs]);
+  const preview = searchParams.get("preview");
+  const detectionPreview = activeTab === "detection" && preview === "detection";
+  const personZonePreview = activeTab === "detection" && preview === "person-zones";
+  const privacyPreview = activeTab === "privacy" && preview === "privacy";
 
   const handleTabChange = (newTab: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", newTab);
+      if (newTab !== activeTab) next.delete("preview");
       return next;
     });
   };
 
   // Query settings for selected camera
+  const readsLiveSettings = Boolean(serialParam) && ["identity", "video", "image", "overlays"].includes(activeTab);
   const {
     data: settings,
     isLoading: settingsLoading,
+    isFetching: settingsFetching,
     error: settingsError,
     refetch: refetchSettings,
-  } = useCameraSettings(selectedCamera?.serial);
+  } = useCameraSettings(selectedCamera?.serial, readsLiveSettings);
 
   if (camerasLoading) {
     return (
@@ -137,7 +148,18 @@ export const CamerasPage: React.FC = () => {
   }
 
   // Same rule as the Dashboard (registry state "active" = reachable).
+  if (!serialParam) return <CameraOverview cameras={rawCameras} recordings={recordingStatus} />;
+
+  if (!selectedCamera) return <div className="p-6"><p className="text-sm">This camera is unavailable or you no longer have access.</p><Link to="/cameras" className="text-sm text-primary-text">Return to cameras</Link></div>;
+
   const isOnline = !isCameraOffline(selectedCamera);
+  const settingsUnavailable = readsLiveSettings && Boolean(settingsError);
+  const settingsStatus = settingsError instanceof ApiError ? settingsError.status : undefined;
+  const settingsMessage = settingsStatus === 503
+    ? "The recorder could not load the camera credentials. Check that the recorder is using the data directory and credential vault where the camera was added."
+    : !isOnline || settingsStatus === 502 || settingsStatus === 504
+      ? "The recorder couldn't read live settings from this camera. Check the camera's power and network connection, then reload settings."
+      : "The recorder couldn't load these settings. Open Health for device information or reload settings to try again.";
   const isRecording = recordingSerials.has(selectedCamera.serial);
 
   const isNotConnected =
@@ -148,12 +170,13 @@ export const CamerasPage: React.FC = () => {
   const showNotConnectedWarning = isNotConnected || hasLastError;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 min-h-full max-w-[1280px]">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-full max-w-[1440px]">
       {/* Master List */}
       <CameraList cameras={rawCameras} selectedSerial={selectedCamera.serial} />
 
       {/* Detail Area */}
       <div className="flex-1 flex flex-col gap-6 min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2"><Link to="/cameras" className="text-sm text-primary-text hover:underline">← All cameras</Link><Button variant="outline" size="sm" asChild><Link to={`/live?camera=${encodeURIComponent(selectedCamera.serial)}`}>Open live view</Link></Button></div>
         {/* Detail Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
           <div className="flex flex-col gap-1 min-w-0">
@@ -166,8 +189,11 @@ export const CamerasPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <StatusBadge kind={isOnline ? "online" : "offline"} />
-            {isRecording ? <StatusBadge kind="recording" /> : <span className="text-xs text-muted-foreground">Recording policy: {recordingStatus.find(r => r.camera_serial === selectedCamera.serial)?.mode || "unknown"}</span>}
+            {detectionPreview || personZonePreview || privacyPreview ? <StatusBadge kind="degraded" label="Settings preview" /> : <StatusBadge
+              kind={isOnline ? (settingsUnavailable ? "degraded" : "online") : "offline"}
+              label={isOnline && settingsUnavailable ? "Settings unavailable" : undefined}
+            />}
+            {isRecording ? <StatusBadge kind="recording" /> : <span className="text-xs text-muted-foreground">{recordingStatus.find(r => r.camera_serial === selectedCamera.serial)?.mode === "off" ? "Recording off" : "Not recording"}</span>}
           </div>
         </div>
 
@@ -204,56 +230,10 @@ export const CamerasPage: React.FC = () => {
           </Alert>
         )}
 
-        {/* Tab Navigation */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="w-full justify-start overflow-x-auto border-b border-border bg-transparent p-0 rounded-none h-auto gap-2">
-            <TabsTrigger
-              value="identity"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
-            >
-              Details
-            </TabsTrigger>
-
-            {isAdvanced && (
-              <>
-                <TabsTrigger
-                  value="video"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
-                >
-                  Video
-                </TabsTrigger>
-                <TabsTrigger
-                  value="image"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
-                >
-                  Image
-                </TabsTrigger>
-                <TabsTrigger
-                  value="overlays"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
-                >
-                  On-screen text
-                </TabsTrigger>
-              </>
-            )}
-
-            <TabsTrigger
-              value="health"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
-            >
-              Health
-            </TabsTrigger>
-
-            {isAdvanced && (
-              <TabsTrigger
-                value="maintenance"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs px-4 py-2"
-              >
-                Maintenance
-              </TabsTrigger>
-            )}
-          </TabsList>
-        </Tabs>
+        {/* One grouped settings menu (left on wide screens, dropdown on narrow) */}
+        <div className="grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <CameraSettingsNav active={activeTab} onChange={handleTabChange} />
+        <div className="flex min-w-0 flex-col gap-6" role="tabpanel" aria-label={sectionLabel(activeTab)}>
 
         {/* Tab Panels */}
         {activeTab === "maintenance" ? (
@@ -263,21 +243,51 @@ export const CamerasPage: React.FC = () => {
           />
         ) : activeTab === "health" ? (
           <HealthTab serial={selectedSerial} />
+        ) : CAMERA_FEATURE_TABS.some(t => t.id === activeTab) ? (
+          <>
+            {personZonePreview || privacyPreview ? (
+              <ZonePreview key={`${selectedSerial}-${preview}`} kind={personZonePreview ? "person" : "privacy"} />
+            ) : (
+              <CameraFeaturesTab serial={selectedCamera.serial} cameraName={selectedCamera.name} group={activeTab} preview={detectionPreview} />
+            )}
+          </>
         ) : settingsLoading ? (
           <div className="flex flex-col gap-4">
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-32 w-full" />
           </div>
         ) : settingsError ? (
-          <InlineError
-            message={
-              isOnline
-                ? `Couldn't read settings from ${selectedCamera.name}. The camera didn't answer; check it is powered and on the network, then try again.`
-                : `${selectedCamera.name} is offline, so its settings can't be read right now. They load again when the camera reconnects.`
-            }
-            actionLabel="Reload settings"
-            onAction={() => void refetchSettings()}
-          />
+          <>
+            {!showNotConnectedWarning && (
+              <InlineError
+                title="Live settings unavailable"
+                message={settingsMessage}
+                actionLabel="Reload settings"
+                onAction={() => void refetchSettings()}
+                pending={settingsFetching}
+              />
+            )}
+            {activeTab === "identity" && (
+              <section className="rounded-xl border border-border bg-card p-6" aria-labelledby="saved-camera-details">
+                <h3 id="saved-camera-details" className="font-semibold">Saved camera details</h3>
+                <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+                  <div><dt className="text-muted-foreground">Name</dt><dd>{selectedCamera.name}</dd></div>
+                  <div><dt className="text-muted-foreground">Serial number</dt><dd className="font-mono">{selectedCamera.serial}</dd></div>
+                  <div><dt className="text-muted-foreground">Location</dt><dd>{selectedCamera.location || "—"}</dd></div>
+                </dl>
+              </section>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {showNotConnectedWarning && (
+                <Button type="button" variant="outline" onClick={() => void refetchSettings()} disabled={settingsFetching}>
+                  {settingsFetching ? "Reloading…" : "Reload settings"}
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={() => handleTabChange("health")}>Open camera health</Button>
+            </div>
+          </>
+        ) : settings?.unavailable_sections?.includes(activeTab) ? (
+          <InlineError message={settings.read_errors?.[activeTab] || "Camera values could not be read."} actionLabel="Reload settings" onAction={() => void refetchSettings()} />
         ) : settings ? (
           <>
             {activeTab === "identity" && (
@@ -310,6 +320,8 @@ export const CamerasPage: React.FC = () => {
             )}
           </>
         ) : null}
+        </div>
+        </div>
       </div>
     </div>
   );

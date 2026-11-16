@@ -1,10 +1,11 @@
+import { useAccountPreferences } from "@/features/profile/preferences";
 import React from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useUiStore, type ViewMode } from "@/stores/ui";
 
 export const ViewModeToggle: React.FC = () => {
+  const { setViewMode } = useAccountPreferences();
   const viewMode = useUiStore((s) => s.viewMode);
-  const setViewMode = useUiStore((s) => s.setViewMode);
 
   return (
     <div className="hidden md:flex items-center gap-2">

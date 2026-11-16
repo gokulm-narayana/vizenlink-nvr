@@ -383,6 +383,24 @@ class OnvifDeviceClient:
             return res
         return Success(True)
 
+    async def get_system_timezone(self, timeout: float = 8.0) -> CameraResult[str]:
+        result = await post_soap(
+            self.http,
+            self.conn,
+            DEVICE_SERVICE_PATH,
+            '<tds:GetSystemDateAndTime xmlns:tds="http://www.onvif.org/ver10/device/wsdl"/>',
+            clock=self.clock,
+            timeout=timeout,
+        )
+        if not isinstance(result, Success):
+            return result
+        timezone = find_text(parse_xml(result.value), "TZ")
+        return (
+            Success(timezone)
+            if timezone
+            else Failure(FailureKind.BAD_RESPONSE, "Camera did not report a time zone")
+        )
+
     async def set_system_date_and_time(
         self,
         tz: str,

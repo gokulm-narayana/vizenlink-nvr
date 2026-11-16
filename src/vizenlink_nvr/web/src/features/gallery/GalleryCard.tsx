@@ -97,7 +97,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({
         {!isSnapshot && item.duration_seconds && (
           <Badge
             variant="secondary"
-            className="absolute bottom-2 right-2 px-1.5 py-0.5 text-xs font-semibold shadow-xs"
+            className="absolute bottom-2 right-2 border-0 bg-video-overlay px-2 py-0.5 text-xs font-semibold text-video-fg tabular-nums shadow-xs"
           >
             {formatDuration(item.duration_seconds)}
           </Badge>

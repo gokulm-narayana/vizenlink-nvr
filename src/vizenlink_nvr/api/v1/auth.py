@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import urllib.parse
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
-from sqlalchemy import select
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import delete, select
 from sqlalchemy.orm import selectinload
 
 from vizenlink_nvr.api.dependencies import (
@@ -16,8 +16,8 @@ from vizenlink_nvr.api.dependencies import (
     CurrentUserOptional,
     DbSession,
 )
-from vizenlink_nvr.db.models import User
-from vizenlink_nvr.media.config import CONTROL_USER
+from vizenlink_nvr.db.models import Session, User
+from vizenlink_nvr.media.config import CONTROL_USER, camera_path_name
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.auth_hasher import hash_password, verify_password
 from vizenlink_nvr.services.media_token import default_media_token_service
@@ -43,6 +43,12 @@ class MediaMtxAuthRequest(BaseModel):
     action: str = ""
     query: str = ""
 
+    @field_validator("*", mode="before")
+    @classmethod
+    def _null_as_empty(cls, value: object) -> object:
+        # MediaMTX sends null for fields that do not apply (e.g. id/path on API calls).
+        return "" if value is None else value
+
 
 class SetupRequest(BaseModel):
     owner_username: str = Field(..., min_length=1)
@@ -62,7 +68,14 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
 
+class PreferencesUpdate(BaseModel):
+    theme: Literal["light", "dark", "system"] | None = None
+    view_mode: Literal["simple", "advanced"] | None = None
+
+
 class UserResponse(BaseModel):
+    theme: str = "light"
+    view_mode: str = "simple"
     id: int
     username: str
     role: str
@@ -102,6 +115,8 @@ async def get_auth_status(
             role=current_user.role,
             is_active=current_user.is_active,
             cognito_sub=current_user.cognito_sub,
+            theme=current_user.theme,
+            view_mode=current_user.view_mode,
             permissions=[p.camera_serial for p in current_user.permissions],
         )
         site_tz = await read_site_timezone(db)
@@ -288,8 +303,45 @@ async def get_me(
         role=current_user.role,
         is_active=current_user.is_active,
         cognito_sub=current_user.cognito_sub,
+        theme=current_user.theme,
+        view_mode=current_user.view_mode,
         permissions=[p.camera_serial for p in current_user.permissions],
     )
+
+
+@auth_router.patch("/preferences", status_code=204)
+async def update_preferences(
+    payload: PreferencesUpdate, current_user: CurrentUser, db: DbSession
+) -> Response:
+    if payload.theme is not None:
+        current_user.theme = payload.theme
+    if payload.view_mode is not None:
+        current_user.view_mode = payload.view_mode
+    await db.commit()
+    return Response(status_code=204)
+
+
+@auth_router.post("/sessions/sign-out-others")
+async def sign_out_other_sessions(
+    request: Request, current_user: CurrentUser, db: DbSession
+) -> dict[str, int]:
+    current = (
+        request.cookies.get(SESSION_COOKIE_NAME)
+        or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    )
+    result = await db.execute(
+        delete(Session).where(Session.user_id == current_user.id, Session.id != current)
+    )
+    await AuditService.record_event(
+        session=db,
+        action="auth.sign_out_others",
+        resource_type="user",
+        resource_id=str(current_user.id),
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        commit=True,
+    )
+    return {"revoked": int(getattr(result, "rowcount", 0))}
 
 
 @auth_router.post("/password", response_model=dict[str, Any])
@@ -405,8 +457,8 @@ async def mediamtx_auth_webhook(
 
         token_serial = verified.get("serial")
         token_stream = verified.get("stream")
-        expected_path = f"cam/{token_serial}/{token_stream}"
-        req_path = payload.path.strip("/")
+        expected_path = camera_path_name(str(token_serial), str(token_stream))
+        req_path = payload.path.strip("/").lower()
         if req_path != expected_path and not req_path.startswith(f"{expected_path}/"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

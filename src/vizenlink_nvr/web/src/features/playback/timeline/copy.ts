@@ -3,7 +3,7 @@ export const TIMELINE_COPY = {
   LEGEND_RECORDED: "Recorded",
   LEGEND_OUTAGE: "Recording outage",
   LEGEND_RETENTION: "Removed by retention",
-  LEGEND_EVENT: "Event",
+  LEGEND_EVENT: "Alert",
   LEGEND_LOCKED: "Locked",
 
   TABLE_CAPTION: "Recorded video spans for this day",
@@ -19,6 +19,6 @@ export const TIMELINE_COPY = {
   TOOLTIP_RECORDED: "Recorded",
   TOOLTIP_OUTAGE: "Recording outage",
   TOOLTIP_RETENTION: "Removed by retention",
-  TOOLTIP_EVENT: (type: string) => `Event: ${type}`,
+  TOOLTIP_EVENT: (type: string) => `Alert: ${type}`,
   TOOLTIP_NO_FOOTAGE: "No footage",
 };

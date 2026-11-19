@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -77,29 +79,51 @@ async def camera_snapshot(
             headers={"Cache-Control": "private, no-store"},
         )
     conn = await camera_connection(db, vault, serial)
-    digest = make_token(conn.password.get_secret_value(), svc.clock)
-    username = conn.username.replace('"', '\\"')
-    authorization = (
-        f'Digest username="{username}", nonce="{digest.nonce_b64}", '
-        f'created="{digest.created}", response="{digest.digest}"'
-    )
-    response = await svc.http.send(
-        conn,
-        "GET",
-        f"/snapshot?profile={profile}",
-        headers=[("Authorization", authorization)],
-        timeout=8,
-        max_bytes=8 * 1024 * 1024,
-    )
-    if isinstance(response, Timeout):
-        raise HTTPException(504, "Camera snapshot timed out")
-    if isinstance(response, Failure):
-        raise HTTPException(502, response.reason)
-    if response.status != 200:
-        raise HTTPException(502, f"Camera rejected the snapshot request (HTTP {response.status})")
-    if len(response.body) > 8 * 1024 * 1024 or not response.body.startswith(b"\xff\xd8\xff"):
-        raise HTTPException(502, "Camera did not return a valid JPEG snapshot")
-    return Response(response.body, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})
+    cache_key = (serial, profile)
+    cached = svc._snapshot_cache.get(cache_key)
+    if cached is not None and (time.monotonic() - cached[0]) < 1.5:
+        return Response(cached[1], media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})
+
+    task = svc._snapshot_inflight.get(cache_key)
+    if task is None:
+
+        async def _fetch_snapshot() -> bytes:
+            try:
+                digest = make_token(conn.password.get_secret_value(), svc.clock)
+                username = conn.username.replace('"', '\\"')
+                authorization = (
+                    f'Digest username="{username}", nonce="{digest.nonce_b64}", '
+                    f'created="{digest.created}", response="{digest.digest}"'
+                )
+                response = await svc.http.send(
+                    conn,
+                    "GET",
+                    f"/snapshot?profile={profile}",
+                    headers=[("Authorization", authorization)],
+                    timeout=8,
+                    max_bytes=8 * 1024 * 1024,
+                )
+                if isinstance(response, Timeout):
+                    raise HTTPException(504, "Camera snapshot timed out")
+                if isinstance(response, Failure):
+                    raise HTTPException(502, response.reason)
+                if response.status != 200:
+                    raise HTTPException(
+                        502,
+                        f"Camera rejected the snapshot request (HTTP {response.status})",
+                    )
+                if len(response.body) > 8 * 1024 * 1024 or not response.body.startswith(b"\xff\xd8\xff"):
+                    raise HTTPException(502, "Camera did not return a valid JPEG snapshot")
+                svc._snapshot_cache[cache_key] = (time.monotonic(), response.body)
+                return response.body
+            finally:
+                svc._snapshot_inflight.pop(cache_key, None)
+
+        task = asyncio.create_task(_fetch_snapshot())
+        svc._snapshot_inflight[cache_key] = task
+
+    jpeg_bytes = await asyncio.shield(task)
+    return Response(jpeg_bytes, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})
 
 
 # -----------------------------------------------------------------------------
@@ -196,7 +220,6 @@ async def create_osd_endpoint(
     from vizenlink_nvr.camera.onvif.media2 import OnvifMedia2Client, OsdConfig
     from vizenlink_nvr.services.audit import AuditService
     from vizenlink_nvr.services.camera_features import camera_connection, require_success
-
     from vizenlink_nvr.services.sim_camera import SIM_CAMERAS, is_sim_camera
 
     verify_camera_access(serial, user)
@@ -239,7 +262,6 @@ async def delete_osd_endpoint(
     from vizenlink_nvr.camera.onvif.media2 import OnvifMedia2Client
     from vizenlink_nvr.services.audit import AuditService
     from vizenlink_nvr.services.camera_features import camera_connection, require_success
-
     from vizenlink_nvr.services.sim_camera import SIM_CAMERAS, is_sim_camera
 
     verify_camera_access(serial, user)

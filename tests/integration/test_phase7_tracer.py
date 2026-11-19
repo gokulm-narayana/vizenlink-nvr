@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import httpx
@@ -243,9 +244,13 @@ async def test_phase7_complete_e2e_tracer(tmp_path: Path) -> None:
         assert live_data["camera_serial"] == "CAM-P7-FRONT"
         # Defaults to sub-stream for mobile
         assert live_data["profile"] == "sub"
-        assert "/cam/cam-p7-front/sub/whep?token=" in live_data["webrtc_url"]
-        assert "/cam/cam-p7-front/sub/index.m3u8?token=" in live_data["hls_url"]
-        assert "rtsp://" in live_data["rtsp_url"]
+        assert "/cam/CAM-P7-FRONT/sub/whep?token=" in live_data["webrtc_url"]
+        # MediaMTX is loopback-only; the phone uses the WHEP proxy or proxied HLS fallback.
+        assert (
+            live_data["hls_url"]
+            == f"http://test/cam/CAM-P7-FRONT/sub/hls/{live_data['token']}/index.m3u8"
+        )
+        assert live_data["rtsp_url"] is None
 
         # Viewer cannot access unpermitted camera CAM-P7-BACK
         res_unpermitted = await client.get(
@@ -273,7 +278,7 @@ async def test_phase7_complete_e2e_tracer(tmp_path: Path) -> None:
         assert len(recs) == 2
         assert recs[0]["trigger"] == "continuous"
         assert recs[1]["trigger"] == "event"
-        assert "/api/v1/playback/stream/" in recs[0]["stream_url"]
+        assert "/api/v1/playback/segment/" in recs[0]["stream_url"]
 
         # ---------------------------------------------------------------------------
         # Step 5: Mobile Health & Storage Telemetry (MOB-06)
@@ -309,17 +314,37 @@ async def test_phase7_complete_e2e_tracer(tmp_path: Path) -> None:
         )
         assert res_mode_forbidden.status_code == 403, res_mode_forbidden.text
 
-        # 6c. Owner adds camera from mobile
-        res_add_cam = await client.post(
-            "/api/v1/mobile/cameras",
-            json={
-                "serial": "CAM-P7-NEW",
-                "name": "Side Garden",
-                "host": "192.168.1.205",
-            },
-            headers=headers_a,
-        )
+        # 6c. Owner adds camera from mobile — same OnboardingService path as the web UI
+        # (stubbed here: no real camera to sign in to).
+        from vizenlink_nvr.api.v1 import mobile as mobile_module
+
+        async def _fake_onboard(payload: Any, user: Any, request: Any, db: Any) -> Any:
+            cam = Camera(
+                serial="CAM-P7-NEW",
+                name="Side Garden",
+                host=str(payload.host),
+                https_port=payload.port,
+                tls_fingerprint_sha256="cd" * 32,
+                state="active",
+                added_at=utc_now(),
+                host_updated_at=utc_now(),
+            )
+            db.add(cam)
+            await db.commit()
+            return cam
+
+        original_onboard = mobile_module.onboard_discovered_camera
+        mobile_module.onboard_discovered_camera = _fake_onboard  # type: ignore[assignment]
+        try:
+            res_add_cam = await client.post(
+                "/api/v1/mobile/cameras",
+                json={"host": "192.168.1.205", "username": "admin", "password": "CamPass123!"},
+                headers=headers_a,
+            )
+        finally:
+            mobile_module.onboard_discovered_camera = original_onboard  # type: ignore[assignment]
         assert res_add_cam.status_code == 201, res_add_cam.text
+        assert res_add_cam.json()["serial"] == "CAM-P7-NEW"
 
         # 6d. Viewer attempts to delete camera -> HTTP 403 Forbidden
         res_del_forbidden = await client.delete(

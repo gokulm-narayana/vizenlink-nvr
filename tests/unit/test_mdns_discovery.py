@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import socket
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+import pytest
 
 from vizenlink_nvr.network.mdns import SERVICE_TYPE, NvrMdnsAdvertiser, get_local_ip
 
@@ -111,3 +114,46 @@ def test_mdns_advertiser_register_exception_handling() -> None:
     )
     assert adv.start() is False
     assert adv.is_running is False
+
+
+def test_get_local_ip_offline_lan_uses_interface_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When external routing fails (offline LAN), get_local_ip scans local interfaces."""
+    class FailingSocket:
+        def connect(self, *_args: object) -> None:
+            raise OSError("Network unreachable")
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr("vizenlink_nvr.network.mdns.socket.socket", lambda *_a, **_kw: FailingSocket())
+    fake_adapters = [
+        SimpleNamespace(ips=[SimpleNamespace(ip="127.0.0.1"), SimpleNamespace(ip="169.254.1.5")]),
+        SimpleNamespace(ips=[SimpleNamespace(ip="192.168.77.25")]),
+    ]
+    monkeypatch.setattr("ifaddr.get_adapters", lambda: fake_adapters)
+
+    assert get_local_ip() == "192.168.77.25"
+
+
+def test_mdns_advertiser_refresh_ip() -> None:
+    """refresh_ip updates the advertised ServiceInfo address without restart."""
+    mock_zc = MagicMock()
+    adv = NvrMdnsAdvertiser(
+        nvr_id="refresh-test",
+        name="Refresh NVR",
+        port=8000,
+        ip_address="192.168.1.10",
+        zeroconf_instance=mock_zc,
+    )
+    assert adv.refresh_ip("192.168.1.20") is False  # Not started yet
+
+    assert adv.start() is True
+    assert adv.refresh_ip("192.168.1.10") is False  # Unchanged
+    assert adv.refresh_ip("127.0.0.1") is False  # Never replace LAN IP with loopback
+
+    assert adv.refresh_ip("192.168.1.20") is True
+    assert adv.ip_address == "192.168.1.20"
+    assert adv.service_info is not None
+    assert adv.service_info.parsed_addresses() == ["192.168.1.20"]
+    mock_zc.update_service.assert_called_once_with(adv.service_info)
+    adv.stop()

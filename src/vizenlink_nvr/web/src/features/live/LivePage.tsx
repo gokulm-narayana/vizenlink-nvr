@@ -48,6 +48,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { VideoTile } from "./VideoTile";
+import { LiveCameraSettingsSheet } from "./LiveCameraSettingsSheet";
 import { LIVE_COPY } from "./copy";
 
 type SavedView = { name: string; serials: string[]; dimension: GridDimension };
@@ -155,6 +156,7 @@ export const LivePage: React.FC = () => {
   const [chooseOpen, setChooseOpen] = useState(false);
   const [draftSelection, setDraftSelection] = useState<string[]>([]);
   const [dragSerial, setDragSerial] = useState<string | null>(null);
+  const [settingsSerial, setSettingsSerial] = useState<string | null>(null);
   // The URL is the single source of truth for the two view states, so every button,
   // menu item and shortcut agrees: ?camera=<serial> enlarges one camera, ?wall=1 is full screen.
   const maximizedSerial = routeParams.get("camera");
@@ -219,7 +221,13 @@ export const LivePage: React.FC = () => {
       const typing = Boolean(target?.closest?.("input, textarea, select, [contenteditable=true]"));
       const popupOpen = Boolean(document.querySelector('[role="dialog"], [role="menu"]'));
       if (event.key === "Escape" && wallRef.current && !fullscreenElement() && !popupOpen && !typing) exitWall();
-      else if ((event.key === "f" || event.key === "F") && !typing && !popupOpen && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      else if ((event.key === "i" || event.key === "I") && !typing && !popupOpen && !event.metaKey && !event.ctrlKey && !event.altKey && isManager) {
+        const targetCamera = expanded ?? (filtered.length === 1 ? filtered[0] : null);
+        if (targetCamera) {
+          event.preventDefault();
+          setSettingsSerial((prev) => (prev ? null : targetCamera.serial));
+        }
+      } else if ((event.key === "f" || event.key === "F") && !typing && !popupOpen && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault();
         if (wallRef.current) exitWall();
         else {
@@ -361,6 +369,7 @@ export const LivePage: React.FC = () => {
   const currentPage = Math.min(page, totalPages - 1);
   const visible = filtered.slice(currentPage * perPage, (currentPage + 1) * perPage);
   const expanded = cameras.find((c) => c.serial === maximizedSerial);
+  const settingsCamera = cameras.find((c) => c.serial === settingsSerial) ?? null;
   const isFiltered = !fitAll && Boolean(search || group || favoritesOnly || selection);
 
   const resetFilters = () => {
@@ -725,10 +734,17 @@ export const LivePage: React.FC = () => {
                         </Link>
                       </Button>
                       {isManager && (
-                        <Button variant="ghost" size="icon" aria-label={`Settings for ${cam.name}`} className={OVERLAY_BTN} asChild>
-                          <Link aria-label={`Settings for ${cam.name}`} to={`/cameras/${encodeURIComponent(cam.serial)}`}>
-                            <Settings className="size-4" />
-                          </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Settings for ${cam.name}`}
+                          className={OVERLAY_BTN}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSettingsSerial(cam.serial);
+                          }}
+                        >
+                          <Settings className="size-4" />
                         </Button>
                       )}
                     </>
@@ -787,6 +803,10 @@ export const LivePage: React.FC = () => {
                       {isManager && (
                         <>
                           <ContextMenuSeparator />
+                          <ContextMenuItem onSelect={() => setSettingsSerial(cam.serial)}>
+                            <SlidersHorizontal />
+                            Image &amp; overlay settings
+                          </ContextMenuItem>
                           <ContextMenuItem onSelect={() => void navigate(`/cameras/${encodeURIComponent(cam.serial)}`)}>
                             <Settings />
                             Camera settings
@@ -879,6 +899,12 @@ export const LivePage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <LiveCameraSettingsSheet
+        serial={settingsCamera?.serial ?? null}
+        cameraName={settingsCamera?.name ?? ""}
+        channel={settingsCamera ? channelOf(settingsCamera.serial) : undefined}
+        onClose={() => setSettingsSerial(null)}
+      />
     </div>
   );
 };

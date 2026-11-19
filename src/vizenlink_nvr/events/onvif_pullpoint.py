@@ -154,6 +154,27 @@ class OnvifPullPointSource(EventSource):
             clock=self.clock,
             timeout=8.0,
         )
+        if (
+            isinstance(res, Failure)
+            and res.http_status == 404
+            and self.event_service_path in ("/onvif/event_service", "/onvif/events_service")
+        ):
+            fallback_path = (
+                "/onvif/events_service"
+                if self.event_service_path == "/onvif/event_service"
+                else "/onvif/event_service"
+            )
+            fallback_res = await post_soap(
+                http=self.http,
+                conn=self.conn,
+                path=fallback_path,
+                body_xml=PULLPOINT_SUBSCRIBE_XML,
+                clock=self.clock,
+                timeout=8.0,
+            )
+            if not isinstance(fallback_res, (Failure, Timeout)):
+                self.event_service_path = fallback_path
+            res = fallback_res
         if isinstance(res, (Failure, Timeout)):
             raise RuntimeError(f"PullPoint subscription failed on {self.camera_serial}: {res}")
 

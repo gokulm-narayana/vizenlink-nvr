@@ -1,6 +1,7 @@
 """VizenLink NVR CLI root application."""
 
 import asyncio
+import logging
 
 import typer
 from rich.table import Table
@@ -20,7 +21,7 @@ from vizenlink_nvr.cli.recording import recording_app
 from vizenlink_nvr.cli.service_cmd import service_app
 from vizenlink_nvr.cli.settings_cmd import settings_app
 from vizenlink_nvr.cli.storage import storage_app
-from vizenlink_nvr.config import load_settings
+from vizenlink_nvr.config import NvrSettings, load_settings
 from vizenlink_nvr.services.runtime import open_runtime
 from vizenlink_nvr.services.status import StatusReport, get_status
 
@@ -72,6 +73,34 @@ def status(
     emit(report, json_mode=json_mode, render_human=_render_status_human)
 
 
+def _mdns_identity(settings: NvrSettings) -> tuple[str, str]:
+    """Read recorder name from DB if present and derive a DNS-safe nvr_id."""
+    import json
+    import re
+    import socket
+    import sqlite3
+
+    from vizenlink_nvr.paths import db_path
+
+    name = "VizenLink-NVR"
+    db_file = db_path(settings)
+    if db_file.exists():
+        try:
+            with sqlite3.connect(f"file:{db_file}?mode=ro", uri=True, timeout=1.0) as conn:
+                row = conn.execute("SELECT value FROM app_setting WHERE key = 'recorder_name'").fetchone()
+            if row and row[0]:
+                parsed = json.loads(row[0])
+                if isinstance(parsed, str) and parsed.strip():
+                    name = parsed.strip()
+        except Exception as exc:
+            logging.getLogger(__name__).debug("Could not read recorder_name from DB for mDNS: %s", exc)
+
+    raw_host = socket.gethostname().split(".")[0].lower()
+    sanitized = re.sub(r"[^a-z0-9-]+", "-", raw_host).strip("-")
+    nvr_id = sanitized or "vizenlink-nvr"
+    return nvr_id, name
+
+
 @app.command(name="run")
 def run_cmd(
     host: str = typer.Option("0.0.0.0", "--host", "-h", help="Bind host address"),  # noqa: S104
@@ -93,19 +122,24 @@ def run_cmd(
     # the handler also redacts credentials.
     configure_logging()
     settings = load_settings(data_dir=data_dir)
+    lan_access = not host.startswith("127.") and host not in ("localhost", "::1")
     server_app = create_app(
         settings=settings,
         recorder_port=port,
-        recorder_lan_access=not host.startswith("127.") and host not in ("localhost", "::1"),
+        recorder_lan_access=lan_access,
     )
 
     mdns = None
-    if not no_mdns:
+    if not no_mdns and lan_access:
         try:
-            mdns = NvrMdnsAdvertiser(nvr_id="vizenlink-nvr", port=port)
+            nvr_id, mdns_name = _mdns_identity(settings)
+            mdns = NvrMdnsAdvertiser(nvr_id=nvr_id, name=mdns_name, port=port)
             mdns.start()
         except Exception as exc:
             logging.getLogger(__name__).warning("mDNS advertisement failed to start: %s", exc)
+            mdns = None
+
+    server_app.state.mdns = mdns
 
     try:
         print("\n========================================================")

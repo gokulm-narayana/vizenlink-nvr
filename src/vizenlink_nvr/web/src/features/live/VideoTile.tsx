@@ -85,21 +85,28 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   const [dragOver, setDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const snapImgRef = useRef<HTMLImageElement>(null);
   const playerRef = useRef<TilePlayer | null>(null);
 
   const [playerState, setPlayerState] = useState<PlayerState>("connecting");
   const [isMuted, setIsMuted] = useState(true);
   const [snapLoaded, setSnapLoaded] = useState(false);
   const [snapTick, setSnapTick] = useState(0);
+  const snapPendingRef = useRef(false);
 
   useEffect(() => {
+    snapPendingRef.current = false;
     setSnapLoaded(false);
     setSnapTick(0);
   }, [serial]);
 
   useEffect(() => {
     if (!isOnline || playerState === "live") return;
-    const timer = window.setInterval(() => setSnapTick((t) => t + 1), 2500);
+    const timer = window.setInterval(() => {
+      if (snapPendingRef.current) return;
+      snapPendingRef.current = true;
+      setSnapTick((t) => t + 1);
+    }, 4000);
     return () => window.clearInterval(timer);
   }, [isOnline, playerState]);
 
@@ -129,6 +136,17 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     }
 
     return () => {
+      clearCanvasTimer();
+      const recorder = mediaRecorderRef.current;
+      mediaRecorderRef.current = null;
+      if (recorder && recorder.state !== "inactive") {
+        try {
+          recorder.stop();
+        } catch {
+          // Ignore recorder stop errors during unmount cleanup.
+        }
+      }
+      recordedChunksRef.current = [];
       player.cleanup();
       playerRef.current = null;
     };
@@ -164,6 +182,65 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   const elapsedSecondsRef = useRef(0);
   const nextPromptAtRef = useRef(MANUAL_CLIP_PROMPT_INTERVAL_SECONDS);
   const savingClipRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const canvasTimerRef = useRef<number | null>(null);
+
+  const clearCanvasTimer = () => {
+    if (canvasTimerRef.current !== null) {
+      window.clearInterval(canvasTimerRef.current);
+      canvasTimerRef.current = null;
+    }
+  };
+
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          const commaIdx = reader.result.indexOf(",");
+          resolve(commaIdx >= 0 ? reader.result.slice(commaIdx + 1) : reader.result);
+        } else {
+          reject(new Error("Failed to encode recorded clip"));
+        }
+      };
+      reader.onerror = () => reject(reader.error ?? new Error("Failed to read recorded clip"));
+      reader.readAsDataURL(blob);
+    });
+
+  const stopRecorderAndEncode = async (): Promise<string | undefined> => {
+    clearCanvasTimer();
+    const recorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (recorder && recorder.state !== "inactive") {
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
+        const prevOnStop = recorder.onstop;
+        recorder.onstop = (ev) => {
+          if (typeof prevOnStop === "function") prevOnStop.call(recorder, ev);
+          finish();
+        };
+        window.setTimeout(finish, 1000);
+        try {
+          recorder.stop();
+        } catch {
+          finish();
+        }
+      });
+    }
+    const chunks = recordedChunksRef.current;
+    recordedChunksRef.current = [];
+    if (chunks.length === 0) return undefined;
+    const mimeType = recorder?.mimeType || chunks[0]?.type || "video/webm";
+    const blob = new Blob(chunks, { type: mimeType });
+    if (blob.size === 0) return undefined;
+    return await blobToBase64(blob);
+  };
 
   const handleStopManualClip = async () => {
     if (savingClipRef.current) return;
@@ -178,6 +255,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     savingClipRef.current = true;
     const endTime = new Date(Math.max(Date.now(), startTime.getTime() + 1000));
     try {
+      const videoBase64 = await stopRecorderAndEncode();
       await apiFetch("/api/v1/playback/manual-clip", {
         method: "POST",
         body: {
@@ -185,6 +263,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           title: `${name || serial} manual clip`,
+          ...(videoBase64 ? { video_base64: videoBase64 } : {}),
         },
       });
       void queryClient.invalidateQueries({ queryKey: ["gallery"] });
@@ -223,6 +302,74 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     nextPromptAtRef.current = MANUAL_CLIP_PROMPT_INTERVAL_SECONDS;
     setManualRecordSeconds(0);
     setShowContinuePrompt(false);
+    recordedChunksRef.current = [];
+    mediaRecorderRef.current = null;
+    clearCanvasTimer();
+
+    const video = videoRef.current as
+      | (HTMLVideoElement & { captureStream?: () => MediaStream })
+      | null;
+    let srcStream: MediaStream | undefined =
+      playerState === "live" &&
+      video?.srcObject &&
+      typeof (video.srcObject as MediaStream).getTracks === "function"
+        ? (video.srcObject as MediaStream)
+        : playerState === "live"
+          ? video?.captureStream?.()
+          : undefined;
+
+    if (!srcStream) {
+      const canvas = document.createElement("canvas") as HTMLCanvasElement & {
+        captureStream?: (frameRate?: number) => MediaStream;
+      };
+      canvas.width = 640;
+      canvas.height = 360;
+      if (typeof canvas.captureStream === "function") {
+        const ctx = canvas.getContext("2d");
+        const drawFrame = () => {
+          if (!ctx) return;
+          const v = videoRef.current;
+          const img = snapImgRef.current;
+          if (v && v.videoWidth > 0) {
+            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+          } else if (img && img.complete && img.naturalWidth > 0) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          }
+        };
+        drawFrame();
+        canvasTimerRef.current = window.setInterval(drawFrame, 250);
+        srcStream = canvas.captureStream(4);
+      }
+    }
+
+    if (srcStream && typeof MediaRecorder !== "undefined") {
+      const candidates = [
+        "video/mp4;codecs=avc1",
+        "video/mp4",
+        "video/webm;codecs=h264",
+        "video/webm;codecs=vp8",
+        "video/webm",
+      ];
+      const mimeType =
+        typeof MediaRecorder.isTypeSupported === "function"
+          ? candidates.find((type) => MediaRecorder.isTypeSupported(type))
+          : undefined;
+      try {
+        const recorder = mimeType
+          ? new MediaRecorder(srcStream, { mimeType })
+          : new MediaRecorder(srcStream);
+        recorder.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) {
+            recordedChunksRef.current.push(ev.data);
+          }
+        };
+        recorder.start(500);
+        mediaRecorderRef.current = recorder;
+      } catch {
+        mediaRecorderRef.current = null;
+      }
+    }
+
     setIsManualRecording(true);
   };
 
@@ -374,10 +521,17 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       {/* Live snapshot fallback when simulated/online camera has no WebRTC session */}
       {isOnline && playerState !== "live" && (
         <img
+          ref={snapImgRef}
           src={`/api/v1/cameras/${encodeURIComponent(serial)}/snapshot?profile=${streamRole === "main" ? "high" : "low"}&t=${snapTick}`}
           alt=""
-          onLoad={() => setSnapLoaded(true)}
-          onError={() => setSnapLoaded(false)}
+          onLoad={() => {
+            snapPendingRef.current = false;
+            setSnapLoaded(true);
+          }}
+          onError={() => {
+            snapPendingRef.current = false;
+            setSnapLoaded(false);
+          }}
           className={cn(
             "pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-200",
             snapLoaded ? "opacity-100" : "opacity-0"

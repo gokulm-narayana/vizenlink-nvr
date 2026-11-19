@@ -35,7 +35,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({
   const [error, setError] = useState(false);
 
   const isSnapshot = item.item_type === "snapshot";
-  const mediaUrl = `/api/v1/gallery/${item.id}/download`;
+  const mediaUrl = `/api/v1/gallery/${item.id}/download?v=${item.file_size_bytes}`;
   const formattedTime = formatDateTime(item.captured_at, zone);
   const displayName = cameraName || item.camera_serial;
 

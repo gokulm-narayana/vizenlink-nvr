@@ -18,6 +18,7 @@ let mockDevicesData: any[] = [];
 let mockQrInitData: any = null;
 let mockQrInitReject = false;
 let mockRevokeReject = false;
+let lastRevokedId: string | null = null;
 
 vi.mock("./api", () => ({
   useQrInit: () => ({
@@ -40,6 +41,7 @@ vi.mock("./api", () => ({
       if (mockRevokeReject) {
         throw new Error("Failed to revoke device");
       }
+      lastRevokedId = id;
       mockDevicesData = mockDevicesData.map((d) =>
         d.device_id === id || d.id === id ? { ...d, is_revoked: true } : d
       );
@@ -54,17 +56,19 @@ describe("Devices Feature", () => {
     vi.clearAllMocks();
     mockQrInitReject = false;
     mockRevokeReject = false;
+    lastRevokedId = null;
 
     mockQrInitData = {
       pairing_code: "VIZEN-7890",
       qr_payload: "vizenlink://pair?code=VIZEN-7890&server=192.168.1.100",
+      server_url: "http://192.168.1.100:8000",
       expires_at: new Date(Date.now() + 300000).toISOString(), // 5 mins in future
     };
 
     mockDevicesData = [
       {
-        id: "dev-1",
-        device_id: "dev-1",
+        id: "pk-dev-1",
+        device_id: "physical-dev-1",
         device_name: "Operator iPhone",
         platform: "ios",
         user_id: 1,
@@ -74,8 +78,8 @@ describe("Devices Feature", () => {
         is_revoked: false,
       },
       {
-        id: "dev-2",
-        device_id: "dev-2",
+        id: "pk-dev-2",
+        device_id: "physical-dev-2",
         device_name: "Security Pixel",
         platform: "android",
         user_id: 2,
@@ -154,6 +158,8 @@ describe("Devices Feature", () => {
 
       expect(screen.getByRole("img", { name: "Pairing QR code" })).toBeInTheDocument();
       expect(screen.getByText(/Expires in/i)).toBeInTheDocument();
+      expect(screen.getByText("NVR address")).toBeInTheDocument();
+      expect(screen.getByText("http://192.168.1.100:8000")).toBeInTheDocument();
 
       // Numbered instructions
       expect(screen.getByText(/Open VizenLink on your mobile device/i)).toBeInTheDocument();
@@ -230,10 +236,11 @@ describe("Devices Feature", () => {
       const confirmBtn = within(dialog).getByRole("button", { name: "Revoke device" });
       await user.click(confirmBtn);
 
-      // Dialog closes
+      // Dialog closes and revokes by unique row PK (not shared physical device_id)
       await waitFor(() => {
         expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
       });
+      expect(lastRevokedId).toBe("pk-dev-1");
     });
 
     it("shows empty state when no paired devices exist", () => {

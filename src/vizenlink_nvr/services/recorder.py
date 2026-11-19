@@ -107,9 +107,10 @@ def build_recorder_config(
 ) -> dict[str, Any]:
     cfg = build_config(ports, hash_control_password(control_password), nvr_port=nvr_port)
     if lan_access:
-        # WebRTC signalling stays on loopback behind the authenticated /cam proxy; only the
-        # media UDP socket listens on the LAN so browsers on other machines receive video.
+        # WebRTC signalling stays on loopback behind the authenticated /cam proxy; the
+        # WebRTC media UDP and TCP ICE sockets listen on the LAN so LAN clients receive video.
         cfg["webrtcLocalUDPAddress"] = f":{ports.webrtc_udp}"
+        cfg["webrtcLocalTCPAddress"] = f":{ports.webrtc_udp}"
         cfg["webrtcAdditionalHosts"] = lan_ipv4_addresses()
     return cfg
 
@@ -139,6 +140,7 @@ class RecorderSupervisor:
         nvr_port: int,
         lan_access: bool,
         ports: MediaMtxPorts | None = None,
+        mdns: Any | None = None,
         reconcile_interval: float = 30.0,
         janitor_interval: float = 300.0,
         index_interval: float = 1800.0,
@@ -148,6 +150,8 @@ class RecorderSupervisor:
         self.nvr_port = nvr_port
         self.lan_access = lan_access
         self.ports = ports or MediaMtxPorts()
+        self.mdns = mdns
+        self._last_lan_ips: list[str] | None = None
         self.reconcile_interval = reconcile_interval
         self.janitor_interval = janitor_interval
         self.index_interval = index_interval
@@ -166,7 +170,11 @@ class RecorderSupervisor:
         self._stopping = False
 
         self._camera_http = CameraHttp(CameraEventBus())
-        self._events = EventSubscriptionSupervisor(rt.sessions, event_callback=self._on_camera_event)
+        self._events = EventSubscriptionSupervisor(
+            rt.sessions,
+            event_callback=self._on_camera_event,
+            min_poll_interval=3.0,
+        )
         self._event_cameras: set[str] = set()
         self._not_ready_since: dict[str, datetime] = {}
         self._offline: set[str] = set()
@@ -256,6 +264,7 @@ class RecorderSupervisor:
                     logger.info("Adopted running MediaMTX on %s", self.api_base)
                 self.adopted_external = True
                 self.mediamtx_error = None
+                await self._sync_webrtc_lan_config()
                 return
             self.adopted_external = False
             self.mediamtx_error = (
@@ -278,8 +287,44 @@ class RecorderSupervisor:
             raise
         self.process = proc
         self.mediamtx_error = None
+        if self.lan_access:
+            self._last_lan_ips = list(cfg.get("webrtcAdditionalHosts", []))
         logger.info("MediaMTX started (pid %s)", proc.popen.pid if proc.popen else "?")
+        await self._sync_webrtc_lan_config()
         await self._reconcile_once()
+
+    async def _sync_webrtc_lan_config(self) -> None:
+        """Keep MediaMTX WebRTC UDP/TCP listeners and ICE hosts aligned with current LAN IPs."""
+        if not self.lan_access or self._client is None:
+            return
+        current_ips = lan_ipv4_addresses()
+        changed = self._last_lan_ips is None or current_ips != self._last_lan_ips
+        if not changed:
+            return
+        payload = {
+            "webrtcLocalUDPAddress": f":{self.ports.webrtc_udp}",
+            "webrtcLocalTCPAddress": f":{self.ports.webrtc_udp}",
+            "webrtcAdditionalHosts": current_ips,
+        }
+        try:
+            res = await self._client.patch(
+                f"{self.api_base}/v3/config/global/patch",
+                auth=self.auth,
+                json=payload,
+            )
+            if 200 <= res.status_code < 300:
+                logger.info("Synced MediaMTX WebRTC LAN config: hosts=%s", current_ips)
+                self._last_lan_ips = list(current_ips)
+            else:
+                logger.warning(
+                    "Failed to patch MediaMTX WebRTC LAN config (%s): %s",
+                    res.status_code,
+                    res.text[:200],
+                )
+        except httpx.HTTPError as exc:
+            logger.warning("Failed to patch MediaMTX WebRTC LAN config: %s", exc)
+        if self.mdns is not None:
+            await asyncio.to_thread(self.mdns.refresh_ip)
 
     # ------------------------------------------------------------------ reconcile + health
 
@@ -289,6 +334,7 @@ class RecorderSupervisor:
     async def _reconcile_once(self) -> None:
         if self._client is None or await self._mediamtx_answering() is None:
             return
+        await self._sync_webrtc_lan_config()
         async with self.rt.sessions() as session:
             active = select(Camera.serial).where(Camera.state == "active")
             serials = list((await session.scalars(active)).all())
@@ -415,7 +461,13 @@ class RecorderSupervisor:
                         self._event_failures.add(serial)
                     continue
                 self._event_failures.discard(serial)
-                source = OnvifPullPointSource(serial, conn, http=self._camera_http, clock=self.rt.clock)
+                source = OnvifPullPointSource(
+                    serial,
+                    conn,
+                    http=self._camera_http,
+                    clock=self.rt.clock,
+                    event_service_path="/onvif/events_service",
+                )
                 self._events.register_camera_source(serial, source)
                 self._event_cameras.add(serial)
                 added = True

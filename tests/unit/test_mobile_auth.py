@@ -212,3 +212,59 @@ async def test_list_devices(async_db: AsyncSession, sample_users: tuple[User, Us
     assert len(viewer_devs) == 1
     assert viewer_devs[0].device_name == "Viewer Phone"
 
+
+@pytest.mark.asyncio
+async def test_revoke_by_device_id_when_multiple_users_share_device(
+    async_db: AsyncSession,
+    sample_users: tuple[User, User],
+) -> None:
+    """Revoking when two users share the same physical device_id never raises MultipleResultsFound."""
+    owner, viewer = sample_users
+
+    owner_dev, owner_acc, _ = await MobileAuthService.pair_via_credentials(
+        async_db, "owner_user", "OwnerPassword123!", "shared-tablet", "Shared Tablet"
+    )
+    _, viewer_acc, _ = await MobileAuthService.pair_via_credentials(
+        async_db, "viewer_user", "ViewerPassword123!", "shared-tablet", "Shared Tablet"
+    )
+
+    # Viewer revokes their own pairing by device_id -> only viewer's row is revoked
+    assert await MobileAuthService.revoke_device(async_db, "shared-tablet", actor=viewer) is True
+    assert await MobileAuthService.validate_mobile_token(async_db, viewer_acc) is None
+    assert await MobileAuthService.validate_mobile_token(async_db, owner_acc) is not None
+
+    # Owner revoking by PK does not fail and revokes owner's row
+    assert await MobileAuthService.revoke_device(async_db, owner_dev.id, actor=owner) is True
+    assert await MobileAuthService.validate_mobile_token(async_db, owner_acc) is None
+
+
+@pytest.mark.asyncio
+async def test_refresh_grace_window_and_sliding_refresh_expiry(
+    async_db: AsyncSession,
+    sample_users: tuple[User, User],
+) -> None:
+    """In-flight requests with the previous access token survive refresh briefly, then stop on revoke."""
+    owner, _ = sample_users
+
+    dev, old_acc, ref = await MobileAuthService.pair_via_credentials(
+        async_db, "owner_user", "OwnerPassword123!", "grace-phone", "Grace Phone"
+    )
+    # Age refresh_token_expires_at slightly so we can verify sliding extension
+    dev.refresh_token_expires_at = utc_now() + timedelta(days=5)
+    await async_db.commit()
+
+    new_acc, _ = await MobileAuthService.refresh_token(async_db, ref)
+    assert new_acc != old_acc
+
+    # Both the new access token and the superseded grace token authenticate
+    assert await MobileAuthService.validate_mobile_token(async_db, new_acc) is not None
+    assert await MobileAuthService.validate_mobile_token(async_db, old_acc) is not None
+
+    await async_db.refresh(dev)
+    assert dev.refresh_token_expires_at > utc_now() + timedelta(days=25)
+
+    # Revoking invalidates BOTH the current and the grace token immediately
+    assert await MobileAuthService.revoke_device(async_db, dev.id, actor=owner) is True
+    assert await MobileAuthService.validate_mobile_token(async_db, new_acc) is None
+    assert await MobileAuthService.validate_mobile_token(async_db, old_acc) is None
+

@@ -102,6 +102,15 @@ class CameraHttp:
         self.events = events
         self.silent_after = silent_after
         self._clients: dict[tuple[str, int, str | None], httpx.AsyncClient] = {}
+        self._semaphores: dict[tuple[str, int], asyncio.Semaphore] = {}
+
+    def _get_semaphore(self, conn: CameraConnection) -> asyncio.Semaphore:
+        key = (conn.host, conn.port)
+        sem = self._semaphores.get(key)
+        if sem is None:
+            sem = asyncio.Semaphore(2)
+            self._semaphores[key] = sem
+        return sem
 
     def _get_client(self, conn: CameraConnection) -> httpx.AsyncClient:
         key = (conn.host, conn.port, conn.tls_pin_sha256)
@@ -135,103 +144,107 @@ class CameraHttp:
         if not has_id_header and conn.serial:
             header_list.append((CAMERA_ID_HEADER, conn.serial))
 
-        silence_task: asyncio.Task[None] | None = None
-        if conn.serial:
-
-            async def _silence_guard() -> None:
-                await asyncio.sleep(self.silent_after)
-                self.events.publish(
-                    CameraUnreachableEvent(
-                        host=conn.host,
-                        port=conn.port,
-                        expected_id=conn.serial or "",
-                    )
-                )
-
-            silence_task = asyncio.create_task(_silence_guard())
-
-        try:
-            req = client.build_request(
-                method,
-                url,
-                headers=header_list,
-                content=body,
-                timeout=timeout,
-            )
-
-            async with client.stream(
-                method=req.method,
-                url=req.url,
-                headers=req.headers,
-                content=req.content,
-                timeout=timeout,
-            ) as stream_resp:
-                if silence_task is not None:
-                    silence_task.cancel()
-                if max_bytes is None:
-                    content = await stream_resp.aread()
-                else:
-                    chunks = bytearray()
-                    async for chunk in stream_resp.aiter_bytes():
-                        chunks.extend(chunk)
-                        if len(chunks) > max_bytes:
-                            return Failure(FailureKind.BAD_RESPONSE, "Camera response exceeds the size limit")
-                    content = bytes(chunks)
-                status = stream_resp.status_code
-
-                if status == CAMERA_ID_MISMATCH_STATUS:
-                    if conn.serial:
-                        self.events.publish(
-                            CameraIdMismatchEvent(
-                                host=conn.host,
-                                port=conn.port,
-                                expected_id=conn.serial,
-                            )
-                        )
-                    return Failure(
-                        kind=FailureKind.ID_MISMATCH,
-                        reason="HTTP 421: Camera ID mismatch",
-                        http_status=CAMERA_ID_MISMATCH_STATUS,
-                    )
-
-                raw_headers = [
-                    (
-                        k.decode("latin1") if isinstance(k, bytes) else k,
-                        v.decode("latin1") if isinstance(v, bytes) else v,
-                    )
-                    for k, v in stream_resp.headers.raw
-                ]
-                return HttpResponse(status=status, headers=raw_headers, body=content)
-
-        except httpx.TimeoutException as exc:
-            return Timeout(reason=str(exc))
-        except Exception as exc:
-            curr: BaseException | None = exc
-            is_tls_changed = False
-            while curr is not None:
-                if isinstance(curr, ssl.SSLCertVerificationError) or "TLS pin mismatch" in str(curr):
-                    is_tls_changed = True
-                    break
-                curr = curr.__cause__ or curr.__context__
-
-            if is_tls_changed:
-                return Failure(
-                    kind=FailureKind.TLS_CHANGED,
-                    reason="camera certificate changed since it was added",
-                )
-
+        async with self._get_semaphore(conn):
+            silence_task: asyncio.Task[None] | None = None
             if conn.serial:
-                self.events.publish(
-                    CameraUnreachableEvent(
-                        host=conn.host,
-                        port=conn.port,
-                        expected_id=conn.serial,
+
+                async def _silence_guard() -> None:
+                    await asyncio.sleep(self.silent_after)
+                    self.events.publish(
+                        CameraUnreachableEvent(
+                            host=conn.host,
+                            port=conn.port,
+                            expected_id=conn.serial or "",
+                        )
                     )
+
+                silence_task = asyncio.create_task(_silence_guard())
+
+            try:
+                req = client.build_request(
+                    method,
+                    url,
+                    headers=header_list,
+                    content=body,
+                    timeout=timeout,
                 )
-            return Failure(kind=FailureKind.UNREACHABLE, reason=str(exc))
-        finally:
-            if silence_task is not None and not silence_task.done():
-                silence_task.cancel()
+
+                async with client.stream(
+                    method=req.method,
+                    url=req.url,
+                    headers=req.headers,
+                    content=req.content,
+                    timeout=timeout,
+                ) as stream_resp:
+                    if silence_task is not None:
+                        silence_task.cancel()
+                    if max_bytes is None:
+                        content = await stream_resp.aread()
+                    else:
+                        chunks = bytearray()
+                        async for chunk in stream_resp.aiter_bytes():
+                            chunks.extend(chunk)
+                            if len(chunks) > max_bytes:
+                                return Failure(
+                                    FailureKind.BAD_RESPONSE,
+                                    "Camera response exceeds the size limit",
+                                )
+                        content = bytes(chunks)
+                    status = stream_resp.status_code
+
+                    if status == CAMERA_ID_MISMATCH_STATUS:
+                        if conn.serial:
+                            self.events.publish(
+                                CameraIdMismatchEvent(
+                                    host=conn.host,
+                                    port=conn.port,
+                                    expected_id=conn.serial,
+                                )
+                            )
+                        return Failure(
+                            kind=FailureKind.ID_MISMATCH,
+                            reason="HTTP 421: Camera ID mismatch",
+                            http_status=CAMERA_ID_MISMATCH_STATUS,
+                        )
+
+                    raw_headers = [
+                        (
+                            k.decode("latin1") if isinstance(k, bytes) else k,
+                            v.decode("latin1") if isinstance(v, bytes) else v,
+                        )
+                        for k, v in stream_resp.headers.raw
+                    ]
+                    return HttpResponse(status=status, headers=raw_headers, body=content)
+
+            except httpx.TimeoutException as exc:
+                return Timeout(reason=str(exc))
+            except Exception as exc:
+                curr: BaseException | None = exc
+                is_tls_changed = False
+                while curr is not None:
+                    if isinstance(curr, ssl.SSLCertVerificationError) or "TLS pin mismatch" in str(curr):
+                        is_tls_changed = True
+                        break
+                    curr = curr.__cause__ or curr.__context__
+
+                if is_tls_changed:
+                    return Failure(
+                        kind=FailureKind.TLS_CHANGED,
+                        reason="camera certificate changed since it was added",
+                    )
+
+                if conn.serial:
+                    self.events.publish(
+                        CameraUnreachableEvent(
+                            host=conn.host,
+                            port=conn.port,
+                            expected_id=conn.serial,
+                        )
+                    )
+                return Failure(kind=FailureKind.UNREACHABLE, reason=str(exc))
+            finally:
+                if silence_task is not None and not silence_task.done():
+                    silence_task.cancel()
 
     async def aclose(self) -> None:
         """Close all cached HTTP clients."""

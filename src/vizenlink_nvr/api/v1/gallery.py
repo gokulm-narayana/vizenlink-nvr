@@ -29,6 +29,16 @@ logger = logging.getLogger(__name__)
 gallery_router = APIRouter(prefix="/gallery", tags=["gallery"])
 
 
+def _detect_clip_media_type(path: Path) -> str:
+    """Detect whether a video clip is WebM (EBML header) or MP4."""
+    try:
+        with path.open("rb") as fh:
+            header = fh.read(4)
+    except OSError:
+        return "video/mp4"
+    return "video/webm" if header.startswith(b"\x1a\x45\xdf\xa3") else "video/mp4"
+
+
 class GalleryItemResponse(BaseModel):
     id: int
     camera_serial: str
@@ -177,6 +187,7 @@ async def download_gallery_item(
     request: Request,
     user: CurrentUser,
     db: DbSession,
+    download: bool = Query(default=False),
 ) -> FileResponse:
     """Download the media file for a gallery item (GAL-02)."""
     item = await GalleryService.get_item(db, item_id)
@@ -203,11 +214,15 @@ async def download_gallery_item(
             detail=f"Media file not found on disk: {item.file_path}",
         )
 
-    media_type = "image/jpeg" if item.item_type == "snapshot" else "video/mp4"
+    media_type = (
+        "image/jpeg" if item.item_type == "snapshot" else _detect_clip_media_type(resolved_path)
+    )
     return FileResponse(
         path=resolved_path,
         media_type=media_type,
         filename=Path(item.file_path).name,
+        content_disposition_type="attachment" if download else "inline",
+        headers={"Cache-Control": "no-cache"},
     )
 
 
@@ -324,6 +339,7 @@ async def download_shared_gallery_item(
     request: Request,
     db: DbSession,
     token: str = Query(..., min_length=1),
+    download: bool = Query(default=False),
 ) -> FileResponse:
     """Download or open a gallery item using a signed QR share token."""
     payload = default_media_token_service.verify_token(token)
@@ -355,9 +371,13 @@ async def download_shared_gallery_item(
             detail=f"Media file not found on disk: {item.file_path}",
         )
 
-    media_type = "image/jpeg" if item.item_type == "snapshot" else "video/mp4"
+    media_type = (
+        "image/jpeg" if item.item_type == "snapshot" else _detect_clip_media_type(resolved_path)
+    )
     return FileResponse(
         path=resolved_path,
         media_type=media_type,
         filename=Path(item.file_path).name,
+        content_disposition_type="attachment" if download else "inline",
+        headers={"Cache-Control": "no-cache"},
     )

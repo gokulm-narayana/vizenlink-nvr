@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 INITIAL_BACKOFF_SECONDS = 1.0
 MAX_BACKOFF_SECONDS = 60.0
-RENEW_INTERVAL_SECONDS = 30.0
+RENEW_INTERVAL_SECONDS = 45.0
 
 
 EventCallback = Callable[[RawCameraEvent], Coroutine[Any, Any, None]]
@@ -31,9 +31,12 @@ class EventSubscriptionSupervisor:
         self,
         session_factory: async_sessionmaker[AsyncSession],
         event_callback: EventCallback | None = None,
+        *,
+        min_poll_interval: float = 0.0,
     ) -> None:
         self.session_factory = session_factory
         self.event_callback = event_callback
+        self.min_poll_interval = min_poll_interval
         self._sources: dict[str, EventSource] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._running = False
@@ -155,7 +158,9 @@ class EventSubscriptionSupervisor:
             # 2. Polling loop
             while self._running:
                 try:
+                    poll_started = asyncio.get_running_loop().time()
                     events = await source.poll(timeout_seconds=5.0)
+                    elapsed = asyncio.get_running_loop().time() - poll_started
                     now = utc_now()
                     if events:
                         for evt in events:
@@ -180,6 +185,10 @@ class EventSubscriptionSupervisor:
                             )
                         else:
                             raise RuntimeError("Subscription renewal refused by camera")
+
+                    # Prevent tight loops when cameras reply immediately with empty PullMessages
+                    if not events and self.min_poll_interval > elapsed:
+                        await asyncio.sleep(self.min_poll_interval - elapsed)
 
                 except asyncio.CancelledError:
                     return

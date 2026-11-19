@@ -8,23 +8,28 @@ import struct
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from vizenlink_nvr.api.dependencies import (
     CurrentUser,
+    CurrentUserOptional,
     DbSession,
     RequireOperator,
 )
-from vizenlink_nvr.db.models import Camera, Segment, StorageSettings
+from vizenlink_nvr.db.models import Camera, Segment, StorageSettings, User
 from vizenlink_nvr.media.clip_exporter import ClipExporter
 from vizenlink_nvr.media.playback_streamer import RangeFileResponse
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.gallery import GalleryService
 from vizenlink_nvr.services.indexer import parse_start_time_from_path
+from vizenlink_nvr.services.media_token import default_media_token_service
+from vizenlink_nvr.services.settings import read_site_timezone
 from vizenlink_nvr.services.timeline import TimelineService
 from vizenlink_nvr.timeutil import UTC, utc_now
 
@@ -150,16 +155,52 @@ async def _resolve_storage_root(request: Request, db: AsyncSession) -> Path:
 async def stream_segment(
     segment_id: int,
     request: Request,
-    user: CurrentUser,
     db: DbSession,
+    user: CurrentUserOptional = None,
+    token: Annotated[str | None, Query()] = None,
 ) -> Response:
     """Stream fMP4 video segment with HTTP 206 Byte-Range seeking support (PLAY-03, PLAY-04)."""
+    verified_payload: dict[str, object] | None = None
+    if user is None:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+            )
+        verified_payload = default_media_token_service.verify_token(token)
+        if verified_payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired media token",
+            )
+        user_id = verified_payload.get("sub")
+        res = await db.execute(
+            select(User).options(selectinload(User.permissions)).where(User.id == user_id)
+        )
+        token_user = res.scalar_one_or_none()
+        if token_user is None or not token_user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account is inactive or not found",
+            )
+        user = token_user
+
     seg = await db.get(Segment, segment_id)
     if seg is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Segment {segment_id} not found",
         )
+
+    if verified_payload is not None:
+        if verified_payload.get("serial") != seg.camera_serial or verified_payload.get("stream") not in (
+            "playback",
+            f"segment:{segment_id}",
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Media token does not match requested segment",
+            )
 
     _verify_camera_access(user, seg.camera_serial)
 
@@ -251,11 +292,13 @@ async def get_recorded_days(
     """Retrieve days containing recorded video for a given camera and month."""
     _verify_camera_access(user, camera_serial)
 
+    tz_name = await read_site_timezone(db)
     days = await TimelineService.get_recorded_days(
         session=db,
         camera_serial=camera_serial,
         year=year,
         month=month,
+        tz_name=tz_name,
     )
     return CalendarDaysResponse(
         camera_serial=camera_serial,
@@ -582,6 +625,30 @@ async def _collect_manual_clip_segments(
     return [pair[1] for pair in candidates]
 
 
+def _find_latest_camera_segment(storage_root: Path, camera_serial: str) -> Path | None:
+    """Find the most recent non-empty MP4 segment on disk for a camera."""
+    search_roots = (
+        storage_root / "cam" / camera_serial.lower() / "main",
+        storage_root / camera_serial,
+    )
+    best_path: Path | None = None
+    best_mtime = -1.0
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for candidate in root.rglob("*.mp4"):
+            if not candidate.is_file():
+                continue
+            try:
+                stat = candidate.stat()
+            except OSError:
+                continue
+            if stat.st_size > 0 and stat.st_mtime > best_mtime:
+                best_mtime = stat.st_mtime
+                best_path = candidate
+    return best_path
+
+
 @playback_router.post("/manual-clip", response_model=GalleryItemModel)
 async def save_manual_clip(
     payload: ManualClipRequest,
@@ -628,15 +695,8 @@ async def save_manual_clip(
         end_time=end_utc,
     )
 
-    if segment_paths:
-        try:
-            ClipExporter.export_fmp4_clip(segment_paths, abs_output)
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to assemble manual clip: {exc}",
-            ) from exc
-    elif payload.video_base64:
+    used_segments = 0
+    if payload.video_base64:
         raw_b64 = payload.video_base64
         if "," in raw_b64:
             raw_b64 = raw_b64.split(",", 1)[1]
@@ -653,20 +713,37 @@ async def save_manual_clip(
                 detail="Provided video data is empty",
             )
         _write_atomic_bytes(abs_output, video_bytes)
+        ClipExporter.transcode_to_playable_mp4(abs_output, abs_output)
     else:
-        cam = await db.get(Camera, payload.camera_serial)
-        if cam is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No recording segments found for manual clip",
+        export_segments = segment_paths
+        if not export_segments:
+            latest_seg = _find_latest_camera_segment(storage_root, payload.camera_serial)
+            if latest_seg is not None:
+                export_segments = [latest_seg]
+
+        if export_segments:
+            used_segments = len(export_segments)
+            try:
+                ClipExporter.export_fmp4_clip(export_segments, abs_output)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to assemble manual clip: {exc}",
+                ) from exc
+        else:
+            cam = await db.get(Camera, payload.camera_serial)
+            if cam is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No recording segments found for manual clip",
+                )
+            fallback_mp4 = (
+                _make_isobmff_box("ftyp", b"isommp42")
+                + _make_isobmff_box("moov", b"vizenlink_manual_clip")
+                + _make_isobmff_box("moof", b"fragment_header")
+                + _make_isobmff_box("mdat", b"manual_clip_payload")
             )
-        fallback_mp4 = (
-            _make_isobmff_box("ftyp", b"isommp42")
-            + _make_isobmff_box("moov", b"vizenlink_manual_clip")
-            + _make_isobmff_box("moof", b"fragment_header")
-            + _make_isobmff_box("mdat", b"manual_clip_payload")
-        )
-        _write_atomic_bytes(abs_output, fallback_mp4)
+            _write_atomic_bytes(abs_output, fallback_mp4)
 
     file_size = abs_output.stat().st_size
     duration = (end_utc - start_utc).total_seconds()
@@ -698,7 +775,7 @@ async def save_manual_clip(
             "end_time": end_utc.isoformat(),
             "file_size_bytes": file_size,
             "file_path": rel_path,
-            "segment_count": len(segment_paths),
+            "segment_count": used_segments,
         },
         commit=True,
     )

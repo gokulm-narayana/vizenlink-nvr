@@ -85,6 +85,68 @@ function renderLivePage(
         )
       );
     }
+    if (urlStr.includes("/api/v1/cameras/CAM1/settings/imaging")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ status: "ok", updated: { brightness: 65 } }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+    }
+    if (urlStr.includes("/api/v1/cameras/CAM1/settings")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            read_errors: {},
+            unavailable_sections: [],
+            identity: { name: "Gate", location: "", timezone: "UTC", supported_timezones: [] },
+            device_info: {
+              manufacturer: "VizenLink",
+              model: "VZL",
+              firmware_version: "1.0",
+              serial_number: "CAM1",
+              hardware_id: "HW1",
+            },
+            encoders: [],
+            imaging: {
+              current: {
+                brightness: 50,
+                contrast: 50,
+                color_saturation: 50,
+                sharpness: 50,
+                ir_cut_filter: "AUTO",
+                day_night_now: "day",
+                wdr_mode: "OFF",
+                wdr_level: 0,
+                night_vision_type: "grey",
+                mirror_flip: "off",
+                anti_flicker: "Auto",
+              },
+              options: {
+                brightness_range: [0, 100],
+                contrast_range: [0, 100],
+                color_saturation_range: [0, 100],
+                sharpness_range: [0, 100],
+                ir_cut_filter_modes: ["AUTO", "ON", "OFF"],
+                wdr_supported: true,
+                wdr_level_range: [0, 100],
+                night_vision_color_capable: true,
+                night_vision_smart_capable: false,
+              },
+            },
+            osd_options: {
+              positions: ["UpperLeft", "UpperRight", "LowerLeft", "LowerRight", "Custom"],
+              date_formats: ["dd/MM/yyyy"],
+              time_formats: ["HH:mm:ss"],
+              font_size_range: [8, 24],
+              font_color_range: true,
+            },
+            osd: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+    }
     if (urlStr.includes("/api/v1/cameras")) {
       return Promise.resolve(
         new Response(JSON.stringify(camerasData), {
@@ -535,5 +597,37 @@ describe("LivePage & VideoTile", () => {
     expect(JSON.parse(String(requestInit.body))).toMatchObject({
       camera_serial: "CAM1",
     });
+  });
+
+  it("opens live settings sheet over the video, applies image presets, and saves without leaving live view", async () => {
+    const user = userEvent.setup();
+    renderLivePage([{ id: 1, serial: "CAM1", name: "Gate", state: "online" }], "owner");
+    await screen.findByText("Gate");
+
+    fireEvent.contextMenu(screen.getByRole("group", { name: /Gate/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Image & overlay settings" }));
+
+    const dialog = await screen.findByRole("dialog", { name: /Gate live settings/i });
+    expect(dialog).toBeInTheDocument();
+    // Live camera tile stays mounted behind the side panel.
+    expect(screen.getByRole("group", { name: /Gate/ })).toBeInTheDocument();
+
+    const presetBtn = await screen.findByRole("button", { name: "Low Light" });
+    await user.click(presetBtn);
+
+    await waitFor(() => {
+      const calls = vi.mocked(globalThis.fetch).mock.calls;
+      const putCall = calls.find(([u, init]) =>
+        u.toString().includes("/api/v1/cameras/CAM1/settings/imaging") && (init as RequestInit)?.method === "PUT"
+      );
+      expect(putCall).toBeDefined();
+      expect(JSON.parse(String((putCall?.[1] as RequestInit).body))).toMatchObject({
+        brightness: 65,
+        contrast: 55,
+      });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Close live settings" }));
+    expect(screen.queryByRole("dialog", { name: /Gate live settings/i })).not.toBeInTheDocument();
   });
 });

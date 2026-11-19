@@ -235,6 +235,7 @@ async def test_snapshot_uses_digest_and_rejects_non_images(app_fixture):
         assert result.headers["cache-control"] == "private, no-store"
         sent_headers = dict(service.http.send.call_args.kwargs["headers"])
         assert sent_headers["Authorization"].startswith('Digest username="admin"')
+        service._snapshot_cache.clear()
         service.http.send.return_value = HttpResponse(200, [], b"not a jpeg")
         assert (await client.get("/api/v1/cameras/CAM-SET-1/snapshot", headers=headers)).status_code == 502
 

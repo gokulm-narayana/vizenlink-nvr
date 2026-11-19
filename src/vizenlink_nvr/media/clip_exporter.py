@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import struct
+import subprocess
 import uuid
 from pathlib import Path
 
@@ -40,6 +42,67 @@ def parse_isobmff_boxes(raw_bytes: bytes) -> list[tuple[str, int, int]]:
 
 class ClipExporter:
     """Exports MP4 video clips from recording segments via lossless container assembly."""
+
+    @staticmethod
+    def transcode_to_playable_mp4(input_path: Path, output_path: Path) -> bool:
+        """Normalize a clip into H.264 + AAC faststart MP4 when ffmpeg is available."""
+        ffmpeg_bin = shutil.which("ffmpeg")
+        if ffmpeg_bin is None or not input_path.exists() or input_path.stat().st_size < 512:
+            return False
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_mp4 = output_path.with_name(f"{output_path.name}.tmp_{uuid.uuid4().hex[:8]}.mp4")
+        cmd = [
+            ffmpeg_bin,
+            "-y",
+            "-v",
+            "error",
+            "-i",
+            str(input_path),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            "scale='min(1280,iw)':-2",
+            "-c:a",
+            "aac",
+            "-ar",
+            "44100",
+            "-ac",
+            "1",
+            "-movflags",
+            "+faststart",
+            str(tmp_mp4),
+        ]
+        try:
+            proc = subprocess.run(  # noqa: S603
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+            if proc.returncode == 0 and tmp_mp4.exists() and tmp_mp4.stat().st_size > 0:
+                if os.name == "posix":
+                    os.chmod(tmp_mp4, 0o640)
+                tmp_mp4.replace(output_path)
+                logger.info(
+                    "Transcoded clip %s to playable H.264 MP4 (%d bytes)",
+                    output_path,
+                    output_path.stat().st_size,
+                )
+                return True
+        except (OSError, subprocess.SubprocessError) as exc:
+            logger.warning("ffmpeg transcode skipped for %s: %s", input_path, exc)
+        finally:
+            if tmp_mp4.exists():
+                tmp_mp4.unlink(missing_ok=True)
+        return False
 
     @staticmethod
     def export_fmp4_clip(
@@ -90,7 +153,12 @@ class ClipExporter:
             if os.name == "posix":
                 os.chmod(tmp_output, 0o640)
             tmp_output.replace(output_path)
-            logger.info("Successfully exported clip to %s (%d bytes)", output_path, len(out_buffer))
+            ClipExporter.transcode_to_playable_mp4(output_path, output_path)
+            logger.info(
+                "Successfully exported clip to %s (%d bytes)",
+                output_path,
+                output_path.stat().st_size,
+            )
             return output_path
         finally:
             if tmp_output.exists():

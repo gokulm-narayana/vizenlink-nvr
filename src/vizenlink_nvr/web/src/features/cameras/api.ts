@@ -110,7 +110,8 @@ export function useCameraSettings(serial: string | undefined, enabled = true) {
     queryKey: ["cameraSettings", serial],
     queryFn: () => apiFetch<CameraSettingsData>(`/api/v1/cameras/${encodeURIComponent(serial!)}/settings`),
     enabled: Boolean(serial) && enabled,
-    staleTime: 10000,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -119,7 +120,8 @@ export function useCameraHealth(serial: string) {
     queryKey: ["cameraHealth", serial],
     queryFn: () => apiFetch<CameraHealthData>(`/api/v1/cameras/${encodeURIComponent(serial!)}/health`),
     enabled: Boolean(serial),
-    staleTime: 10000,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 }
 

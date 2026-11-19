@@ -21,6 +21,7 @@ from vizenlink_nvr.media.config import CONTROL_USER, camera_path_name
 from vizenlink_nvr.services.audit import AuditService
 from vizenlink_nvr.services.auth_hasher import hash_password, verify_password
 from vizenlink_nvr.services.media_token import default_media_token_service
+from vizenlink_nvr.services.mobile_auth import MobileAuthService
 from vizenlink_nvr.services.rate_limiter import login_rate_limiter
 from vizenlink_nvr.services.session_manager import (
     SESSION_COOKIE_NAME,
@@ -280,6 +281,7 @@ async def logout(
 
     if token:
         await SessionManager.invalidate_session(db, token)
+        await MobileAuthService.revoke_by_access_token(db, token)
         await AuditService.record_event(
             session=db,
             action="auth.logout",
@@ -332,6 +334,9 @@ async def sign_out_other_sessions(
     result = await db.execute(
         delete(Session).where(Session.user_id == current_user.id, Session.id != current)
     )
+    revoked_mobile = await MobileAuthService.revoke_user_devices(
+        db, current_user.id, except_token=current or None
+    )
     await AuditService.record_event(
         session=db,
         action="auth.sign_out_others",
@@ -341,7 +346,7 @@ async def sign_out_other_sessions(
         actor_username=current_user.username,
         commit=True,
     )
-    return {"revoked": int(getattr(result, "rowcount", 0))}
+    return {"revoked": int(getattr(result, "rowcount", 0)) + revoked_mobile}
 
 
 @auth_router.post("/password", response_model=dict[str, Any])
@@ -365,8 +370,9 @@ async def change_password(
             detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters long",
         )
 
-    # Invalidate other existing sessions
+    # Invalidate other existing web sessions and paired mobile devices
     await SessionManager.invalidate_user_sessions(db, current_user.id)
+    await MobileAuthService.revoke_user_devices(db, current_user.id)
 
     # Update password
     current_user.password_hash = hash_password(payload.new_password)

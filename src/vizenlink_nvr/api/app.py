@@ -62,9 +62,13 @@ def create_app(
                 from vizenlink_nvr.services.recorder import RecorderSupervisor
 
                 recorder = RecorderSupervisor(
-                    fastapi_app.state.runtime, nvr_port=recorder_port, lan_access=recorder_lan_access
+                    fastapi_app.state.runtime,
+                    nvr_port=recorder_port,
+                    lan_access=recorder_lan_access,
+                    mdns=getattr(fastapi_app.state, "mdns", None),
                 )
                 fastapi_app.state.mediamtx_webrtc_port = recorder.ports.webrtc
+                fastapi_app.state.mediamtx_hls_port = recorder.ports.hls
                 await recorder.start()
             fastapi_app.state.recorder = recorder
             try:

@@ -415,6 +415,53 @@ async def test_onvif_media2_osd_get_and_set(fake_conn: CameraConnection, fake_ht
         assert "<tt:Type>BottomLeft</tt:Type>" in call_xml
 
 
+@pytest.mark.asyncio
+async def test_onvif_media2_osd_options_nested_font_color(
+    fake_conn: CameraConnection, fake_http: CameraHttp
+) -> None:
+    from vizenlink_nvr.camera.onvif.media2 import OnvifMedia2Client
+
+    clock = SystemClock()
+    client = OnvifMedia2Client(fake_conn, fake_http, clock)
+    client._endpoint_path = "/onvif/media2_service"
+
+    xml_options = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
+        "<s:Body>"
+        '<tr2:GetOSDOptionsResponse xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" '
+        'xmlns:tt="http://www.onvif.org/ver10/schema">'
+        "<tr2:OSDOptions>"
+        "<tt:Type>Text</tt:Type>"
+        "<tt:PositionOption>UpperLeft</tt:PositionOption>"
+        "<tt:PositionOption>LowerRight</tt:PositionOption>"
+        "<tt:PositionOption>Custom</tt:PositionOption>"
+        "<tt:TextOption>"
+        "<tt:FontSizeRange><tt:Min>8</tt:Min><tt:Max>24</tt:Max></tt:FontSizeRange>"
+        "<tt:DateFormat>dd/MM/yyyy</tt:DateFormat>"
+        "<tt:TimeFormat>hh:mm:ss tt</tt:TimeFormat>"
+        "<tt:FontColor><tt:Color><tt:ColorspaceRange>"
+        "<tt:Colorspace>http://www.onvif.org/ver10/colorspace/RGB</tt:Colorspace>"
+        "<tt:X><tt:Min>0.00</tt:Min><tt:Max>1.00</tt:Max></tt:X>"
+        "<tt:Y><tt:Min>0.00</tt:Min><tt:Max>1.00</tt:Max></tt:Y>"
+        "<tt:Z><tt:Min>0.00</tt:Min><tt:Max>1.00</tt:Max></tt:Z>"
+        "</tt:ColorspaceRange></tt:Color></tt:FontColor>"
+        "</tt:TextOption>"
+        "</tr2:OSDOptions>"
+        "</tr2:GetOSDOptionsResponse>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+
+    with patch("vizenlink_nvr.camera.onvif.media2.post_soap", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = Success(xml_options)
+        res = await client.get_osd_options()
+        assert isinstance(res, Success)
+        assert res.value["font_size_range"] == [8, 24]
+        assert res.value["font_color_range"] is True
+        assert "LowerRight" in res.value["positions"]
+
+
 # -----------------------------------------------------------------------------
 # NuraeyeSettingsClient Tests
 # -----------------------------------------------------------------------------

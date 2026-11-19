@@ -222,11 +222,59 @@ def test_lan_access_opens_only_webrtc_media_socket() -> None:
     local = build_recorder_config(ports, "pw", 8000, lan_access=False)
     lan = build_recorder_config(ports, "pw", 8000, lan_access=True)
     assert local["webrtcLocalUDPAddress"].startswith("127.0.0.1:")
+    assert local["webrtcLocalTCPAddress"].startswith("127.0.0.1:")
     assert lan["webrtcLocalUDPAddress"] == f":{ports.webrtc_udp}"
+    assert lan["webrtcLocalTCPAddress"] == f":{ports.webrtc_udp}"
     assert "127.0.0.1" not in lan["webrtcAdditionalHosts"]
     # Signalling, API, RTSP, HLS and playback stay loopback-only behind the authenticated NVR.
     for key in ("apiAddress", "webrtcAddress", "rtspAddress", "hlsAddress", "playbackAddress"):
         assert lan[key].startswith("127.0.0.1:")
+
+
+@pytest.mark.asyncio
+async def test_sync_webrtc_lan_config_patches_on_ip_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from unittest.mock import MagicMock
+
+    settings = load_settings(data_dir=tmp_path / "data")
+    patches: list[dict[str, Any]] = []
+
+    def mock_handler(req: httpx.Request) -> httpx.Response:
+        if req.method == "PATCH" and req.url.path == "/v3/config/global/patch":
+            patches.append(json.loads(req.content))
+            return httpx.Response(200, json={"status": "ok"})
+        return httpx.Response(404)
+
+    current_ips = ["192.168.10.10"]
+    monkeypatch.setattr("vizenlink_nvr.services.recorder.lan_ipv4_addresses", lambda: list(current_ips))
+    mock_mdns = MagicMock()
+
+    async with open_runtime(settings) as rt:
+        sup = RecorderSupervisor(rt, nvr_port=8000, lan_access=True, mdns=mock_mdns)
+        sup._client = httpx.AsyncClient(transport=httpx.MockTransport(mock_handler), trust_env=False)
+        try:
+            await sup._sync_webrtc_lan_config()
+            assert len(patches) == 1
+            assert patches[0]["webrtcLocalUDPAddress"] == f":{sup.ports.webrtc_udp}"
+            assert patches[0]["webrtcLocalTCPAddress"] == f":{sup.ports.webrtc_udp}"
+            assert patches[0]["webrtcAdditionalHosts"] == ["192.168.10.10"]
+            mock_mdns.refresh_ip.assert_called_once()
+
+            # Same IP list does not re-patch
+            await sup._sync_webrtc_lan_config()
+            assert len(patches) == 1
+
+            # IP change triggers fresh patch and mDNS refresh
+            current_ips[:] = ["192.168.10.25"]
+            await sup._sync_webrtc_lan_config()
+            assert len(patches) == 2
+            assert patches[1]["webrtcAdditionalHosts"] == ["192.168.10.25"]
+            assert mock_mdns.refresh_ip.call_count == 2
+        finally:
+            await sup._client.aclose()
+            sup._client = None
 
 
 def _free_port() -> int:

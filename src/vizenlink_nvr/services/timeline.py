@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import calendar
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vizenlink_nvr.db.models import CameraOutage, Event, Segment
-from vizenlink_nvr.timeutil import UTC
+from vizenlink_nvr.timeutil import UTC, validate_zone
 
 
 @dataclass(frozen=True)
@@ -164,33 +163,49 @@ class TimelineService:
         camera_serial: str,
         year: int,
         month: int,
+        tz_name: str = "UTC",
     ) -> list[str]:
-        """Return list of distinct YYYY-MM-DD dates with recorded segments (PLAY-02)."""
-        _, num_days = calendar.monthrange(year, month)
-        month_start = datetime(year, month, 1, 0, 0, 0, tzinfo=UTC)
-        month_end = datetime(year, month, num_days, 23, 59, 59, 999999, tzinfo=UTC)
+        """Return sorted YYYY-MM-DD local dates in *tz_name* with recorded segments (PLAY-02)."""
+        zone = validate_zone(tz_name)
+        month_start_local = datetime(year, month, 1, 0, 0, 0, tzinfo=zone)
+        next_month_local = (
+            datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=zone)
+            if month == 12
+            else datetime(year, month + 1, 1, 0, 0, 0, tzinfo=zone)
+        )
+        month_start_utc = month_start_local.astimezone(UTC)
+        month_end_utc = next_month_local.astimezone(UTC)
 
         stmt = (
-            select(Segment.start_time)
+            select(Segment.start_time, Segment.end_time)
             .where(
                 Segment.camera_serial == camera_serial,
-                Segment.start_time >= month_start,
-                Segment.start_time <= month_end,
+                Segment.end_time > month_start_utc,
+                Segment.start_time < month_end_utc,
                 Segment.status != "missing",
             )
             .order_by(Segment.start_time.asc())
         )
-        rows = (await session.execute(stmt)).scalars().all()
+        rows = (await session.execute(stmt)).all()
 
-        seen_dates = set()
-        result_dates = []
-        for t in rows:
-            date_str = t.strftime("%Y-%m-%d")
-            if date_str not in seen_dates:
-                seen_dates.add(date_str)
-                result_dates.append(date_str)
+        seen_dates: set[str] = set()
+        for start_dt, end_dt in rows:
+            start_utc = start_dt if start_dt.tzinfo else start_dt.replace(tzinfo=UTC)
+            end_utc = end_dt if end_dt.tzinfo else end_dt.replace(tzinfo=UTC)
+            # Subtract 1 us from end_time so a segment ending cleanly at local midnight
+            # doesn't mark the following empty day as having footage.
+            effective_end = end_utc - timedelta(microseconds=1)
+            if effective_end < start_utc:
+                effective_end = start_utc
 
-        return sorted(result_dates)
+            cur_date = start_utc.astimezone(zone).date()
+            end_date = effective_end.astimezone(zone).date()
+            while cur_date <= end_date:
+                if cur_date.year == year and cur_date.month == month:
+                    seen_dates.add(cur_date.isoformat())
+                cur_date += timedelta(days=1)
+
+        return sorted(seen_dates)
 
     @staticmethod
     async def search_recordings(

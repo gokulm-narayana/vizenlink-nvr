@@ -18,6 +18,7 @@ export interface QRInitResponse {
   pairing_code: string;
   qr_payload: string;
   expires_at: string;
+  server_url?: string | null;
 }
 
 export function useQrInit() {

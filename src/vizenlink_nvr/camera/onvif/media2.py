@@ -665,7 +665,10 @@ class OnvifMedia2Client:
                     "font_size_range": [int(find_text(font_range, "Min")), int(find_text(font_range, "Max"))]
                     if font_range is not None
                     else None,
-                    "font_color_range": root.find(".//{*}FontColor/{*}ColorspaceRange") is not None,
+                    "font_color_range": (
+                        root.find(".//{*}FontColor//{*}ColorspaceRange") is not None
+                        or root.find(".//{*}FontColor//{*}ColorList") is not None
+                    ),
                 }
             )
         except Exception as exc:

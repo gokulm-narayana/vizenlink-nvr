@@ -29,6 +29,22 @@ export function formatExpiry(secondsRemaining: number): string {
   return `Expires in ${secs}s`;
 }
 
+export function extractServerAddress(data: QRInitResponse | null): string | null {
+  if (!data) return null;
+  if (data.server_url) return data.server_url;
+  const qIdx = data.qr_payload.indexOf("?");
+  if (qIdx === -1) return null;
+  const params = new URLSearchParams(data.qr_payload.slice(qIdx + 1));
+  const host = params.get("host") || params.get("server");
+  if (!host) return null;
+  const scheme = params.get("scheme") || "http";
+  const port = params.get("port");
+  const formattedHost = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  const isDefaultPort =
+    !port || (scheme === "http" && port === "80") || (scheme === "https" && port === "443");
+  return `${scheme}://${formattedHost}${isDefaultPort ? "" : `:${port}`}`;
+}
+
 export const PairingDialog: React.FC<PairingDialogProps> = ({
   isOpen,
   onClose,
@@ -93,6 +109,7 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
   };
 
   const isExpired = secondsRemaining <= 0;
+  const serverAddress = extractServerAddress(data);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -162,6 +179,15 @@ export const PairingDialog: React.FC<PairingDialogProps> = ({
                   <span className="text-xs text-muted-foreground">
                     {DEVICES_COPY.HTTP_FALLBACK}
                   </span>
+                )}
+
+                {serverAddress && (
+                  <div className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-4 py-2 text-xs">
+                    <span className="shrink-0 text-muted-foreground">NVR address</span>
+                    <span className="min-w-0 select-all truncate font-mono font-medium text-foreground">
+                      {serverAddress}
+                    </span>
+                  </div>
                 )}
               </div>
 

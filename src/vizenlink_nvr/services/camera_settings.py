@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -63,6 +64,39 @@ class CameraSettingsService:
         self.clock = clock or SystemClock()
         self.http = http or CameraHttp(CameraEventBus())
         self.sessions = NuraeyeSessionCache(self.clock)
+        self._endpoint_cache: dict[tuple[str, str], str] = {}
+        self._snapshot_cache: dict[tuple[str, str], tuple[float, bytes]] = {}
+        self._snapshot_inflight: dict[tuple[str, str], asyncio.Task[bytes]] = {}
+
+    def _populate_cached_endpoints(
+        self,
+        serial: str,
+        media_client: OnvifMedia2Client,
+        imaging_client: OnvifImagingClient | None = None,
+    ) -> None:
+        """Pre-populate cached ONVIF service endpoint paths onto short-lived clients."""
+        media_ep = self._endpoint_cache.get((serial, "media2"))
+        if media_ep and getattr(media_client, "_endpoint_path", None) is None:
+            media_client._endpoint_path = media_ep
+        if imaging_client is not None:
+            imaging_ep = self._endpoint_cache.get((serial, "imaging"))
+            if imaging_ep and getattr(imaging_client, "_endpoint_path", None) is None:
+                imaging_client._endpoint_path = imaging_ep  # type: ignore[attr-defined]
+
+    def _save_cached_endpoints(
+        self,
+        serial: str,
+        media_client: OnvifMedia2Client,
+        imaging_client: OnvifImagingClient | None = None,
+    ) -> None:
+        """Persist resolved ONVIF service endpoint paths for reuse across requests."""
+        media_ep = getattr(media_client, "_endpoint_path", None)
+        if isinstance(media_ep, str) and media_ep:
+            self._endpoint_cache[(serial, "media2")] = media_ep
+        if imaging_client is not None:
+            imaging_ep = getattr(imaging_client, "_endpoint_path", None)
+            if isinstance(imaging_ep, str) and imaging_ep:
+                self._endpoint_cache[(serial, "imaging")] = imaging_ep
 
     async def get_settings(
         self,
@@ -80,6 +114,7 @@ class CameraSettingsService:
         media_client = OnvifMedia2Client(conn, self.http, self.clock)
         imaging_client = OnvifImagingClient(conn, self.http, self.clock)
         nuraeye_client = NuraeyeSettingsClient(conn, self.http, self.clock, sessions=self.sessions)
+        self._populate_cached_endpoints(serial, media_client, imaging_client)
 
         # 1. Identity & Device Info
         name = cam.name
@@ -187,11 +222,15 @@ class CameraSettingsService:
         # 4. OSD Overlays
         osd_res = await media_client.get_osds()
         osd_options_res = await media_client.get_osd_options()
+        self._save_cached_endpoints(serial, media_client, imaging_client)
         osd_list = osd_res.value if isinstance(osd_res, Success) else []
+        osd_unsupported = (
+            isinstance(osd_res, Failure) and osd_res.fault_subcode == "ActionNotSupported"
+        )
 
         section_results: list[tuple[str, list[Any]]] = [
             ("image", [img_res, img_opts_res, nv_res, mf_res, af_res]),
-            ("overlays", [osd_res]),
+            ("overlays", [] if osd_unsupported else [osd_res]),
         ]
         for section, results in section_results:
             if any(not isinstance(r, Success) for r in results):
@@ -377,10 +416,12 @@ class CameraSettingsService:
 
         conn = await load_connection(session, vault, serial)
         media_client = OnvifMedia2Client(conn, self.http, self.clock)
+        self._populate_cached_endpoints(serial, media_client)
 
         # 1. Fetch current options to validate bounds
         opts_res = await media_client.get_video_encoder_configuration_options(venc_token)
         curr_res = await media_client.get_video_encoder_configuration(venc_token)
+        self._save_cached_endpoints(serial, media_client)
         if not isinstance(opts_res, Success) or not isinstance(curr_res, Success):
             raise CameraOperationError(
                 "Cannot change video settings until the camera reports "
@@ -737,6 +778,7 @@ class CameraSettingsService:
 
         conn = await load_connection(session, vault, serial)
         media_client = OnvifMedia2Client(conn, self.http, self.clock)
+        self._populate_cached_endpoints(serial, media_client)
 
         osd_cfg = OsdConfig(
             token=token,
@@ -753,6 +795,7 @@ class CameraSettingsService:
         )
 
         set_res = await media_client.set_osd(osd_cfg)
+        self._save_cached_endpoints(serial, media_client)
         if isinstance(set_res, (Failure, Timeout)):
             raise CameraOperationError(f"Failed to set OSD configuration: {set_res}")
 

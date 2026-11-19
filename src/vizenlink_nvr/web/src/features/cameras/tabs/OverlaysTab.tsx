@@ -23,7 +23,9 @@ const POSITION_NAMES: Record<string, string> = {
   UpperLeft: "Top left",
   UpperRight: "Top right",
   BottomLeft: "Bottom left",
+  LowerLeft: "Bottom left",
   BottomRight: "Bottom right",
+  LowerRight: "Bottom right",
   Custom: "Custom position",
 };
 
@@ -31,7 +33,16 @@ const CORNER_COORDS: Record<string, { x: number; y: number }> = {
   UpperLeft: { x: -0.82, y: 0.82 },
   UpperRight: { x: 0.82, y: 0.82 },
   BottomLeft: { x: -0.82, y: -0.82 },
+  LowerLeft: { x: -0.82, y: -0.82 },
   BottomRight: { x: 0.82, y: -0.82 },
+  LowerRight: { x: 0.82, y: -0.82 },
+};
+
+const DEFAULT_FONT_COLOR: NonNullable<Overlay["font_color"]> = {
+  x: 1,
+  y: 1,
+  z: 1,
+  colorspace: "http://www.onvif.org/ver10/colorspace/RGB",
 };
 
 function colorHex(color: NonNullable<Overlay["font_color"]>): string {
@@ -152,6 +163,7 @@ export function OverlaysTab({ serial, cameraName, settings }: OverlaysTabProps) 
               plain_text: cameraName,
               date_format: options?.date_formats[0] || "dd/MM/yyyy",
               time_format: options?.time_formats[0] || "hh:mm:ss tt",
+              font_color: DEFAULT_FONT_COLOR,
             },
           }),
     onSuccess: () => {
@@ -374,20 +386,41 @@ export function OverlaysTab({ serial, cameraName, settings }: OverlaysTabProps) 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold">{isTime ? "Date & timestamp" : "Text overlay"}</h3>
                 <div className="flex flex-wrap gap-1">
-                  {(["UpperLeft", "UpperRight", "BottomLeft", "BottomRight"] as const).map(
-                    (corner) => (
-                      <Button
-                        key={corner}
-                        type="button"
-                        size="sm"
-                        variant={item.position === corner ? "secondary" : "outline"}
-                        className="text-xs"
-                        onClick={() => applyPresetCorner(item, corner)}
-                      >
-                        {POSITION_NAMES[corner]}
-                      </Button>
-                    ),
-                  )}
+                  {(() => {
+                    const posList = options?.positions || [];
+                    const bottomLeft =
+                      posList.includes("LowerLeft") && !posList.includes("BottomLeft")
+                        ? "LowerLeft"
+                        : "BottomLeft";
+                    const bottomRight =
+                      posList.includes("LowerRight") && !posList.includes("BottomRight")
+                        ? "LowerRight"
+                        : "BottomRight";
+                    const isCornerActive = (corner: string) => {
+                      if (item.position === corner) return true;
+                      if (corner === "LowerLeft" || corner === "BottomLeft") {
+                        return item.position === "LowerLeft" || item.position === "BottomLeft";
+                      }
+                      if (corner === "LowerRight" || corner === "BottomRight") {
+                        return item.position === "LowerRight" || item.position === "BottomRight";
+                      }
+                      return false;
+                    };
+                    return (["UpperLeft", "UpperRight", bottomLeft, bottomRight] as const).map(
+                      (corner) => (
+                        <Button
+                          key={corner}
+                          type="button"
+                          size="sm"
+                          variant={isCornerActive(corner) ? "secondary" : "outline"}
+                          className="text-xs"
+                          onClick={() => applyPresetCorner(item, corner)}
+                        >
+                          {POSITION_NAMES[corner]}
+                        </Button>
+                      ),
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -453,27 +486,30 @@ export function OverlaysTab({ serial, cameraName, settings }: OverlaysTabProps) 
                   </label>
                 )}
 
-                {options?.font_color_range &&
-                  item.font_color &&
-                  item.font_color.colorspace.endsWith("/RGB") && (
-                    <label className="vms-field">
-                      Font color
-                      <Input
-                        type="color"
-                        aria-label={isTime ? "Timestamp font color" : "Text font color"}
-                        value={colorHex(item.font_color)}
-                        onChange={(e) => {
-                          const value = e.target.value.slice(1);
-                          edit(item, "font_color", {
-                            ...item.font_color,
-                            x: parseInt(value.slice(0, 2), 16) / 255,
-                            y: parseInt(value.slice(2, 4), 16) / 255,
-                            z: parseInt(value.slice(4, 6), 16) / 255,
-                          });
-                        }}
-                      />
-                    </label>
-                  )}
+                {Boolean(options?.font_color_range || item.font_color) &&
+                  (!item.font_color?.colorspace || item.font_color.colorspace.endsWith("/RGB")) &&
+                  (() => {
+                    const currentColor = item.font_color ?? DEFAULT_FONT_COLOR;
+                    return (
+                      <label className="vms-field">
+                        Font color
+                        <Input
+                          type="color"
+                          aria-label={isTime ? "Timestamp font color" : "Text font color"}
+                          value={colorHex(currentColor)}
+                          onChange={(e) => {
+                            const value = e.target.value.slice(1);
+                            edit(item, "font_color", {
+                              ...currentColor,
+                              x: parseInt(value.slice(0, 2), 16) / 255,
+                              y: parseInt(value.slice(2, 4), 16) / 255,
+                              z: parseInt(value.slice(4, 6), 16) / 255,
+                            });
+                          }}
+                        />
+                      </label>
+                    );
+                  })()}
               </div>
             </section>
           );

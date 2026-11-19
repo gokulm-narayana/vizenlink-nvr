@@ -75,7 +75,7 @@ export const PreviewDialog: React.FC<PreviewDialogProps> = ({
 
   const isSnapshot = item.item_type === "snapshot";
   const mediaType = isSnapshot ? ("snapshot" as const) : ("clip" as const);
-  const mediaUrl = `/api/v1/gallery/${item.id}/download`;
+  const mediaUrl = `/api/v1/gallery/${item.id}/download?v=${item.file_size_bytes}`;
   const displayName = cameraName || item.camera_serial;
   const formattedTime = formatDateTime(item.captured_at, zone);
   const canDelete = user?.role === "owner" || user?.role === "operator";
@@ -219,7 +219,7 @@ export const PreviewDialog: React.FC<PreviewDialogProps> = ({
                 asChild
                 className="h-8 gap-2 text-xs font-semibold"
               >
-                <a href={mediaUrl} download={item.title}>
+                <a href={`${mediaUrl}&download=1`} download={item.title}>
                   <Download className="h-3.5 w-3.5" />
                   <span>{isSnapshot ? GALLERY_COPY.DOWNLOAD_SNAPSHOT : GALLERY_COPY.DOWNLOAD_CLIP}</span>
                 </a>

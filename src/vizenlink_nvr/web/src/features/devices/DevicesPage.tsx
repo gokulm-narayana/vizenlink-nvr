@@ -58,7 +58,7 @@ export const DevicesPage: React.FC = () => {
     if (!deviceToRevoke) return;
     setRevokeError(null);
     try {
-      await revokeMutation.mutateAsync(deviceToRevoke.device_id || deviceToRevoke.id);
+      await revokeMutation.mutateAsync(deviceToRevoke.id || deviceToRevoke.device_id);
       setDeviceToRevoke(null);
     } catch {
       setRevokeError(DEVICES_COPY.REVOKE_FAILED(deviceToRevoke.device_name));

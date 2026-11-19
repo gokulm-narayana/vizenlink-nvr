@@ -22,6 +22,25 @@ ACCESS_TOKEN_TTL = timedelta(hours=1)
 REFRESH_TOKEN_TTL = timedelta(days=30)
 QR_PAIRING_TTL = timedelta(minutes=5)
 SLIDING_WINDOW_UPDATE = timedelta(minutes=5)
+REFRESH_GRACE_PERIOD = timedelta(seconds=60)
+
+# Maps superseded access_token -> (paired_device.id, grace_expires_at) so concurrent
+# requests started right before or during a token refresh don't fail with 401.
+_GRACE_TOKENS: dict[str, tuple[str, datetime]] = {}
+
+
+def _prune_expired_grace_tokens(now: datetime) -> None:
+    expired = [tok for tok, (_, exp) in _GRACE_TOKENS.items() if now > exp]
+    for tok in expired:
+        _GRACE_TOKENS.pop(tok, None)
+
+
+def _purge_grace_tokens_for_devices(device_pks: set[str]) -> None:
+    if not device_pks:
+        return
+    to_remove = [tok for tok, (dev_pk, _) in _GRACE_TOKENS.items() if dev_pk in device_pks]
+    for tok in to_remove:
+        _GRACE_TOKENS.pop(tok, None)
 
 
 class MobileAuthService:
@@ -160,6 +179,7 @@ class MobileAuthService:
         existing = (await db.execute(stmt)).scalar_one_or_none()
 
         if existing is not None:
+            _purge_grace_tokens_for_devices({existing.id})
             existing.device_name = device_name
             existing.platform = platform
             existing.access_token = access_token
@@ -236,9 +256,15 @@ class MobileAuthService:
 
         new_access_token = secrets.token_hex(32)
         new_access_exp = now + ACCESS_TOKEN_TTL
+        new_refresh_exp = now + REFRESH_TOKEN_TTL
+
+        _prune_expired_grace_tokens(now)
+        if device.access_token:
+            _GRACE_TOKENS[device.access_token] = (device.id, now + REFRESH_GRACE_PERIOD)
 
         device.access_token = new_access_token
         device.access_token_expires_at = new_access_exp
+        device.refresh_token_expires_at = new_refresh_exp
         device.last_seen_at = now
 
         await db.commit()
@@ -265,10 +291,32 @@ class MobileAuthService:
             )
         )
         device = (await db.execute(stmt)).scalar_one_or_none()
+        from_grace = False
+
+        if device is None:
+            grace_entry = _GRACE_TOKENS.get(token)
+            if grace_entry is not None:
+                device_pk, grace_until = grace_entry
+                if now <= grace_until:
+                    grace_stmt = (
+                        select(PairedDevice)
+                        .where(PairedDevice.id == device_pk)
+                        .options(
+                            selectinload(PairedDevice.user).selectinload(User.permissions),
+                        )
+                    )
+                    device = (await db.execute(grace_stmt)).scalar_one_or_none()
+                    from_grace = True
+                else:
+                    _GRACE_TOKENS.pop(token, None)
 
         if device is None or device.is_revoked:
+            if from_grace or device is not None:
+                _GRACE_TOKENS.pop(token, None)
             return None
         if now > device.access_token_expires_at:
+            if from_grace:
+                _GRACE_TOKENS.pop(token, None)
             return None
 
         user = device.user
@@ -289,36 +337,134 @@ class MobileAuthService:
         actor: User,
     ) -> bool:
         """Revoke a paired device, immediately preventing subsequent access."""
-        stmt = (
-            select(PairedDevice)
-            .where(
-                (PairedDevice.id == device_id_or_pk) | (PairedDevice.device_id == device_id_or_pk)
+        stmt_pk = select(PairedDevice).where(PairedDevice.id == device_id_or_pk)
+        device = (await db.execute(stmt_pk)).scalar_one_or_none()
+
+        if device is not None:
+            if actor.role != "owner" and device.user_id != actor.id:
+                raise PermissionError("Forbidden: only Owners can revoke devices of other users")
+            targets = [device]
+        else:
+            stmt_dev = select(PairedDevice).where(PairedDevice.device_id == device_id_or_pk)
+            devices = list((await db.execute(stmt_dev)).scalars().all())
+            if not devices:
+                return False
+            if actor.role != "owner":
+                targets = [d for d in devices if d.user_id == actor.id]
+                if not targets:
+                    raise PermissionError("Forbidden: only Owners can revoke devices of other users")
+            else:
+                targets = devices
+
+        now = utc_now()
+        for target in targets:
+            target.is_revoked = True
+            target.revoked_at = now
+        _purge_grace_tokens_for_devices({target.id for target in targets})
+
+        for target in targets:
+            await AuditService.record_event(
+                session=db,
+                action="mobile.device_revoked",
+                resource_type="paired_device",
+                resource_id=target.id,
+                actor_id=actor.id,
+                actor_username=actor.username,
+                details={"device_name": target.device_name, "device_id": target.device_id},
+                commit=False,
             )
-        )
-        device = (await db.execute(stmt)).scalar_one_or_none()
+        await db.commit()
+
+        return True
+
+    @staticmethod
+    async def revoke_by_access_token(
+        db: AsyncSession,
+        token: str,
+    ) -> bool:
+        """Revoke a paired device identified by its access token (or recent grace token)."""
+        if not token:
+            return False
+
+        now = utc_now()
+        device = (
+            await db.execute(
+                select(PairedDevice)
+                .where(PairedDevice.access_token == token)
+                .options(selectinload(PairedDevice.user))
+            )
+        ).scalar_one_or_none()
+
+        if device is None:
+            grace_entry = _GRACE_TOKENS.get(token)
+            if grace_entry is not None and now <= grace_entry[1]:
+                device = (
+                    await db.execute(
+                        select(PairedDevice)
+                        .where(PairedDevice.id == grace_entry[0])
+                        .options(selectinload(PairedDevice.user))
+                    )
+                ).scalar_one_or_none()
 
         if device is None:
             return False
 
-        if actor.role != "owner" and device.user_id != actor.id:
-            raise PermissionError("Forbidden: only Owners can revoke devices of other users")
+        _purge_grace_tokens_for_devices({device.id})
+        if device.is_revoked:
+            return True
 
         device.is_revoked = True
-        device.revoked_at = utc_now()
-        await db.commit()
-
+        device.revoked_at = now
         await AuditService.record_event(
             session=db,
             action="mobile.device_revoked",
             resource_type="paired_device",
             resource_id=device.id,
-            actor_id=actor.id,
-            actor_username=actor.username,
-            details={"device_name": device.device_name, "device_id": device.device_id},
-            commit=True,
+            actor_id=device.user_id,
+            actor_username=device.user.username if device.user else None,
+            details={"device_name": device.device_name, "device_id": device.device_id, "reason": "logout"},
+            commit=False,
         )
-
+        await db.commit()
         return True
+
+    @staticmethod
+    async def revoke_user_devices(
+        db: AsyncSession,
+        user_id: int,
+        *,
+        except_token: str | None = None,
+    ) -> int:
+        """Revoke all active paired devices belonging to *user_id*."""
+        now = utc_now()
+        stmt = select(PairedDevice).where(
+            PairedDevice.user_id == user_id,
+            PairedDevice.is_revoked.is_(False),
+        )
+        devices = list((await db.execute(stmt)).scalars().all())
+        if not devices:
+            return 0
+
+        keep_pk: str | None = None
+        if except_token:
+            grace_entry = _GRACE_TOKENS.get(except_token)
+            if grace_entry is not None and now <= grace_entry[1]:
+                keep_pk = grace_entry[0]
+
+        targets = [
+            d
+            for d in devices
+            if not (except_token and (d.access_token == except_token or d.id == keep_pk))
+        ]
+        if not targets:
+            return 0
+
+        for target in targets:
+            target.is_revoked = True
+            target.revoked_at = now
+        _purge_grace_tokens_for_devices({target.id for target in targets})
+        await db.commit()
+        return len(targets)
 
     @staticmethod
     async def list_devices(

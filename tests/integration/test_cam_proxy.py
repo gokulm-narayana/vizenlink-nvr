@@ -309,3 +309,119 @@ def test_cam_proxy_route_precedence(test_db_app: tuple[Any, Any]) -> None:
     assert "/cam/{serial}/{stream}/whep" in proxy_routes
     assert "/cam/{serial}/{stream}/whep/{session_id}" in proxy_routes
     assert all(idx < spa_first_index for idx in proxy_indices)
+
+
+@pytest.mark.asyncio
+async def test_cam_proxy_media_token_options_and_hls(test_db_app: tuple[Any, Any]) -> None:
+    """Signed media tokens authorize WHEP POST/PATCH/DELETE, OPTIONS, and the HLS proxy."""
+    from vizenlink_nvr.db.models import User
+    from vizenlink_nvr.services.media_token import default_media_token_service
+
+    app, session_factory = test_db_app
+    now = utc_now()
+    async with session_factory() as session:
+        owner = User(
+            username="media_owner",
+            password_hash="not-needed-here",
+            role="owner",
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        cam = Camera(
+            serial="CAM-HLS-1",
+            host="192.168.1.120",
+            https_port=443,
+            mac="AA:BB:CC:DD:EE:11",
+            name="Front HLS",
+            model="Model-X",
+            manufacturer="Vizen",
+            firmware_version="1.0",
+            hardware_id="rev1",
+            tls_fingerprint_sha256="33" * 32,
+            added_at=now,
+            host_updated_at=now,
+        )
+        session.add_all([owner, cam])
+        await session.commit()
+        await session.refresh(owner)
+        owner_id = owner.id
+
+    tok = default_media_token_service.generate_token(
+        user_id=owner_id, camera_serial="CAM-HLS-1", stream="sub"
+    )
+    wrong_stream_tok = default_media_token_service.generate_token(
+        user_id=owner_id, camera_serial="CAM-HLS-1", stream="main"
+    )
+
+    upstream_calls: list[httpx.Request] = []
+
+    def mock_handler(req: httpx.Request) -> httpx.Response:
+        upstream_calls.append(req)
+        if req.url.port == 8888:
+            if req.url.path == "/cam/cam-hls-1/sub/index.m3u8" and b"cookieCheck" not in req.url.query:
+                return httpx.Response(
+                    302,
+                    headers={"location": f"/cam/cam-hls-1/sub/index.m3u8?cookieCheck=1&token={tok}"},
+                )
+            return httpx.Response(
+                200,
+                headers={"content-type": "application/vnd.apple.mpegurl"},
+                content=b"#EXTM3U\nvideo1_stream.m3u8\n",
+            )
+        if req.method == "OPTIONS":
+            return httpx.Response(204, headers={"accept-post": "application/sdp"})
+        if req.method == "POST":
+            return httpx.Response(
+                201,
+                headers={
+                    "content-type": "application/sdp",
+                    "location": "/cam/cam-hls-1/sub/whep/sess-tok-1",
+                },
+                content=b"v=0\r\n",
+            )
+        if req.method == "PATCH":
+            return httpx.Response(204)
+        if req.method == "DELETE":
+            return httpx.Response(200)
+        return httpx.Response(404)
+
+    app.state.cam_proxy_transport = httpx.MockTransport(mock_handler)
+    app.state.mediamtx_webrtc_port = 8889
+    app.state.mediamtx_hls_port = 8888
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # 1. OPTIONS proxies cleanly instead of returning 404
+        res_opt = await client.options(f"/cam/CAM-HLS-1/sub/whep?token={tok}")
+        assert res_opt.status_code == 204
+        assert res_opt.headers["accept-post"] == "application/sdp"
+
+        # 2. Signed media token alone authorizes WHEP POST and keeps token on Location
+        res_post = await client.post(
+            f"/cam/CAM-HLS-1/sub/whep?token={tok}",
+            content=b"v=0\r\n",
+            headers={"Content-Type": "application/sdp"},
+        )
+        assert res_post.status_code == 201
+        loc = res_post.headers["location"]
+        assert loc == f"/cam/CAM-HLS-1/sub/whep/sess-tok-1?token={tok}"
+
+        # 3. Follow-up PATCH and DELETE work using that Location without cookies/Bearer
+        res_patch = await client.patch(
+            loc,
+            content=b"cand",
+            headers={"Content-Type": "application/trickle-ice-sdpfrag"},
+        )
+        assert res_patch.status_code == 204
+        res_del = await client.delete(loc)
+        assert res_del.status_code == 200
+
+        # 4. Authenticated HLS proxy handles 302 cookieCheck redirect and serves playlist
+        res_hls = await client.get(f"/cam/CAM-HLS-1/sub/hls/{tok}/index.m3u8")
+        assert res_hls.status_code == 200
+        assert b"#EXTM3U" in res_hls.content
+
+        # 5. HLS enforces token validity, stream match, and traversal safety
+        assert (await client.get("/cam/CAM-HLS-1/sub/hls/invalid-tok/index.m3u8")).status_code == 401
+        assert (await client.get(f"/cam/CAM-HLS-1/sub/hls/{wrong_stream_tok}/index.m3u8")).status_code == 403
+        assert (await client.get(f"/cam/CAM-HLS-1/sub/hls/{tok}/..%2Fsecret")).status_code in (404, 422)
